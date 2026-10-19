@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # The API, worker, gateway and CLI. The console has its own image (console/Dockerfile).
-FROM golang:1.27-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download
