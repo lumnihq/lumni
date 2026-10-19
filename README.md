@@ -32,6 +32,16 @@ cp .env.example .env    # fill in the four secrets
 docker compose up -d    # console on http://localhost:5200
 ```
 
+## Let your coding agent do it
+
+Install the Lumni skill and ask your coding agent to "add Lumni to this agent":
+
+```bash
+npx skills add lumnihq/lumni                  # Claude Code, Cursor, Codex, and other agents
+```
+
+In Claude Code you can also run `/plugin marketplace add lumnihq/lumni`, then `/plugin install lumni@lumni`. For LLMs, the docs in one file: [lumniverse.com/llms.txt](https://lumniverse.com/llms.txt).
+
 ## What's here
 
 | Folder | What it is |
@@ -40,6 +50,7 @@ docker compose up -d    # console on http://localhost:5200
 | `console/` | The console: plain HTML and JS pages, served by a small Bun server that also handles accounts |
 | `sdk/` | Go, TypeScript and Python SDKs |
 | `packages/lumni` | `npx lumniverse`: connect, try and demo |
+| `skills/` | The Lumni skill for coding agents (Claude Code, Cursor, Codex and others) |
 | `deploy/` | Docker Compose for self-hosting, and its Caddy config |
 | `examples/` | Example agents, including `agent-fleet`, a set of agents that make realistic mistakes |
 | `docs/` | Everything else |
@@ -76,6 +87,6 @@ docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-
 
 ## License
 
-Lumni's server and console are under the [Functional Source License](LICENSE) (FSL-1.1, Apache-2.0 future license): use it, change it and self-host it for your own agents; you can't offer it as a competing hosted service. Each release becomes Apache-2.0 two years after it ships. The SDKs (`sdk/`), the `lumniverse` CLI (`packages/lumni`) and the examples are Apache-2.0.
+Lumni's server and console are under the [Functional Source License](LICENSE) (FSL-1.1, Apache-2.0 future license): use it, change it and self-host it for your own agents; you can't offer it as a competing hosted service. Each release becomes Apache-2.0 two years after it ships. The SDKs (`sdk/`), the `lumniverse` CLI (`packages/lumni`), the skills (`skills/`) and the examples are Apache-2.0.
 
 Security reports: see [SECURITY.md](SECURITY.md).

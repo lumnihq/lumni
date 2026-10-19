@@ -35,7 +35,7 @@ describe('pages and assets', () => {
   });
 
   test('every page boots the shell and names itself in the nav', async () => {
-    for (const p of PAGES.filter((x) => x !== 'sign-in' && x !== 'privacy')) {
+    for (const p of PAGES.filter((x) => x !== 'sign-in' && x !== 'privacy' && x !== 'terms')) {
       const html = await (await app(`/${p}`))!.text();
       expect(html).toContain('/lib/shell.js');
       expect(html).toMatch(/(Shell|Concept)\.boot\(\{\s*nav:/);

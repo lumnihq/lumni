@@ -5,7 +5,7 @@
 /** Every screen, by its path. */
 export const PAGES = [
   'flow', 'today', 'day-map', 'journey', 'runtime', 'context', 'tower', 'needs-you', 'fixes', 'autonomy',
-  'money', 'incident', 'without', 'wrapped', 'share', 'sign-in', 'start', 'settings', 'device', 'privacy',
+  'money', 'incident', 'without', 'wrapped', 'share', 'sign-in', 'start', 'settings', 'device', 'privacy', 'terms',
 ];
 
 const TYPES: Record<string, string> = {

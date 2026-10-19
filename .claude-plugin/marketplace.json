@@ -1,0 +1,15 @@
+{
+  "name": "lumni",
+  "owner": { "name": "Chainslice Inc", "email": "privacy@lumniverse.com" },
+  "metadata": { "description": "Lumni's skills for coding agents." },
+  "plugins": [
+    {
+      "name": "lumni",
+      "source": "./",
+      "description": "Add Lumni to AI agents: check consequential actions before they run, handle decisions, report results.",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "homepage": "https://lumniverse.com"
+    }
+  ]
+}
