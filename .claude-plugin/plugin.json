@@ -2,10 +2,18 @@
   "name": "lumni",
   "description": "Teach coding agents to add Lumni to AI agents: check each consequential action before it runs, handle every decision, report results.",
   "version": "0.1.0",
-  "author": { "name": "Chainslice Inc", "email": "privacy@lumniverse.com" },
+  "author": {
+    "name": "Chainslice Inc",
+    "email": "privacy@lumniverse.com"
+  },
   "homepage": "https://lumniverse.com",
   "repository": "https://github.com/lumnihq/lumni",
   "license": "Apache-2.0",
-  "keywords": ["ai-agents", "coordination", "idempotency", "approvals", "lumni"],
-  "skills": ["./skills/lumni"]
+  "keywords": [
+    "ai-agents",
+    "coordination",
+    "idempotency",
+    "approvals",
+    "lumni"
+  ]
 }
