@@ -38,6 +38,11 @@ export interface Env {
   platformKey: string;
   github: { id: string; secret: string } | null;
   google: { id: string; secret: string } | null;
+  /**
+   * Lumni Cloud's billing through Stripe: a trial for each workspace made by
+   * sign-up, then the Team plan. Null (self-hosted, development): no billing.
+   */
+  stripe: { secretKey: string; webhookSecret: string; pricePlan: string; priceUsage: string; meterEvent: string } | null;
 }
 
 function bool(v: string | undefined, fallback: boolean): boolean {
@@ -68,6 +73,15 @@ export function readEnv(vars: Record<string, string | undefined>): Env {
     platformKey: (pick(vars, 'PLATFORM_KEY') ?? '').trim(),
     github: pick(vars, 'GITHUB_CLIENT_ID') && pick(vars, 'GITHUB_CLIENT_SECRET') ? { id: pick(vars, 'GITHUB_CLIENT_ID')!.trim(), secret: pick(vars, 'GITHUB_CLIENT_SECRET')!.trim() } : null,
     google: pick(vars, 'GOOGLE_CLIENT_ID') && pick(vars, 'GOOGLE_CLIENT_SECRET') ? { id: pick(vars, 'GOOGLE_CLIENT_ID')!.trim(), secret: pick(vars, 'GOOGLE_CLIENT_SECRET')!.trim() } : null,
+    stripe: pick(vars, 'STRIPE_SECRET_KEY') && pick(vars, 'STRIPE_PRICE_PLAN') && pick(vars, 'STRIPE_PRICE_USAGE')
+      ? {
+        secretKey: pick(vars, 'STRIPE_SECRET_KEY')!.trim(),
+        webhookSecret: (pick(vars, 'STRIPE_WEBHOOK_SECRET') ?? '').trim(),
+        pricePlan: pick(vars, 'STRIPE_PRICE_PLAN')!.trim(),
+        priceUsage: pick(vars, 'STRIPE_PRICE_USAGE')!.trim(),
+        meterEvent: (pick(vars, 'STRIPE_METER_EVENT') ?? '').trim() || 'lumni_checks',
+      }
+      : null,
     pricePerAction: Number.isFinite(Number(pick(vars, 'PRICE_PER_ACTION'))) && pick(vars, 'PRICE_PER_ACTION') ? Number(pick(vars, 'PRICE_PER_ACTION')) : null,
   };
 }
@@ -80,6 +94,8 @@ export function publicConfig(env: Env, realAvailable: boolean) {
     workspace: env.workspace,
     autoSignIn: env.auth === 'key' && env.autoSignIn && Boolean(env.adminKey),
     auth: env.auth,
+    // Plans and billing (Lumni Cloud): only with accounts.
+    billing: env.auth === 'accounts' && Boolean(env.stripe),
     adminKey: Boolean(env.adminKey),
     // Where agents send checks. Not a secret; the onboarding command needs it.
     apiUrl: env.publicApi,

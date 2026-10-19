@@ -103,7 +103,7 @@ describe('signing in with the admin key', () => {
   test('config says what the browser may know, and nothing secret', async () => {
     const { send, w } = setUp(busyDay(10));
     const r = await send('/console/config.json');
-    expect(r.data).toEqual({ mode: 'real', realAvailable: true, workspace: null, autoSignIn: true, adminKey: true, auth: 'key', apiUrl: 'http://go.test' });
+    expect(r.data).toEqual({ mode: 'real', realAvailable: true, workspace: null, autoSignIn: true, adminKey: true, auth: 'key', billing: false, apiUrl: 'http://go.test' });
     expect(r.text).not.toContain(w.key);
   });
 });

@@ -10,9 +10,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -177,4 +179,61 @@ func checkInput(f fixture, id string) protocol.ActionCheckInput {
 	in := input(f, "stripe.refund", id, "")
 	in.ActionID = id
 	return in
+}
+
+// platformCall calls a platform route on the console client's server.
+func platformCall(t *testing.T, c consoleClient, method, path, key string, body any) (int, map[string]any) {
+	t.Helper()
+	var reader io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		reader = bytes.NewReader(b)
+	}
+	req := httptest.NewRequest(method, path, reader)
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	c.server.Handler().ServeHTTP(rr, req)
+	out := map[string]any{}
+	_ = json.Unmarshal(rr.Body.Bytes(), &out)
+	return rr.Code, out
+}
+
+func TestPlanMakesAWorkspaceWatchOnlyAndUsageCountsChecks(t *testing.T) {
+	c := newConsoleClient(t, protocol.ModeEnforce)
+	c.server.Configure(api.RuntimeOptions{PlatformKeys: []string{"platform-key"}})
+	ctx := context.Background()
+	from := time.Now().Add(-time.Minute).UTC()
+
+	if out := c.call(t, "POST", "/v1/actions/check", checkInput(c.f, "plan-before"), 200); out["enforced"] != true {
+		t.Fatalf("before a plan, an enforcing workspace enforces: %v", out)
+	}
+	plan := map[string]any{"plan": "watch", "limits": map[string]int{"checks_per_day": 500, "checks_per_second": 10}, "watch_only": true}
+	if code, _ := platformCall(t, c, "PUT", "/v1/tenants/"+c.f.tenant+"/plan", "wrong", plan); code != 401 {
+		t.Fatalf("wrong key: got %d", code)
+	}
+	if code, _ := platformCall(t, c, "PUT", "/v1/tenants/not-a-tenant/plan", "platform-key", plan); code != 404 {
+		t.Fatalf("bad id: got %d", code)
+	}
+	if code, out := platformCall(t, c, "PUT", "/v1/tenants/"+c.f.tenant+"/plan", "platform-key", plan); code != 200 || out["watch_only"] != true {
+		t.Fatalf("plan: %d %v", code, out)
+	}
+	var watch bool
+	var perDay int
+	if err := c.f.pool.QueryRow(ctx, `SELECT (settings->>'watch_only')::boolean,(settings->'limits'->>'checks_per_day')::int FROM tenants WHERE id=$1`, c.f.tenant).Scan(&watch, &perDay); err != nil || !watch || perDay != 500 {
+		t.Fatalf("settings: %v %d %v", watch, perDay, err)
+	}
+	if out := c.call(t, "POST", "/v1/actions/check", checkInput(c.f, "plan-after"), 200); out["enforced"] != false {
+		t.Fatalf("a watch-only workspace doesn't enforce: %v", out)
+	}
+
+	to := time.Now().Add(time.Minute).UTC()
+	q := "?from=" + url.QueryEscape(from.Format(time.RFC3339)) + "&to=" + url.QueryEscape(to.Format(time.RFC3339))
+	code, out := platformCall(t, c, "GET", "/v1/tenants/"+c.f.tenant+"/usage"+q, "platform-key", nil)
+	if code != 200 || out["checks"] != float64(2) {
+		t.Fatalf("usage: %d %v", code, out)
+	}
+	if code, _ := platformCall(t, c, "GET", "/v1/tenants/"+c.f.tenant+"/usage?from=x&to=y", "platform-key", nil); code != 400 {
+		t.Fatalf("bad range: got %d", code)
+	}
 }

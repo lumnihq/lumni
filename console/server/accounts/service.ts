@@ -33,10 +33,14 @@
 //   PATCH  /v1/console/members/:user      their role
 //   DELETE /v1/console/members/:user      remove them
 //   POST   /v1/console/members/:user/reset  a password-reset link for them
+//   GET    /v1/console/billing         the plan, trial and usage (Lumni Cloud; see billing.ts)
+//   POST   /v1/console/billing/checkout | /portal
+//   POST   /console/billing/webhook       Stripe's events
 
 import type { Env } from '../env';
 import { HttpError, clearCookie, cookies, json, problem, readSetCookie, setCookie } from '../http';
 import { read, unreachable, type Fetch, type Upstream } from '../upstream';
+import { Billing } from './billing';
 import { ROLES, Sealer, Store, type Member, type Role, type User, type Workspace } from './store';
 
 const USER = 'lumni_user';
@@ -72,6 +76,8 @@ export interface AccountMe { initials: string; email: string; name: string }
 
 export class Accounts {
   readonly store: Store;
+  /** Plans and Stripe, for Lumni Cloud. Null: nothing is billed. */
+  readonly billing: Billing | null;
   private readonly sealer: Sealer;
   private attempts = new Map<string, number[]>();
 
@@ -84,11 +90,12 @@ export class Accounts {
   ) {
     this.sealer = new Sealer(env.secret);
     this.store = store ?? new Store(env.dbPath);
+    this.billing = env.stripe && env.platformKey ? new Billing(env, this.store, fetchFn, now) : null;
   }
 
   /** The routes this handles, or null for everything else. */
   owns(path: string): boolean {
-    return path === '/v1/auth/session' || path.startsWith('/console/auth/') || path.startsWith('/v1/console/account') || path === '/v1/console/workspace' || path.startsWith('/v1/console/members');
+    return path === '/v1/auth/session' || path.startsWith('/console/auth/') || path.startsWith('/v1/console/account') || path === '/v1/console/workspace' || path.startsWith('/v1/console/members') || path.startsWith('/v1/console/billing') || path === '/console/billing/webhook';
   }
 
   async handle(req: Request): Promise<Response> {
@@ -100,6 +107,10 @@ export class Accounts {
         if (method === 'GET') return await this.whoAmI(req);
         if (method === 'DELETE') return await this.signOut(req);
         throw new HttpError(400, 'use_your_account', 'This console signs in with accounts, not keys.');
+      }
+      if (path === '/console/billing/webhook') {
+        if (!this.billing || method !== 'POST') throw new HttpError(404, 'not_found', 'Not found.');
+        return await this.billing.webhook(req);
       }
       if (path.startsWith('/console/auth/')) return await this.auth(req, url, method);
       return await this.signedIn(req, url, method);
@@ -406,6 +417,7 @@ export class Accounts {
     const now = this.now();
     const ws = this.store.createWorkspace(name, t.tenant_id, await this.sealer.seal(t.admin_key), now);
     this.store.addMember(ws.id, owner.id, 'owner', now);
+    this.billing?.startTrial(ws);
     return ws;
   }
 
@@ -547,6 +559,14 @@ export class Accounts {
       const h = new Headers();
       for (const k of [SESSION, CSRF, WS]) h.append('set-cookie', clearCookie(k, this.secure(req)));
       return json({ ok: true, workspace_id: id }, 200, h);
+    }
+    if (path === '/v1/console/billing' && method === 'GET') {
+      return json(this.billing ? await this.billing.view(s.workspace, this.canManage(s.member)) : { enabled: false });
+    }
+    if ((path === '/v1/console/billing/checkout' || path === '/v1/console/billing/portal') && method === 'POST') {
+      if (!this.billing) throw new HttpError(404, 'not_found', 'This console doesn’t bill.');
+      if (!this.canManage(s.member)) throw new HttpError(403, 'forbidden', 'Only owners and admins can change the plan.');
+      return json(path.endsWith('checkout') ? await this.billing.checkout(s.workspace, s.user, this.origin(req)) : await this.billing.portal(s.workspace, this.origin(req)));
     }
     if (path === '/v1/console/workspace' && method === 'PATCH') {
       if (!this.canManage(s.member)) throw new HttpError(403, 'forbidden', 'Only owners and admins can rename the workspace.');

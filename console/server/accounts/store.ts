@@ -16,6 +16,8 @@ export interface User { id: string; email: string; name: string; password_hash: 
 export interface Workspace { id: string; name: string; tenant_id: string; admin_key_sealed: string; created_at: number }
 export interface Member { workspace_id: string; user_id: string; role: Role; key_id: string | null; key_sealed: string | null; created_at: number }
 export interface Invite { id: string; workspace_id: string; email: string | null; role: Role; token_hash: string; invited_by: string; created_at: number; expires_at: number; accepted_at: number | null; accepted_by: string | null }
+/** Billing for a workspace made by sign-up (Lumni Cloud). Workspaces without a row aren't billed. */
+export interface BillingRow { workspace_id: string; status: 'trial' | 'active' | 'past_due' | 'watch'; trial_ends_at: number; stripe_customer: string | null; stripe_subscription: string | null; applied: string | null; reported_until: number | null; updated_at: number; cancel_at: number | null }
 export interface SessionRow { id_hash: string; user_id: string; workspace_id: string | null; created_at: number; expires_at: number; last_seen: number }
 
 const SCHEMA = `
@@ -44,6 +46,11 @@ create table if not exists sessions (
 create table if not exists resets (
   token_hash text primary key, user_id text not null references users(id) on delete cascade,
   created_by text, expires_at integer not null, used_at integer);
+create table if not exists billing (
+  workspace_id text primary key references workspaces(id) on delete cascade,
+  status text not null check (status in ('trial','active','past_due','watch')),
+  trial_ends_at integer not null, stripe_customer text, stripe_subscription text,
+  applied text, reported_until integer, updated_at integer not null);
 create index if not exists members_user on members(user_id);
 create index if not exists sessions_user on sessions(user_id);
 `;
@@ -59,6 +66,9 @@ export class Store {
     this.db = new Database(path, { create: true });
     this.db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 3000;');
     this.db.exec(SCHEMA);
+    // Columns added after a table first shipped.
+    const has = (table: string, column: string) => this.db.query<{ name: string }>(`select name from pragma_table_info('${table}')`).all().some((c) => c.name === column);
+    if (!has('billing', 'cancel_at')) this.db.exec('alter table billing add column cancel_at integer');
   }
 
   // ─── people ──────────────────────────────────────────
@@ -177,6 +187,26 @@ export class Store {
   sweep(now: number): void {
     this.db.query('delete from sessions where expires_at < ?').run(now);
     this.db.query('delete from resets where expires_at < ?').run(now - 86_400_000);
+  }
+
+  // ─── billing ─────────────────────────────────────────
+  startTrial(workspaceId: string, now: number, endsAt: number, applied: string | null): void {
+    this.db.query('insert or ignore into billing (workspace_id, status, trial_ends_at, applied, updated_at) values (?, ?, ?, ?, ?)').run(workspaceId, 'trial', endsAt, applied, now);
+  }
+  billing(workspaceId: string): BillingRow | null {
+    return this.db.query<BillingRow>('select * from billing where workspace_id = ?').get(workspaceId);
+  }
+  billingBySubscription(subscription: string): BillingRow | null {
+    return this.db.query<BillingRow>('select * from billing where stripe_subscription = ?').get(subscription);
+  }
+  billingAll(): BillingRow[] {
+    return this.db.query<BillingRow>('select * from billing').all();
+  }
+  setBilling(workspaceId: string, fields: Partial<Omit<BillingRow, 'workspace_id'>>, now: number): void {
+    const keys = Object.keys(fields).filter((k) => ['status', 'trial_ends_at', 'stripe_customer', 'stripe_subscription', 'applied', 'reported_until', 'cancel_at'].includes(k));
+    if (!keys.length) return;
+    const values = keys.map((k) => (fields as Record<string, unknown>)[k] ?? null) as (string | number | null)[];
+    this.db.query(`update billing set ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = ? where workspace_id = ?`).run(...values, now, workspaceId);
   }
 
   // ─── password resets ─────────────────────────────────

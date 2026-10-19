@@ -220,6 +220,9 @@ export interface FakeWorld {
   noOnboarding?: boolean;
   /** The key that may create tenants (POST /v1/tenants), for open sign-up. */
   platformKey?: string;
+  /** Plans set with PUT /v1/tenants/{id}/plan, and checks GET .../usage answers with. */
+  plans?: Record<string, { plan: string; limits: Record<string, number>; watch_only: boolean }>;
+  usage?: Record<string, number>;
   /** The change stream's log, as Go's graph_changes table. */
   changes?: { seq: number; type: string; entity: string; at: number }[];
 }
@@ -1208,6 +1211,16 @@ export function fakeFetch(w: FakeWorld) {
       const secret = `lm_admin_${Math.random().toString(36).slice(2, 14)}`;
       keys.push({ id: `key_tenant_${keys.length}`, name: 'Workspace admin', prefix: secret.slice(0, 10), scopes: ['admin'], created_at: iso(Date.now()), expires_at: null, revoked_at: null, secret });
       return json({ tenant_id: `t_${keys.length}`, admin_key: secret, name: JSON.parse(body ?? '{}').name ?? null }, 201);
+    }
+    const platformRoute = /^\/v1\/tenants\/([^/]+)\/(plan|usage)$/.exec(p);
+    if (platformRoute) {
+      if (!w.platformKey || headers.authorization !== `Bearer ${w.platformKey}`) return fail(401, 'UNAUTHENTICATED');
+      const tenant = decodeURIComponent(platformRoute[1]!);
+      if (platformRoute[2] === 'plan' && method === 'PUT') {
+        (w.plans ??= {})[tenant] = JSON.parse(body ?? '{}');
+        return json({ tenant_id: tenant, ...w.plans[tenant] });
+      }
+      if (platformRoute[2] === 'usage' && method === 'GET') return json({ tenant_id: tenant, checks: w.usage?.[tenant] ?? 0 });
     }
     if (p === '/v1/auth/session' && method === 'POST') {
       const k = keyFor(headers.authorization);

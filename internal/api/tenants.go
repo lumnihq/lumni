@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"lumni/internal/auth"
@@ -112,14 +113,23 @@ func slugFor(name string) (string, error) {
 	return base + "-" + hex.EncodeToString(suffix), nil
 }
 
-func (s *Server) createTenant(w http.ResponseWriter, r *http.Request) {
+// platform admits a request made with a platform key; without any configured,
+// these routes don't exist.
+func (s *Server) platform(w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Cache-Control", "no-store")
 	if len(s.tenants.keys) == 0 {
 		s.fail(w, r, http.StatusNotFound, "NOT_FOUND", "Not found", nil)
-		return
+		return false
 	}
 	if !s.tenants.authorized(r) {
 		s.fail(w, r, http.StatusUnauthorized, "UNAUTHENTICATED", "A platform key is required", nil)
+		return false
+	}
+	return true
+}
+
+func (s *Server) createTenant(w http.ResponseWriter, r *http.Request) {
+	if !s.platform(w, r) {
 		return
 	}
 	var in struct {
@@ -189,4 +199,63 @@ func (s *Server) insertTenant(r *http.Request, name, slug, secret string) (strin
 		return "", err
 	}
 	return id, tx.Commit(ctx)
+}
+
+// PUT /v1/tenants/{id}/plan: what a workspace's plan allows. Lumni Cloud's
+// console sets it from Stripe: trial, paid, or watch-only once a trial ends.
+func (s *Server) setTenantPlan(w http.ResponseWriter, r *http.Request) {
+	if !s.platform(w, r) {
+		return
+	}
+	id, err := uuid.Parse(pathID(r, "id"))
+	if err != nil {
+		s.fail(w, r, http.StatusNotFound, "NOT_FOUND", "No such tenant", nil)
+		return
+	}
+	var in struct {
+		Plan      string       `json:"plan"`
+		Limits    tenantLimits `json:"limits"`
+		WatchOnly bool         `json:"watch_only"`
+	}
+	if !s.decode(w, r, &in) {
+		return
+	}
+	if in.Limits.PerDay < 0 || in.Limits.PerSecond < 0 || len(in.Plan) > 40 {
+		s.fail(w, r, http.StatusBadRequest, "INVALID_PLAN", "Limits must be zero or more, and the plan name short", nil)
+		return
+	}
+	set := jsonBytes(map[string]any{"plan": in.Plan, "limits": in.Limits, "watch_only": in.WatchOnly})
+	tag, err := s.pool.Exec(r.Context(), `UPDATE tenants SET settings=settings||$2::jsonb,updated_at=clock_timestamp() WHERE id=$1`, id, set)
+	if err != nil {
+		s.respond(w, r, 0, nil, err)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		s.fail(w, r, http.StatusNotFound, "NOT_FOUND", "No such tenant", nil)
+		return
+	}
+	_, _ = s.pool.Exec(r.Context(), `INSERT INTO audit_events(tenant_id,by,type,target,after)VALUES($1,'platform','plan.set','{}'::jsonb,$2)`, id, set)
+	s.quotas.forget(id.String())
+	writeJSON(w, http.StatusOK, map[string]any{"tenant_id": id.String(), "plan": in.Plan, "limits": in.Limits, "watch_only": in.WatchOnly})
+}
+
+// GET /v1/tenants/{id}/usage?from=&to=: checks in [from, to), for billing.
+func (s *Server) tenantUsage(w http.ResponseWriter, r *http.Request) {
+	if !s.platform(w, r) {
+		return
+	}
+	id, err := uuid.Parse(pathID(r, "id"))
+	if err != nil {
+		s.fail(w, r, http.StatusNotFound, "NOT_FOUND", "No such tenant", nil)
+		return
+	}
+	from, errFrom := time.Parse(time.RFC3339, r.URL.Query().Get("from"))
+	to, errTo := time.Parse(time.RFC3339, r.URL.Query().Get("to"))
+	if errFrom != nil || errTo != nil || !to.After(from) {
+		s.fail(w, r, http.StatusBadRequest, "INVALID_RANGE", "from and to must be RFC 3339 times, from before to", nil)
+		return
+	}
+	var checks int
+	err = s.pool.QueryRow(r.Context(), `SELECT count(*) FROM actions WHERE tenant_id=$1 AND requested_at>=$2 AND requested_at<$3`, id, from, to).Scan(&checks)
+	s.respond(w, r, http.StatusOK, map[string]any{"tenant_id": id.String(), "from": from, "to": to, "checks": checks}, err)
 }

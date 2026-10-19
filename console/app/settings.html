@@ -196,6 +196,19 @@
   .ev a { color: var(--accent); font-weight: 650; font-size: 13px; }
   .ev .k { font-size: 11.5px; font-weight: 650; color: var(--ink3); }
   .log-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 13px; color: var(--ink2); }
+  .plan { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: stretch; }
+  .plan .now { padding: 16px 18px; border-radius: 14px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .plan .now b.big { display: block; font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+  .plan .now p { margin-top: 6px; color: var(--ink2); font-size: 13.5px; line-height: 1.5; }
+  .plan .meter { margin-top: 12px; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .plan .meter i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .plan .meter.over i { background: var(--red); }
+  .plan .used { margin-top: 6px; font-size: 12.5px; color: var(--ink2); }
+  .plan .team { padding: 16px 18px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); display: flex; flex-direction: column; gap: 6px; }
+  .plan .team b { font-size: 15px; } .plan .team .price { font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+  .plan .team small { color: var(--ink2); font-size: 13px; } .plan .team .btn { margin-top: auto; justify-content: center; }
+  .plan .warn-pay { grid-column: 1 / -1; padding: 10px 14px; border-radius: 12px; background: #fff1f0; color: var(--red); font-weight: 650; font-size: 13.5px; }
+  @media (max-width: 760px) { .plan { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -410,9 +423,12 @@ const PATHS = {
   pilot: () => '/v1/config/autopilot',
   rules: () => '/v1/config/policy-rules',
   people: () => '/v1/console/members',
+  plan: () => '/v1/console/billing',
 };
 /** People sign in as themselves (accounts), so there's a team to manage. */
 const accounts = () => real() && Shell.config.auth === 'accounts';
+/** Lumni Cloud bills workspaces made by sign-up. */
+const billed = () => accounts() && Shell.config.billing;
 const LOG_TYPES = [
   ['All', ''],
   ['Modes', 'enforcement.set,enforcement.cleared'],
@@ -458,7 +474,7 @@ async function loadLog(more) {
 }
 
 async function loadAll() {
-  await Promise.all(['keys', 'spend', 'billing', 'notify', 'limits', 'pilot', 'rules', 'log', ...(accounts() ? ['people'] : [])].map(load));
+  await Promise.all(['keys', 'spend', 'billing', 'notify', 'limits', 'pilot', 'rules', 'log', ...(accounts() ? ['people'] : []), ...(billed() ? ['plan'] : [])].map(load));
 }
 
 // ─── layout ─────────────────────────────────────────
@@ -487,6 +503,7 @@ function renderIndex() {
     notify: S.notify?.status === 'ok' ? ((S.notify.data?.channels ?? []).length ? plural(S.notify.data.channels.length, 'channel') : 'Nothing is sent yet') : null,
     limits: S.limits?.status === 'ok' ? ((S.limits.data?.items ?? []).length ? plural(S.limits.data.items.length, 'limit') : 'None set') : null,
     pilot: S.pilot?.status === 'ok' ? ((S.pilot.data?.items ?? []).filter((g) => g.active).length ? plural(S.pilot.data.items.filter((g) => g.active).length, 'AI') + ' on Autopilot' : 'No AI on Autopilot') : null,
+    plan: S.plan?.status === 'ok' ? ({ trial: `Trial, ${S.plan.data.days_left} ${S.plan.data.days_left === 1 ? 'day' : 'days'} left`, active: S.plan.data.cancel_at ? `Team plan, ending ${dayOf(S.plan.data.cancel_at)}` : 'Team plan', past_due: 'Team plan: payment failed', watch: 'Trial ended: watching only', exempt: 'Not billed' })[S.plan.data.status] ?? null : null,
     people: S.people?.status === 'ok' ? plural(S.people.data.members.length, 'person', 'people') + (S.people.data.invites.length ? `, ${plural(S.people.data.invites.length, 'invite')} open` : '') : null,
     log: S.log?.status === 'ok' ? (S.log.items.length ? `Last change ${when(S.log.items[0].at)}` : 'Nothing changed yet') : null,
   };
@@ -987,8 +1004,46 @@ function renderPeople() {
   }));
 }
 
+// ─── plan and billing ───────────────────────────────
+
+function renderPlan() {
+  if (!billed()) return;
+  const { d, b } = part('plan');
+  const s = S.plan;
+  if (!s || s.status !== 'ok') { b.innerHTML = s?.status === 'error' ? errorBox(s.error) : '<div class="loading"></div>'; return; }
+  const p = s.data;
+  if (p.status === 'exempt' || !p.enabled) { d.textContent = 'This workspace isn’t on a plan.'; b.innerHTML = ''; return; }
+  d.textContent = 'Lumni Cloud’s plan for this workspace. Stripe handles cards and invoices.';
+  const used = p.usage?.checks;
+  const cap = p.status === 'active' || p.status === 'past_due' ? p.plan.included : p.limits.checks_per_day;
+  const pct = used == null ? 0 : Math.min(100, (used / cap) * 100);
+  const meter = used == null ? '' : `<div class="meter ${used >= cap ? 'over' : ''}"><i style="width:${pct.toFixed(1)}%"></i></div>
+    <div class="used">${fmtN(used)} of ${fmtN(cap)} checks ${p.usage.period === 'month' ? 'this month, included' : 'today'}${p.status === 'active' && used > cap ? `; ${fmtN(used - cap)} more at ${E(p.plan.overage.replace(/ more checks$/, ''))}` : ''}</div>`;
+  const now = {
+    trial: `<b class="big">Free trial: ${p.days_left} ${p.days_left === 1 ? 'day' : 'days'} left</b><p>Everything Lumni does, up to ${fmtN(p.limits.checks_per_day)} checks a day. When the trial ends, Lumni keeps watching but stops stepping in until you subscribe.</p>`,
+    watch: `<b class="big">Your trial has ended</b><p>Lumni is only watching now: it records what it would have done, up to ${fmtN(p.limits.checks_per_day)} checks a day, and doesn’t step in. Subscribe to turn protection back on.</p>`,
+    active: p.cancel_at
+      ? `<b class="big">Team plan, ending ${E(dayOf(p.cancel_at))}</b><p>The subscription is cancelled and stays active until ${E(dayOf(p.cancel_at))}. After that Lumni only watches: it records what it would have done and doesn’t step in. Changed your mind? Keep it in Manage billing.</p>`
+      : `<b class="big">Team plan</b><p>${E(p.plan.price)}, with ${fmtN(p.plan.included)} checks included each month, then ${E(p.plan.overage)}.</p>`,
+    past_due: `<b class="big">Team plan</b><p>${E(p.plan.price)}, with ${fmtN(p.plan.included)} checks included each month.</p>`,
+  }[p.status] ?? '';
+  const paying = p.status === 'active' || p.status === 'past_due';
+  const side = paying
+    ? `<div class="team"><b>Billing</b><small>Cards, invoices and cancelling are on Stripe’s page.</small>${p.can_manage ? '<button class="btn" id="portal">Manage billing</button>' : '<small>Owners and admins manage billing.</small>'}</div>`
+    : `<div class="team"><b>${E(p.plan.name)}</b><span class="price">${E(p.plan.price.replace(/ a month$/, ''))}<small> a month</small></span><small>${fmtN(p.plan.included)} checks included each month, then ${E(p.plan.overage)}. Everyone in the workspace, every agent.</small>${p.can_manage ? '<button class="btn accent" id="upgrade">Subscribe</button>' : '<small>Owners and admins can subscribe.</small>'}</div>`;
+  b.innerHTML = `<div class="plan">${p.status === 'past_due' ? '<div class="warn-pay">Your last payment didn’t go through. Update your card in Manage billing to keep the Team plan.</div>' : ''}<div class="now">${now}${meter}</div>${side}</div>`;
+  const go = async (path, btn) => {
+    btn.disabled = true;
+    const out = await Shell.write('POST', path, {}, { reload: false });
+    if (out?.url) location.href = out.url;
+    else btn.disabled = false;
+  };
+  $('#upgrade')?.addEventListener('click', (e) => go('/v1/console/billing/checkout', e.currentTarget));
+  $('#portal')?.addEventListener('click', (e) => go('/v1/console/billing/portal', e.currentTarget));
+}
+
 function renderAll() {
-  renderWorkspace(); renderPeople(); renderKeys(); renderSpend(); renderNotify(false); renderLimits(); renderPilot(); renderLog(); renderIndex();
+  renderWorkspace(); renderPlan(); renderPeople(); renderKeys(); renderSpend(); renderNotify(false); renderLimits(); renderPilot(); renderLog(); renderIndex();
 }
 
 async function onWorld(w, first) {
@@ -1005,6 +1060,8 @@ async function onWorld(w, first) {
     return;
   }
   if (accounts() && !SECTIONS.some(([id]) => id === 'people')) SECTIONS = [SECTIONS[0], ['people', 'People'], ...SECTIONS.slice(1)];
+  if (billed() && !SECTIONS.some(([id]) => id === 'plan')) SECTIONS = [SECTIONS[0], ['plan', 'Plan and billing'], ...SECTIONS.slice(1)];
+  if (first && new URLSearchParams(location.search).get('billing') === 'done') Shell.toast('Thanks! Your workspace is on the Team plan.', 'good');
   if (first || !$('#cards').children.length) shell();
   renderWorkspace();
   await loadAll();

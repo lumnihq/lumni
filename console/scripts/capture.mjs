@@ -55,11 +55,15 @@ const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const fake = richDay(Number(process.env.FAKE_API_ACTIONS ?? 900), { key: 'capture_key', perSnapshot: 400 }, localZone, Date.now() - Number(process.env.FAKE_API_IDLE_MIN ?? 0) * 60_000);
 // CAPTURE_AUTH=accounts: people sign in as themselves. CAPTURE_SEED=1 also
 // makes an owner (signed in for the shots) and a few people and invites.
+// CAPTURE_BILLING=1 (with both): shots as someone who signed up, on a trial.
 const accountsMode = process.env.CAPTURE_AUTH === 'accounts';
+const billingMode = accountsMode && Boolean(process.env.CAPTURE_BILLING);
 const env = readEnv({
   LUMNI_CONSOLE_DATA_MODE: 'mock', LUMNI_API_URL: 'http://fake.test', LUMNI_CONSOLE_ADMIN_KEY: 'capture_key', LUMNI_CONSOLE_WORKSPACE_NAME: 'Fake workspace', LUMNI_CONSOLE_HOSTS: 'console.test', PORT: '80',
   ...(accountsMode ? { LUMNI_CONSOLE_AUTH: 'accounts', LUMNI_CONSOLE_SECRET: 'capture-secret-0123456789', LUMNI_CONSOLE_DB: ':memory:', LUMNI_CONSOLE_GITHUB_CLIENT_ID: 'gh', LUMNI_CONSOLE_GITHUB_CLIENT_SECRET: 'gh' } : {}),
+  ...(billingMode ? { LUMNI_CONSOLE_SIGNUP: 'open', LUMNI_CONSOLE_PLATFORM_KEY: 'capture_platform', LUMNI_CONSOLE_STRIPE_SECRET_KEY: 'sk_test_capture', LUMNI_CONSOLE_STRIPE_PRICE_PLAN: 'price_plan', LUMNI_CONSOLE_STRIPE_PRICE_USAGE: 'price_usage' } : {}),
 });
+if (billingMode) fake.platformKey = 'capture_platform';
 const bff = createBff(env, fakeFetch(fake));
 const seededCookies = [];
 if (accountsMode && process.env.CAPTURE_SEED) {
@@ -79,6 +83,13 @@ if (accountsMode && process.env.CAPTURE_SEED) {
     await call('/console/auth/signup', 'POST', { name, email, password: 'capture password', invite: token });
   }
   await call('/v1/console/members/invite', 'POST', { email: 'sam@lumniverse.com', role: 'member' }, jar, csrf);
+  if (billingMode) {
+    const up = await call('/console/auth/signup', 'POST', { name: 'Ed Founder', email: 'ed@startup.dev', password: 'capture password', workspace: 'Startup' });
+    jar = cookieOf(up.res);
+    const who = await call('/v1/auth/session', 'GET', null, jar);
+    jar = [jar, cookieOf(who.res)].filter(Boolean).join('; ');
+    fake.usage = { [who.data.tenant.id]: 1260 };
+  }
   for (const kv of jar.split('; ')) { const i = kv.indexOf('='); seededCookies.push({ name: kv.slice(0, i), value: kv.slice(i + 1) }); }
 }
 const app = appHandler(join(here, '..', 'app'), 'no-cache', { publicApi: 'http://lumni.example:8080' });

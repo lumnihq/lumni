@@ -30,7 +30,11 @@ export function createBff(env: Env, fetchFn: Fetch = fetch): Bff {
   // People sign in as themselves (production), or with a key (development).
   const accounts = env.auth === 'accounts' ? new Accounts(env, up, fetchFn) : null;
   if (accounts) {
-    const sweep = setInterval(() => accounts.store.sweep(Date.now()), 3_600_000);
+    const sweep = setInterval(() => {
+      accounts.store.sweep(Date.now());
+      // Trials that ended, plans to retry, usage for Stripe.
+      void accounts.billing?.sweep().catch((e) => console.error('billing sweep failed', e));
+    }, 3_600_000);
     (sweep as { unref?: () => void }).unref?.();
   }
   const device = new DeviceLogin(onboarding);
@@ -54,7 +58,7 @@ export function createBff(env: Env, fetchFn: Fetch = fetch): Bff {
     async handle(req, keepOpen) {
       const url = new URL(req.url);
       const path = url.pathname;
-      const ours = path === '/console/config.json' || path === '/console/onboarding/exchange' || path === '/console/device' || path === '/console/device/token' || path.startsWith('/console/auth/') || path.startsWith('/v1/');
+      const ours = path === '/console/config.json' || path === '/console/onboarding/exchange' || path === '/console/device' || path === '/console/device/token' || path.startsWith('/console/auth/') || path === '/console/billing/webhook' || path.startsWith('/v1/');
       if (!ours) return null;
 
       // Another name pointed at this machine can’t borrow the admin session.

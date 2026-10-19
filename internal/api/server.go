@@ -135,6 +135,8 @@ func (s *Server) routes() chi.Router {
 	r.Post("/v1/auth/session", s.createBrowserSession)
 	r.Post("/v1/onboarding/exchange", s.exchangeOnboardingCode)
 	r.Post("/v1/tenants", s.createTenant)
+	r.Put("/v1/tenants/{id}/plan", s.setTenantPlan)
+	r.Get("/v1/tenants/{id}/usage", s.tenantUsage)
 	r.Get("/v1/public/proofs/{token}", s.publicProof)
 	r.Get("/p/{token}", s.publicProofPage)
 	r.Get("/console", s.serveConsole)
@@ -512,14 +514,15 @@ func (s *Server) updateVersion(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) checkAction(observe bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !s.withinQuota(w, r) {
+		watchOnly, ok := s.withinQuota(w, r)
+		if !ok {
 			return
 		}
 		var in protocol.ActionCheckInput
 		if !s.decode(w, r, &in) {
 			return
 		}
-		in.ObserveOnly = observe || in.ObserveOnly
+		in.ObserveOnly = observe || in.ObserveOnly || watchOnly
 		start := time.Now()
 		out, err := s.kernel.Check(r.Context(), tenant(r), in)
 		if err == nil {
