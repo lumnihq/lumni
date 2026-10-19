@@ -27,7 +27,7 @@ export async function runTry(assets, consoleUrl, args = [], { fetchFn = fetch, l
     const revoked = key.key_id
       ? await fetchFn(`${api}/v1/api-keys/${encodeURIComponent(key.key_id)}`, { method: 'DELETE', headers: { authorization: `Bearer ${key.api_key}` } }).then((r) => r.ok, () => false)
       : false;
-    log(revoked ? '\n  ✓ Revoked the run’s key' : `\n  ! Couldn’t revoke the run’s key${key.key_id ? ` (${key.key_id})` : ''}. Revoke it in the console: Settings → API keys.`);
+    log(revoked ? '\n  ✓ Revoked the run’s key' : `\n  ! Couldn’t revoke the run’s key${key.key_id ? ` (${key.key_id})` : ''}. Revoke it in the console: Settings → Machines and keys.`);
   }
   log(`\n  See what Lumni caught: ${consoleUrl}/today`);
   log(`

@@ -286,7 +286,7 @@ const S = {};
 /** Each section: id, title, what it reads. */
 let SECTIONS = [
   ['workspace', 'Workspace'],
-  ['keys', 'Agents and keys'],
+  ['keys', 'Machines and keys'],
   ['spend', 'Spend'],
   ['notify', 'Notifications'],
   ['limits', 'Limits and holds'],
@@ -380,6 +380,8 @@ function demoData(w) {
       { id: 'k_console', name: 'Console admin', prefix: 'lumni_7f3a', scopes: ['admin', 'query'], created_at: iso(now - 41 * day) },
       { id: 'k_refund', name: `Agent key for ${f('refund').name}`, prefix: 'lumni_c19e', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 30 * day) },
       { id: 'k_triage', name: `Agent key for ${f('triage').name}`, prefix: 'lumni_80d2', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 12 * day) },
+      { id: 'k_mac', name: 'onboarding: billing-agent @ ak-macbook', prefix: 'lumni_5e07', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 3 * day) },
+      { id: 'k_ci', name: 'onboarding: quote-writer @ ci-runner-2', prefix: 'lumni_a913', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 9 * day) },
       { id: 'k_old', name: 'Laptop test key', prefix: 'lumni_2b41', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 60 * day), revoked_at: iso(now - 20 * day) },
     ] },
     spend: limit ? { daily_micros_usd: limit * 1e6, when_reached: 'SLOW', spent_today_micros_usd: Math.round(w.spend * 1e6), pace_micros_usd: Math.round(w.pace * 1e6), slow_at: null } : null,
@@ -561,6 +563,12 @@ function renderWorkspace() {
 
 let keysAll = false;
 /** Keys the API made from an onboarding code are named "onboarding: <project> @ <host>". */
+/** A machine connected with `npx lumniverse init`: its key is named "onboarding: <agent> @ <host>". */
+function machineOf(k) {
+  const m = /^onboarding: (.*?) @ (.*)$/.exec(k.name ?? '');
+  return m ? { agent: m[1].trim() || 'An agent', host: m[2].trim() } : null;
+}
+
 function keyName(k) {
   const m = /^onboarding: (.*?) @ (.*)$/.exec(k.name ?? '');
   if (m) return [m[1].trim() || 'An agent', m[2].trim() ? `set up on ${m[2].trim()}` : 'set up with a code'].join(', ');
@@ -572,7 +580,7 @@ function keyName(k) {
 
 function renderKeys() {
   const { d, right, b } = part('keys');
-  d.textContent = 'Each agent connects with its own key. Revoking one stops every agent using it at its next call.';
+  d.textContent = 'Every machine you connected with npx lumniverse init, and every other key. Disconnecting one stops it at its next call; run init again to reconnect.';
   right.innerHTML = '<a class="btn sm accent" href="/start">Connect an agent</a>';
   const s = S.keys;
   setOld('keys', s?.status === 'old');
@@ -584,18 +592,19 @@ function renderKeys() {
   const shown = keysAll ? items : items.slice(0, 8);
   b.innerHTML = `<table class="tbl"><thead><tr><th>Name</th><th>Starts with</th><th>Can</th><th>Made</th><th></th></tr></thead><tbody>
     ${shown.map((k) => `<tr class="${k.revoked_at ? 'gone' : ''}">
-      <td><span class="nm">${E(keyName(k))}</span>${k.revoked_at ? `<span class="sub">Revoked ${E(dayOf(k.revoked_at))}</span>` : k.expires_at ? `<span class="sub">Expires ${E(dayOf(k.expires_at))}</span>` : ''}</td>
+      <td>${machineOf(k) ? `<span class="nm">${E(machineOf(k).agent)}</span><span class="sub">${machineOf(k).host ? `Machine: ${E(machineOf(k).host)}` : 'Connected with a code'}</span>` : `<span class="nm">${E(keyName(k))}</span>`}${k.revoked_at ? `<span class="sub">${machineOf(k) ? 'Disconnected' : 'Revoked'} ${E(dayOf(k.revoked_at))}</span>` : k.expires_at ? `<span class="sub">Expires ${E(dayOf(k.expires_at))}</span>` : ''}</td>
       <td><span class="mono">${E(k.prefix || '')}…</span></td>
       <td><div class="chips">${(k.scopes ?? []).map((sc) => `<span class="chip ${sc === 'admin' ? 'accent' : ''}">${E(sc)}</span>`).join('')}</div></td>
       <td>${E(dayOf(k.created_at))}</td>
-      <td>${k.revoked_at ? '<span class="chip">Revoked</span>' : `<span class="act"><button class="btn sm" data-revoke="${E(k.id)}">Revoke</button></span>`}</td>
+      <td>${k.revoked_at ? `<span class="chip">${machineOf(k) ? 'Disconnected' : 'Revoked'}</span>` : `<span class="act"><button class="btn sm" data-revoke="${E(k.id)}">${machineOf(k) ? 'Disconnect' : 'Revoke'}</button></span>`}</td>
     </tr>`).join('')}</tbody></table>
     <div class="more-row">${plural(live, 'key')} can reach Lumni${items.length > live ? `, ${fmtN(items.length - live)} revoked` : ''}.${items.length > shown.length ? ` <button class="linkish" id="keys-all">Show all ${fmtN(items.length)}</button>` : ''} If one of these is the key this console signs in with, revoking it signs the console out.</div>`;
   $('#keys-all')?.addEventListener('click', () => { keysAll = true; renderKeys(); });
   $$('[data-revoke]', b).forEach((btn) => {
     const k = items.find((x) => x.id === btn.dataset.revoke);
-    confirmable(btn, 'Confirm revoke', async () => {
-      const out = await save('DELETE', `/v1/api-keys/${encodeURIComponent(k.id)}`, undefined, `${keyName(k)} is revoked. Agents using it are refused from their next call.`);
+    const mc = machineOf(k);
+    confirmable(btn, mc ? 'Confirm disconnect' : 'Confirm revoke', async () => {
+      const out = await save('DELETE', `/v1/api-keys/${encodeURIComponent(k.id)}`, undefined, mc ? `${mc.agent}${mc.host ? ` on ${mc.host}` : ''} is disconnected. It’s refused from its next call; run npx lumniverse init there to reconnect.` : `${keyName(k)} is revoked. Agents using it are refused from their next call.`);
       if (!out) return;
       await load('keys');
       renderKeys(); renderIndex(); saved('keys');
@@ -1066,6 +1075,8 @@ async function onWorld(w, first) {
   renderWorkspace();
   await loadAll();
   renderAll();
+  // Links like /settings#sec-keys: the section exists only now, so scroll to it ourselves.
+  if (location.hash.startsWith('#sec-')) document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' });
   if (shotPending) { const s = shotPending; shotPending = null; runShot(s); }
 }
 

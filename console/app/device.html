@@ -179,6 +179,7 @@ function connected(l, now) {
     <div class="tick"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21l7 7 13-15" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
     <h1>${now ? 'Connected' : 'Already connected'}</h1>
     <p class="muted" style="margin-top:8px">${E(l.project ?? 'The folder')} on ${E(l.host ?? 'that machine')} is connected. Your terminal carries on by itself; you can close this tab.</p>
+    <p class="muted" style="margin-top:6px;font-size:13px">To disconnect it later: <a href="/settings#sec-keys">Settings → Machines and keys</a>.</p>
     <div class="acts"><a class="btn accent" href="/start">Watch it arrive</a><a class="btn" href="/today">Today</a></div></div>`;
 }
 

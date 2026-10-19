@@ -477,6 +477,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, { fe
   for (const line of snippet(lang, actor).split('\n')) say(`    ${line}`);
   if (lang === 'python') note('\n    pip install lumni-sdk');
   if (lang === 'typescript' || lang === 'javascript') note('\n    npm install @lumniverse/sdk');
+  note(`\n  To disconnect this machine later: Settings → Machines and keys${consoleUrl ? ` (${consoleUrl.replace(/\/+$/, '')}/settings#sec-keys)` : ''}.`);
   say('');
   return 0;
 }
