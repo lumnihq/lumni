@@ -25,6 +25,8 @@
 //   GET    /v1/console/account            you, your workspaces
 //   PATCH  /v1/console/account            your name or password
 //   POST   /v1/console/account/switch     another workspace
+//   POST   /v1/console/account/sample     go to your sample workspace (npx lumniverse try), made on first use
+//   DELETE /v1/console/account/sample     remove it
 //   POST   /v1/console/account/accept     join a workspace with an invite, signed in
 //   PATCH  /v1/console/workspace          rename it (owner, admin)
 //   GET    /v1/console/members            people (everyone), invites (owner, admin)
@@ -44,6 +46,8 @@ import { Billing } from './billing';
 
 /** The name every signed-up workspace starts with; owners rename it in Settings. */
 const DEFAULT_WORKSPACE = 'Default';
+/** Where `npx lumniverse try` runs its sample agents, apart from the real workspace. */
+const SAMPLE_WORKSPACE = 'Sample agents';
 import { ROLES, Sealer, Store, type Member, type Role, type User, type Workspace } from './store';
 
 const USER = 'lumni_user';
@@ -193,8 +197,8 @@ export class Accounts {
       signed_in: true,
       csrf_token: csrf,
       user: { id: s.user.id, initials: initialsOf(s.user.name, s.user.email), email: s.user.email, name: s.user.name, role: s.member!.role },
-      tenant: { id: s.workspace!.tenant_id, name: s.workspace!.name },
-      workspaces: this.store.membershipsOf(s.user.id).map((m) => ({ id: m.workspace_id, name: m.name, role: m.role, current: m.workspace_id === s.workspace!.id })),
+      tenant: { id: s.workspace!.tenant_id, name: s.workspace!.name, sample: !!s.workspace!.sample },
+      workspaces: this.store.membershipsOf(s.user.id).map((m) => ({ id: m.workspace_id, name: m.name, role: m.role, sample: !!m.sample, current: m.workspace_id === s.workspace!.id })),
     };
   }
 
@@ -409,7 +413,7 @@ export class Accounts {
   }
 
   /** Open sign-up: a new tenant on the API, owned by this person. */
-  private async newWorkspace(name: string, owner: User): Promise<Workspace> {
+  private async newWorkspace(name: string, owner: User, opts: { sample?: boolean } = {}): Promise<Workspace> {
     let res: Response;
     try {
       res = await this.fetchFn(`${this.env.api}/v1/tenants`, { method: 'POST', headers: { authorization: `Bearer ${this.env.platformKey}`, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ name }) });
@@ -419,9 +423,10 @@ export class Accounts {
     if (res.status === 404 || res.status === 405) throw new HttpError(501, 'no_tenants_api', 'This Lumni API can’t create workspaces yet, so sign-up is by invitation for now.');
     const t = await read<{ tenant_id: string; admin_key: string }>(res);
     const now = this.now();
-    const ws = this.store.createWorkspace(name, t.tenant_id, await this.sealer.seal(t.admin_key), now);
+    const ws = this.store.createWorkspace(name, t.tenant_id, await this.sealer.seal(t.admin_key), now, !!opts.sample);
     this.store.addMember(ws.id, owner.id, 'owner', now);
-    this.billing?.startTrial(ws);
+    // A sample workspace has no billing row, so it's never charged and never runs out.
+    if (!opts.sample) this.billing?.startTrial(ws);
     return ws;
   }
 
@@ -539,7 +544,7 @@ export class Accounts {
     const now = this.now();
 
     if (path === '/v1/console/account' && method === 'GET') {
-      return json({ user: { id: s.user.id, name: s.user.name, email: s.user.email, has_password: !!s.user.password_hash }, workspaces: this.store.membershipsOf(s.user.id).map((m) => ({ id: m.workspace_id, name: m.name, role: m.role, current: m.workspace_id === s.workspace.id })) });
+      return json({ user: { id: s.user.id, name: s.user.name, email: s.user.email, has_password: !!s.user.password_hash }, workspaces: this.store.membershipsOf(s.user.id).map((m) => ({ id: m.workspace_id, name: m.name, role: m.role, sample: !!m.sample, current: m.workspace_id === s.workspace.id })) });
     }
     if (path === '/v1/console/account' && method === 'PATCH') {
       const name = text(body.name, 80);
@@ -557,6 +562,30 @@ export class Accounts {
       const h = new Headers();
       for (const k of [SESSION, CSRF, WS]) h.append('set-cookie', clearCookie(k, this.secure(req)));
       return json({ ok: true }, 200, h);
+    }
+    // `npx lumniverse try`: its sample agents run in a workspace of their own, made on first use.
+    if (path === '/v1/console/account/sample' && method === 'POST') {
+      let id = this.store.membershipsOf(s.user.id).find((m) => m.sample && m.role === 'owner')?.workspace_id;
+      if (!id) {
+        if (!this.env.platformKey) throw new HttpError(501, 'no_sample_workspace', 'This console can’t make a separate sample workspace, so the sample agents run here.');
+        this.limit(`sample:${s.user.id}`, 5, 60 * 60_000);
+        id = (await this.newWorkspace(SAMPLE_WORKSPACE, s.user, { sample: true })).id;
+      }
+      this.store.setSessionWorkspace(s.token, id);
+      const h = new Headers();
+      for (const k of [SESSION, CSRF, WS]) h.append('set-cookie', clearCookie(k, this.secure(req)));
+      return json({ ok: true, workspace_id: id }, 200, h);
+    }
+    if (path === '/v1/console/account/sample' && method === 'DELETE') {
+      const mine = this.store.membershipsOf(s.user.id);
+      const sample = mine.find((m) => m.sample && m.role === 'owner');
+      if (!sample) throw new HttpError(404, 'not_found', 'There’s no sample workspace to remove.');
+      this.store.deleteWorkspace(sample.workspace_id);
+      const real = mine.find((m) => !m.sample);
+      if (real) this.store.setSessionWorkspace(s.token, real.workspace_id);
+      const h = new Headers();
+      for (const k of [SESSION, CSRF, WS]) h.append('set-cookie', clearCookie(k, this.secure(req)));
+      return json({ ok: true, workspace_id: real?.workspace_id ?? null }, 200, h);
     }
     if (path === '/v1/console/account/accept' && method === 'POST') {
       const id = this.join(s.user, String(body.token ?? ''));

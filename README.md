@@ -8,7 +8,7 @@ Source available and self-hostable ([FSL](LICENSE); the SDKs and CLI are Apache-
 
 ## Get started
 
-**1. See it work.** Sample agents make the twelve classic mistakes (double refunds, stale writes, agents overwriting people) in your own workspace, and you watch Lumni catch them live:
+**1. See it work.** Sample agents make the twelve classic mistakes (double refunds, stale writes, agents overwriting people) in a sample workspace of your own, kept apart from your real one, and you watch Lumni catch them live:
 
 ```bash
 npx lumniverse try

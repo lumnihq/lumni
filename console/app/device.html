@@ -99,6 +99,19 @@ async function show(code) {
   if (l.status === 'denied') return ended('This login was cancelled', 'Nothing was connected. Run the command again if you meant to connect.');
   if (l.status !== 'pending') return connected(l, false);
 
+  // Accounts: sample agents run in their own workspace; a real agent never lands in it.
+  const ses = Shell.session;
+  if (Shell.config.auth === 'accounts' && ses?.tenant) {
+    if (l.purpose === 'try' && !ses.tenant.sample) {
+      const moved = await Shell.write('POST', '/v1/console/account/sample', {}, { reload: false });
+      if (moved) return location.reload();
+      // 501: this console can't make one, so they run here.
+    }
+    if (l.purpose !== 'try' && ses.tenant.sample) {
+      const real = (ses.workspaces ?? []).find((w) => !w.sample);
+      if (real && await Shell.write('POST', '/v1/console/account/switch', { workspace_id: real.id }, { reload: false })) return location.reload();
+    }
+  }
   if (l.purpose === 'try') return showTry(l);
   box.innerHTML = `${head('Is this you?', 'A terminal is asking to connect to your Lumni workspace.')}
     ${codeChip(l.user_code)}
@@ -133,7 +146,8 @@ async function show(code) {
 
 /** lumniverse try: sample agents, with a key that can do everything until the run ends. */
 function showTry(l) {
-  box.innerHTML = `${head('Run the sample agents here?', 'A terminal wants to act out twelve short scenarios in this workspace, so you can see Lumni at work.')}
+  const sampleWs = Shell.session?.tenant?.sample;
+  box.innerHTML = `${head('Run the sample agents?', sampleWs ? `They run in your <b>${E(Shell.session.tenant.name)}</b> workspace, apart from your real one, so you can see Lumni at work.` : 'A terminal wants to act out twelve short scenarios in this workspace, so you can see Lumni at work.')}
     ${codeChip(l.user_code)}
     <div class="match">Check it matches the code in your terminal</div>
     <dl class="facts">
@@ -162,7 +176,7 @@ function showTry(l) {
       <div class="acts"><a class="btn accent" href="/today">Watch Today</a><a class="btn" href="/flow">Flow</a></div>
       <div class="next">
         <b>Next: your real agent</b>
-        <p>These are sample agents. When you’ve seen enough, connect your own: run this in its folder.</p>
+        <p>These are sample agents${Shell.session?.tenant?.sample ? ', in a sample workspace; your real one stays empty until you connect' : ''}. When you’ve seen enough, connect your own: run this in its folder.</p>
         <code>npx lumniverse init</code>
         <p>Or let your coding agent do it: <code>npx skills add lumnihq/lumni</code>, then ask it to “add Lumni to the refund step”. Works with LangGraph, OpenAI Agents, Temporal, MCP and plain TypeScript, Python or Go.</p>
         <a href="/start">Step by step on Start →</a>

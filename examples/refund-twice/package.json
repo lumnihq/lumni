@@ -1,0 +1,8 @@
+{
+  "name": "lumni-example-refund-twice",
+  "private": true,
+  "type": "module",
+  "description": "Two agents, one refund: Lumni stops the copy.",
+  "scripts": { "start": "node --env-file=.env index.mjs" },
+  "dependencies": { "@lumniverse/sdk": "^0.3.0" }
+}

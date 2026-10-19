@@ -31,7 +31,8 @@ export async function runTry(assets, consoleUrl, args = [], { fetchFn = fetch, l
   }
   log(`\n  See what Lumni caught: ${consoleUrl}/today`);
   log(`
-  That was sample agents. Next, your real one:
+  That was sample agents, in a workspace of their own. Next, your real one
+  (it connects to your real workspace, which they didn't touch):
 
     In your agent's folder:   npx lumniverse init
     Or let your coding agent: npx skills add lumnihq/lumni

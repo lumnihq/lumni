@@ -13,7 +13,8 @@ export type Role = 'owner' | 'admin' | 'member' | 'viewer';
 export const ROLES: Role[] = ['owner', 'admin', 'member', 'viewer'];
 
 export interface User { id: string; email: string; name: string; password_hash: string | null; created_at: number; last_seen: number | null }
-export interface Workspace { id: string; name: string; tenant_id: string; admin_key_sealed: string; created_at: number }
+/** sample: 1 for the workspace `npx lumniverse try` runs in, kept apart from real ones. */
+export interface Workspace { id: string; name: string; tenant_id: string; admin_key_sealed: string; created_at: number; sample: number }
 export interface Member { workspace_id: string; user_id: string; role: Role; key_id: string | null; key_sealed: string | null; created_at: number }
 export interface Invite { id: string; workspace_id: string; email: string | null; role: Role; token_hash: string; invited_by: string; created_at: number; expires_at: number; accepted_at: number | null; accepted_by: string | null }
 /** Billing for a workspace made by sign-up (Lumni Cloud). Workspaces without a row aren't billed. */
@@ -69,6 +70,7 @@ export class Store {
     // Columns added after a table first shipped.
     const has = (table: string, column: string) => this.db.query<{ name: string }>(`select name from pragma_table_info('${table}')`).all().some((c) => c.name === column);
     if (!has('billing', 'cancel_at')) this.db.exec('alter table billing add column cancel_at integer');
+    if (!has('workspaces', 'sample')) this.db.exec('alter table workspaces add column sample integer not null default 0');
   }
 
   // ─── people ──────────────────────────────────────────
@@ -99,10 +101,14 @@ export class Store {
   }
 
   // ─── workspaces and members ──────────────────────────
-  createWorkspace(name: string, tenantId: string, adminKeySealed: string, now: number): Workspace {
-    const w: Workspace = { id: newId('ws'), name: name.trim(), tenant_id: tenantId, admin_key_sealed: adminKeySealed, created_at: now };
-    this.db.query('insert into workspaces (id, name, tenant_id, admin_key_sealed, created_at) values (?, ?, ?, ?, ?)').run(w.id, w.name, w.tenant_id, w.admin_key_sealed, w.created_at);
+  createWorkspace(name: string, tenantId: string, adminKeySealed: string, now: number, sample = false): Workspace {
+    const w: Workspace = { id: newId('ws'), name: name.trim(), tenant_id: tenantId, admin_key_sealed: adminKeySealed, created_at: now, sample: sample ? 1 : 0 };
+    this.db.query('insert into workspaces (id, name, tenant_id, admin_key_sealed, created_at, sample) values (?, ?, ?, ?, ?, ?)').run(w.id, w.name, w.tenant_id, w.admin_key_sealed, w.created_at, w.sample);
     return w;
+  }
+  /** Removes a workspace from this console (members, invites and billing go with it). Its data on the API stays until retention. */
+  deleteWorkspace(id: string): void {
+    this.db.query('delete from workspaces where id = ?').run(id);
   }
   workspace(id: string): Workspace | null {
     return this.db.query<Workspace>('select * from workspaces where id = ?').get(id);
@@ -119,8 +125,9 @@ export class Store {
   member(workspaceId: string, userId: string): Member | null {
     return this.db.query<Member>('select * from members where workspace_id = ? and user_id = ?').get(workspaceId, userId);
   }
-  membershipsOf(userId: string): (Member & { name: string; tenant_id: string })[] {
-    return this.db.query<Member & { name: string; tenant_id: string }>('select m.*, w.name, w.tenant_id from members m join workspaces w on w.id = m.workspace_id where m.user_id = ? order by m.created_at').all(userId);
+  /** Real workspaces first, so a fallback never lands in the sample one. */
+  membershipsOf(userId: string): (Member & { name: string; tenant_id: string; sample: number })[] {
+    return this.db.query<Member & { name: string; tenant_id: string; sample: number }>('select m.*, w.name, w.tenant_id, w.sample from members m join workspaces w on w.id = m.workspace_id where m.user_id = ? order by w.sample, m.created_at').all(userId);
   }
   members(workspaceId: string): (Member & { email: string; name: string; last_seen: number | null })[] {
     return this.db.query<Member & { email: string; name: string; last_seen: number | null }>('select m.*, u.email, u.name, u.last_seen from members m join users u on u.id = m.user_id where m.workspace_id = ? order by m.created_at').all(workspaceId);

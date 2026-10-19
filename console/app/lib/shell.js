@@ -138,6 +138,7 @@ const Shell = {
   esc,
   /** Repaint the paused band from the world, e.g. after a page changed `world.paused`. */
   paintPaused: () => paintPaused(),
+  paintSample: () => paintSample(),
   GROUPS,
   /** Which world: the demo's volume, or 'real'. */
   get key() { return this.mode === 'real' ? 'real' : this.volume; },
@@ -452,6 +453,57 @@ function paintSource() {
   el.querySelector('#src-refresh').onclick = () => Shell.refresh();
   paintFresh();
   paintPaused();
+  paintSample();
+}
+
+/** Real mode, in the sample workspace (`npx lumniverse try`): say so, and point to the real one. */
+function paintSample() {
+  const src = document.getElementById('source');
+  if (!src) return;
+  let band = document.getElementById('sample-band');
+  const ses = Shell.session;
+  if (Shell.mode !== 'real' || !ses?.tenant?.sample) {
+    band?.remove();
+    return;
+  }
+  if (!document.getElementById('sample-style')) {
+    const st = document.createElement('style');
+    st.id = 'sample-style';
+    st.textContent = `.sample-band { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 40px; background: var(--accent-soft); border-bottom: 1px solid var(--accent-line); font-size: 13.5px; animation: rise .4s var(--ease) both; }
+      .sample-band b { color: var(--accent); font-weight: 700; }
+      .sample-band span { color: var(--ink2); flex: 1 1 320px; min-width: 0; line-height: 1.6; }
+      .sample-band code { font-family: var(--mono); font-size: 12.5px; background: var(--paper); border: 1px solid var(--accent-line); border-radius: 7px; padding: 3px 8px; color: var(--ink); cursor: copy; }
+      .sample-band .sb-go { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      .sample-band button { height: 28px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; font-weight: 650; background: var(--accent); color: #fff; }
+      .sample-band button.sb-quiet { background: transparent; color: var(--ink2); padding: 0 6px; }
+      .sample-band button.sb-quiet.arm { color: var(--bad); }
+      .sample-band button:disabled { opacity: .6; cursor: default; }`;
+    document.head.appendChild(st);
+  }
+  if (!band) {
+    band = document.createElement('div');
+    band.id = 'sample-band';
+    band.className = 'sample-band';
+    band.setAttribute('role', 'status');
+    src.after(band);
+  }
+  const real = (ses.workspaces ?? []).find((w) => !w.sample);
+  band.innerHTML = `<b>Sample workspace</b><span>These agents come from <code title="Copy">npx lumniverse try</code>. Ready for your real agent? Run <code title="Copy">npx lumniverse init</code> in its folder${real ? `; it connects to <b>${esc(real.name)}</b>, which is empty and separate` : ''}.</span>
+    <div class="sb-go">${real ? `<button id="sb-real">Go to ${esc(real.name)}</button>` : ''}<button class="sb-quiet" id="sb-remove">Remove sample workspace</button></div>`;
+  band.querySelectorAll('code').forEach((c) => { c.onclick = async () => { try { await navigator.clipboard.writeText(c.textContent); } catch {} Shell.toast?.('Copied'); }; });
+  band.querySelector('#sb-real')?.addEventListener('click', async () => {
+    const out = await Shell.write('POST', '/v1/console/account/switch', { workspace_id: real.id }, { reload: false });
+    if (out) location.assign('/start');
+  });
+  const rm = band.querySelector('#sb-remove');
+  let armed = false;
+  rm.onclick = async () => {
+    if (!armed) { armed = true; rm.textContent = 'Confirm: remove it and its sample data'; rm.classList.add('arm'); return; }
+    rm.disabled = true;
+    const out = await Shell.write('DELETE', '/v1/console/account/sample', undefined, { reload: false });
+    if (out) location.assign('/start');
+    else rm.disabled = false;
+  };
 }
 
 /** Real mode: a band under the source bar while every AI is paused, with a way back. */

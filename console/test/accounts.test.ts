@@ -202,6 +202,34 @@ describe('sign-up', () => {
   });
 });
 
+describe('sample workspace (npx lumniverse try)', () => {
+  test('try runs in its own sample workspace, apart from the real one, and it can be removed', async () => {
+    const { browser } = await withOwner({ LUMNI_CONSOLE_SIGNUP: 'open', LUMNI_CONSOLE_PLATFORM_KEY: 'platform_test_key' });
+    const e = browser();
+    expect((await e.send('/console/auth/signup', 'POST', { name: 'Ed Founder', email: 'ed@startup.dev', password: 'a long password' })).status).toBe(200);
+    const real = (await e.send('/v1/auth/session')).data.tenant;
+    expect(real).toMatchObject({ name: 'Default', sample: false });
+
+    // The approve page for `try` moves the session to the sample workspace, made on first use.
+    const made = await e.send('/v1/console/account/sample', 'POST', {});
+    expect(made.status).toBe(200);
+    const inSample = (await e.send('/v1/auth/session')).data;
+    expect(inSample.tenant).toMatchObject({ name: 'Sample agents', sample: true });
+    expect(inSample.tenant.id).not.toBe(real.id);
+    expect(inSample.workspaces.map((w: { name: string; sample: boolean }) => [w.name, w.sample])).toEqual([['Default', false], ['Sample agents', true]]);
+    // Running try again reuses it.
+    expect((await e.send('/v1/console/account/sample', 'POST', {})).data.workspace_id).toBe(made.data.workspace_id);
+    expect((await e.send('/v1/auth/session')).data.workspaces).toHaveLength(2);
+
+    // Removing it goes back to the real workspace.
+    expect((await e.send('/v1/console/account/sample', 'DELETE')).status).toBe(200);
+    const after = (await e.send('/v1/auth/session')).data;
+    expect(after.tenant).toMatchObject({ id: real.id, name: 'Default', sample: false });
+    expect(after.workspaces).toHaveLength(1);
+    expect((await e.send('/v1/console/account/sample', 'DELETE')).status).toBe(404);
+  });
+});
+
 describe('GitHub', () => {
   const github = (email: string) => (url: string): Promise<Response> | null => {
     if (url === 'https://github.com/login/oauth/access_token') return Promise.resolve(Response.json({ access_token: 'gh_token' }));
