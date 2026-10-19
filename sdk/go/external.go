@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"net/http"
 	"net/url"
 	"time"

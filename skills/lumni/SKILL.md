@@ -25,7 +25,7 @@ Install the SDK for the agent's language:
 |---|---|---|
 | TypeScript / Node 22+ | `npm install @lumniverse/sdk` | `import { LumniClient, shouldExecute } from '@lumniverse/sdk'` |
 | Python 3.10+ | `pip install lumni-sdk` | `from lumni import Client, should_execute` |
-| Go | Source in `sdk/go` of github.com/lumnihq/lumni (package `lumni`; not yet `go get`-able, so vendor it) | `lumni.New(url, key)` |
+| Go | `go get github.com/lumnihq/lumni/sdk/go` | `import lumni "github.com/lumnihq/lumni/sdk/go"`, then `lumni.New(url, key)` |
 
 ## 2. Wrap each consequential action
 

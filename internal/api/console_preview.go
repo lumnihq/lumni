@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func (s *Server) previewPolicyRule(w http.ResponseWriter, r *http.Request) {

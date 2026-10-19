@@ -11,7 +11,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/analytics"
 )
 
 func timeRange(r *http.Request, max time.Duration) (time.Time, time.Time, *time.Location, error) {

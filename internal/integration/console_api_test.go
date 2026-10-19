@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"lumni/internal/api"
-	"lumni/internal/auth"
-	"lumni/internal/core"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/api"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type consoleClient struct {

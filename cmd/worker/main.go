@@ -7,14 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"lumni/internal/analytics"
-	"lumni/internal/composio"
-	"lumni/internal/config"
-	"lumni/internal/coordination"
-	"lumni/internal/resource"
-	"lumni/internal/semantic"
-	"lumni/internal/store"
-	workerpkg "lumni/internal/worker"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/config"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/internal/semantic"
+	"github.com/lumnihq/lumni/internal/store"
+	workerpkg "github.com/lumnihq/lumni/internal/worker"
 )
 
 func main() {

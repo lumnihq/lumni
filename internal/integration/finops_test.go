@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/core"
-	"lumni/internal/resource"
-	workerpkg "lumni/internal/worker"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/resource"
+	workerpkg "github.com/lumnihq/lumni/internal/worker"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestFinOpsAttributesExactWasteCategories(t *testing.T) {

@@ -5,8 +5,8 @@ package integration
 import (
 	"context"
 	"encoding/json"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	"testing"
 	"time"
 )

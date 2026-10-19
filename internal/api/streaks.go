@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/analytics"
 	"net/http"
 	"time"
 )

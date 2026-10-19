@@ -3,8 +3,8 @@ package gateway
 import (
 	"context"
 	"encoding/json"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"io"
-	"lumni/pkg/protocol"
 	"net/http"
 	"net/http/httptest"
 	"strings"

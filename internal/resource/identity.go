@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func CanonicalID(ref protocol.ResourceRef) string {

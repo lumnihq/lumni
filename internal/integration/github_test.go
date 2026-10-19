@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	githubingest "lumni/internal/github"
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
+	githubingest "github.com/lumnihq/lumni/internal/github"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type githubRoundTrip func(*http.Request) (*http.Response, error)

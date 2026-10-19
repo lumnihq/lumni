@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/auth"
 )
 
 func normalizeOnboardingCode(code string) string { return strings.ToUpper(strings.TrimSpace(code)) }

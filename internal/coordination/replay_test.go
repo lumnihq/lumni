@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestReplaySnapshotUsesRegisteredKernel(t *testing.T) {

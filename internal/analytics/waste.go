@@ -2,7 +2,7 @@ package analytics
 
 import (
 	"context"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"sort"
 	"strings"
 	"time"

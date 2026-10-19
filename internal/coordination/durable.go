@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func (k *Kernel) SetPayloadCipher(cipher *secrets.Manager) { k.cipher = cipher }

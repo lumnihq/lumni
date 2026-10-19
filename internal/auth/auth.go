@@ -17,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Principal struct {

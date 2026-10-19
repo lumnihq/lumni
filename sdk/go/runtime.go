@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func (c *Client) SubmitRun(ctx context.Context, in protocol.RunInput) (string, error) {

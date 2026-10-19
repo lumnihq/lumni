@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"net/http"
 	"strings"
 )

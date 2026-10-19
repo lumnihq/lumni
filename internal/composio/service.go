@@ -13,12 +13,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"lumni/internal/coordination"
-	"lumni/internal/core"
-	"lumni/internal/durable"
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/durable"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 )
 
 const Operation = "github.pull_request.set_state"

@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/notifications"
+	"github.com/lumnihq/lumni/internal/notifications"
 )
 
 func validEmail(v string) bool { return notifications.ValidEmail(v) }

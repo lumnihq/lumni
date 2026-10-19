@@ -12,9 +12,9 @@ import (
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc/metadata"
 
-	"lumni/internal/auth"
-	"lumni/internal/otel"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/otel"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestOTLPDeduplicatesAndCorrelatesSpan(t *testing.T) {

@@ -15,14 +15,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"lumni/internal/analytics"
-	"lumni/internal/composio"
-	"lumni/internal/coordination"
-	"lumni/internal/durable"
-	githubingest "lumni/internal/github"
-	"lumni/internal/notifications"
-	"lumni/internal/secrets"
-	"lumni/internal/semantic"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/durable"
+	githubingest "github.com/lumnihq/lumni/internal/github"
+	"github.com/lumnihq/lumni/internal/notifications"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/internal/semantic"
 )
 
 type Worker struct {

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"lumni/internal/composio"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Config struct {

@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	adapter "github.com/lumnihq/lumni/adapters/restate"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	sdk "github.com/restatedev/sdk-go"
 	"github.com/restatedev/sdk-go/server"
 	"log"
-	adapter "lumni/adapters/restate"
-	lumni "lumni/sdk/go"
 	"os"
 )
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func (s *Service) StartStep(ctx context.Context, tenant, work, key string, in protocol.StepResult) error {

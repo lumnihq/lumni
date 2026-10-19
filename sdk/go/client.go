@@ -14,7 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Client struct {

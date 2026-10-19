@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type WaitError struct {

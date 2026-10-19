@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/durable"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/durable"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func native(t *testing.T, f fixture) (*durable.Service, *protocol.RunClaim) {

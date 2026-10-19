@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/semantic"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/semantic"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type fakeSemanticEvaluator struct {

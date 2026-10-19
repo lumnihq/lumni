@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Service struct{ pool *pgxpool.Pool }

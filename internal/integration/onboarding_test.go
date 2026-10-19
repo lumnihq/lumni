@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/auth"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func onboardingExchange(c consoleClient, code string) *httptest.ResponseRecorder {

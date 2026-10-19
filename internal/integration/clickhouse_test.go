@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/analytics"
 )
 
 func TestClickHouseProfileDeduplicationTenantIsolationRollupsAndRetention(t *testing.T) {

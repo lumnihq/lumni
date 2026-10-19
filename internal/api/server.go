@@ -22,16 +22,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"lumni/internal/analytics"
-	"lumni/internal/auth"
-	"lumni/internal/composio"
-	"lumni/internal/coordination"
-	"lumni/internal/core"
-	"lumni/internal/durable"
-	githubingest "lumni/internal/github"
-	"lumni/internal/graph"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/durable"
+	githubingest "github.com/lumnihq/lumni/internal/github"
+	"github.com/lumnihq/lumni/internal/graph"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Server struct {

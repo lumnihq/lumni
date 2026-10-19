@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestConsoleRateLimitCountsRecentlyAdmittedOlderActions(t *testing.T) {

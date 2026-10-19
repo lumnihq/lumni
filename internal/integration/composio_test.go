@@ -20,13 +20,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"lumni/internal/api"
-	"lumni/internal/auth"
-	"lumni/internal/composio"
-	"lumni/internal/core"
-	"lumni/internal/durable"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/api"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/durable"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type composioUpstream struct {

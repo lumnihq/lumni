@@ -19,8 +19,8 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"github.com/spf13/cobra"
-	"lumni/pkg/protocol"
 )
 
 type initOptions struct {
@@ -486,7 +486,7 @@ func runInit(ctx context.Context, o initOptions, out io.Writer, client *http.Cli
 		case "python":
 			fmt.Fprintln(out, "Install lumni-sdk, then create Client(os.environ[\"LUMNI_URL\"], os.environ[\"LUMNI_API_KEY\"]).")
 		case "go":
-			fmt.Fprintln(out, "Create lumni.New(os.Getenv(\"LUMNI_URL\"), os.Getenv(\"LUMNI_API_KEY\")) using lumni/sdk/go.")
+			fmt.Fprintln(out, "Create lumni.New(os.Getenv(\"LUMNI_URL\"), os.Getenv(\"LUMNI_API_KEY\")) using github.com/lumnihq/lumni/sdk/go.")
 		default:
 			fmt.Fprintln(out, "Install @lumniverse/sdk, then create new LumniClient(process.env.LUMNI_URL, process.env.LUMNI_API_KEY).")
 		}

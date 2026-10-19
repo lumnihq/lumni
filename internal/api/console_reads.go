@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/analytics"
 )
 
 const journeySQL = `SELECT jsonb_build_object(

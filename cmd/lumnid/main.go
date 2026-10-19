@@ -14,16 +14,16 @@ import (
 	collectortracev1 "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 
-	"lumni/internal/analytics"
-	"lumni/internal/api"
-	"lumni/internal/auth"
-	"lumni/internal/composio"
-	"lumni/internal/config"
-	"lumni/internal/coordination"
-	"lumni/internal/core"
-	"lumni/internal/otel"
-	"lumni/internal/resource"
-	"lumni/internal/store"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/api"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/config"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/otel"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/internal/store"
 )
 
 func main() {

@@ -14,11 +14,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"lumni/internal/coordination"
-	"lumni/internal/core"
-	"lumni/internal/resource"
-	"lumni/internal/store"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/coordination"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/internal/store"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type fixture struct {

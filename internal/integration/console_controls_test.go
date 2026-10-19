@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/analytics"
-	"lumni/internal/notifications"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/notifications"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestConsoleAutopilotPreviewAndFreshness(t *testing.T) {

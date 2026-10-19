@@ -17,9 +17,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"lumni/internal/resource"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 const (

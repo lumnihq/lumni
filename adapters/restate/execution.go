@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	sdk "github.com/restatedev/sdk-go"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
 	"time"
 )
 

@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	"lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/auth"
 )
 
 type Receiver struct {

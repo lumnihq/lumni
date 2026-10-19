@@ -4,7 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"os"
 	"reflect"
 	"strings"

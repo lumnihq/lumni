@@ -4,8 +4,8 @@ package integration
 
 import (
 	"encoding/json"
-	"lumni/internal/core"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"strings"
 	"testing"
 )

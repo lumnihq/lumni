@@ -4,7 +4,7 @@ package integration
 
 import (
 	"fmt"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"sort"
 	"testing"
 	"time"

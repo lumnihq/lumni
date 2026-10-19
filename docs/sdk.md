@@ -5,7 +5,7 @@ The Go package at [`sdk/go`](../sdk/go), TypeScript package at [`sdk/typescript`
 
 Decision handling is explicit. Forward `ALLOW`, `WARN`, and every `WOULD_*` result. On `WAIT`, durably delay by `retry_after_ms`; on `REPLAN`, discard stale reasoning and read the resource again; on `REQUIRE_APPROVAL`, persist the approval ID and poll or resume from an approval event; on `DEDUPLICATE`, use only the referenced committed result metadata.
 
-Go uses `lumni/sdk/go`. TypeScript builds with `npm ci && npm test` from `sdk/typescript`. Python installs from `sdk/python` with `pip install -e .`. The examples under [`examples`](../examples) contain minimal agents in all three languages.
+Go uses `github.com/lumnihq/lumni/sdk/go` (`go get github.com/lumnihq/lumni/sdk/go`). TypeScript builds with `npm ci && npm test` from `sdk/typescript`. Python installs from `sdk/python` with `pip install -e .`. The examples under [`examples`](../examples) contain minimal agents in all three languages.
 
 The native Go CLI supports `lumni init --url <api-origin> --code <one-time-code> --dir <agent-project>` without Node. It detects SDK languages, configures credential files and MCP gateways, and records a hello check. See [backend onboarding and release packaging](onboarding.md); source SDKs are available locally, while public npm/PyPI publication remains a separate release operation.
 

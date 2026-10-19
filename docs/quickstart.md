@@ -76,7 +76,7 @@ The gateway relays unknown MCP methods transparently, intercepts `tools/call`, a
 
 ## SDKs
 
-- Go: package `lumni/sdk/go` (normally imported with alias `lumni`).
+- Go: package `github.com/lumnihq/lumni/sdk/go` (normally imported with alias `lumni`).
 - TypeScript: `@lumniverse/sdk` under `sdk/typescript`.
 - Python: `lumni-sdk` under `sdk/python`.
 

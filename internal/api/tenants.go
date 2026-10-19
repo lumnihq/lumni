@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"lumni/internal/auth"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 // POST /v1/tenants: a new workspace (tenant) and its first admin key, for

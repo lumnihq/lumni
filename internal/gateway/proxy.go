@@ -19,8 +19,8 @@ import (
 	"sync"
 	"time"
 
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 )
 
 type Config struct {

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 
-	"lumni/internal/gateway"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
+	"github.com/lumnihq/lumni/internal/gateway"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 )
 
 func main() {

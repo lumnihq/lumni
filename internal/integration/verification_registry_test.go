@@ -4,7 +4,7 @@ package integration
 
 import (
 	"encoding/json"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"os"
 	"testing"
 	"time"

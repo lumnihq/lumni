@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/auth"
 )
 
 func (s *Server) consoleRoutes(r chi.Router) {

@@ -2,7 +2,7 @@ package temporal
 
 import (
 	"errors"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"testing"
 )
 

@@ -1,4 +1,4 @@
-module lumni
+module github.com/lumnihq/lumni
 
 go 1.27
 

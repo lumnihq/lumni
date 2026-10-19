@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"lumni/internal/composio"
+	"github.com/lumnihq/lumni/internal/composio"
 )
 
 func (s *Server) composioRoutes(r chi.Router) {

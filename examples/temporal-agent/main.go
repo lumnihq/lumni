@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	adapter "github.com/lumnihq/lumni/adapters/temporal"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 	"log"
-	adapter "lumni/adapters/temporal"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
 	"os"
 )
 

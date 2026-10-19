@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	temporalsdk "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
 )
 
 // Register Activities with the Temporal worker. All network and tool calls

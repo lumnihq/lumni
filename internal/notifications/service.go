@@ -19,7 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"lumni/internal/secrets"
+	"github.com/lumnihq/lumni/internal/secrets"
 )
 
 type Channel struct {

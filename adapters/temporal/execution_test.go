@@ -2,12 +2,12 @@ package temporal
 
 import (
 	"encoding/json"
+	"github.com/lumnihq/lumni/pkg/protocol"
+	lumni "github.com/lumnihq/lumni/sdk/go"
 	"github.com/stretchr/testify/mock"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/testsuite"
 	"go.temporal.io/sdk/workflow"
-	"lumni/pkg/protocol"
-	lumni "lumni/sdk/go"
 	"testing"
 )
 

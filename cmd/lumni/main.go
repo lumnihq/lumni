@@ -18,10 +18,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"lumni/internal/auth"
-	"lumni/internal/config"
-	"lumni/internal/store"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/config"
+	"github.com/lumnihq/lumni/internal/store"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func main() {

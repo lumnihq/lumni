@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/durable"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/durable"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestConsoleWorkspaceBudgetCannotBeOverriddenByActor(t *testing.T) {

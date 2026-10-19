@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/analytics"
-	"lumni/internal/notifications"
-	"lumni/internal/secrets"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/notifications"
+	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestConsoleExportAndHybridReadsCorrectEarlierCells(t *testing.T) {

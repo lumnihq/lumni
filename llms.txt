@@ -6,7 +6,7 @@ Key facts:
 
 - Cloud: https://app.lumniverse.com (14-day trial, then $49/month with 50,000 checks, $3 per extra 1,000). Self-host with Docker Compose. Server and console are FSL-1.1 (Apache-2.0 after two years); SDKs, CLI, skills and examples are Apache-2.0.
 - Connect an agent: `npx lumniverse init` in its folder (writes `LUMNI_URL` and `LUMNI_API_KEY`). Try sample agents: `npx lumniverse try`. Look around with no account: `npx lumniverse demo`.
-- SDKs: TypeScript `@lumniverse/sdk` (Node 22+), Python `lumni-sdk` (3.10+), Go in `sdk/go`. Adapters for LangGraph, OpenAI Agents, Temporal, Restate, and an MCP gateway.
+- SDKs: TypeScript `@lumniverse/sdk` (Node 22+), Python `lumni-sdk` (3.10+), Go `github.com/lumnihq/lumni/sdk/go`. Adapters for LangGraph, OpenAI Agents, Temporal, Restate, and an MCP gateway.
 - Core call: `checkAction({ actor_id, work_id, operation, effect_key, resources, arguments, metadata })`, then act only if `shouldExecute(decision)`, then `startAction` and `reportResult`.
 - `effect_key` names the real-world effect (e.g. `refund:<order id>`): the same key means the same effect, which happens once.
 - New workspaces run in shadow mode: decisions come back as `WOULD_*` and nothing is blocked until enforcement is turned on.

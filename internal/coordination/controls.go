@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 // Admission limits lock each matching scope before counting admitted actions.

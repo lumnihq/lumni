@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestCanonicalID(t *testing.T) {

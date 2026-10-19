@@ -2,7 +2,7 @@ package graph
 
 import (
 	"context"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func (s *Service) loadDurable(ctx context.Context, tenant string, f Filter, b *builder) error {

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/jackc/pgx/v5"
-	"lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/auth"
 )
 
 // A response may be retried after the mutation released its work claim. Only

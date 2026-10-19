@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/analytics"
-	"lumni/internal/core"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestAnalyticsExporterRetriesWithStableFactIdentity(t *testing.T) {

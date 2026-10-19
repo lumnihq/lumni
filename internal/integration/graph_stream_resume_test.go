@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func graphStreamBody(t *testing.T, c consoleClient, query, header string) string {

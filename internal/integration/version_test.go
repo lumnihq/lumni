@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"lumni/internal/core"
-	"lumni/internal/resource"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/internal/core"
+	"github.com/lumnihq/lumni/internal/resource"
+	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 func TestLateAndIncomparableVersionsStayInHistory(t *testing.T) {

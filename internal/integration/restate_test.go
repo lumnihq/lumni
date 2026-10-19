@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	adapter "github.com/lumnihq/lumni/adapters/restate"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	sdk "github.com/restatedev/sdk-go"
 	"github.com/restatedev/sdk-go/server"
-	adapter "lumni/adapters/restate"
-	"lumni/pkg/protocol"
 )
 
 func TestRestateRuntimeGuardedInvocation(t *testing.T) {

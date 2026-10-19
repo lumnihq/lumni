@@ -3,7 +3,7 @@ package graph
 import (
 	"context"
 	"encoding/json"
-	"lumni/pkg/protocol"
+	"github.com/lumnihq/lumni/pkg/protocol"
 	"time"
 )
 
