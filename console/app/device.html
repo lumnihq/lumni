@@ -33,6 +33,12 @@
   .warn { display: flex; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--wash); font-size: 13px; color: var(--ink2); line-height: 1.45; }
   .warn b { color: var(--ink); }
   .done { text-align: center; padding: 10px 0 4px; }
+.next { margin-top: 26px; padding: 18px 20px; border-radius: 16px; background: var(--wash); text-align: left; }
+.next b { font-size: 15px; }
+.next p { margin-top: 6px; font-size: 13.5px; line-height: 1.5; color: var(--ink2); }
+.next code { font-family: var(--mono); font-size: 13px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 2px 7px; }
+.next > code { display: inline-block; margin-top: 10px; padding: 8px 12px; font-size: 14px; }
+.next a { display: inline-block; margin-top: 10px; font-size: 13.5px; font-weight: 600; color: var(--accent); }
   .tick { width: 76px; height: 76px; margin: 6px auto 18px; border-radius: 26px; background: var(--accent); display: grid; place-items: center; box-shadow: 0 20px 40px -16px rgba(91,75,245,.7); animation: pop .6s var(--spring) both; }
   .tick svg { width: 38px; height: 38px; }
   .tick path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .5s var(--ease) .35s forwards; }
@@ -153,7 +159,14 @@ function showTry(l) {
       <div class="tick"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21l7 7 13-15" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <h1>Running</h1>
       <p class="muted" style="margin-top:8px">The sample agents are starting in your terminal. Watch them arrive.</p>
-      <div class="acts"><a class="btn accent" href="/today">Watch Today</a><a class="btn" href="/flow">Flow</a></div></div>`;
+      <div class="acts"><a class="btn accent" href="/today">Watch Today</a><a class="btn" href="/flow">Flow</a></div>
+      <div class="next">
+        <b>Next: your real agent</b>
+        <p>These are sample agents. When you’ve seen enough, connect your own: run this in its folder.</p>
+        <code>npx lumniverse init</code>
+        <p>Or let your coding agent do it: <code>npx skills add lumnihq/lumni</code>, then ask it to “add Lumni to the refund step”. Works with LangGraph, OpenAI Agents, Temporal, MCP and plain TypeScript, Python or Go.</p>
+        <a href="/start">Step by step on Start →</a>
+      </div></div>`;
   };
   $('#no').onclick = async () => {
     await Shell.write('POST', `/v1/console/device/${encodeURIComponent(l.user_code)}/deny`, {}, { reload: false });

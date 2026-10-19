@@ -8,21 +8,21 @@ Source available and self-hostable ([FSL](LICENSE); the SDKs and CLI are Apache-
 
 ## Get started
 
-**Use Lumni Cloud.** Sign up at [app.lumniverse.com](https://app.lumniverse.com), then in your agent's folder:
-
-```bash
-npx lumniverse init
-```
-
-It opens your browser to approve the connection, then writes the key and prints the lines to add where your agent acts.
-
-**See it work first.** Sample agents act out the twelve problems Lumni solves, in your workspace:
+**1. See it work.** Sample agents make the twelve classic mistakes (double refunds, stale writes, agents overwriting people) in your own workspace, and you watch Lumni catch them live:
 
 ```bash
 npx lumniverse try
 ```
 
-**Just look around.** No account: `npx lumniverse demo`.
+It opens your browser; if you don't have an account yet, you create one there (14 days free, no card).
+
+**2. Connect your real agent.** In your agent's folder:
+
+```bash
+npx lumniverse init
+```
+
+It writes `LUMNI_URL` and `LUMNI_API_KEY` to `.env` and prints the lines to add where your agent acts. Or let your coding agent wire it in (next section).
 
 **Run it yourself.** With Docker Compose; see the [self-hosting guide](docs/self-hosting.md):
 

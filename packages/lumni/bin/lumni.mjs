@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// lumniverse: connect agents to Lumni, see it work, or look around first.
+// lumniverse: see Lumni work, then connect your agents.
 //
-//   npx lumniverse init     connect the agent in this folder (Lumni Cloud, or --console URL)
-//   npx lumniverse try      sample agents act out the twelve problems in your workspace
-//   npx lumniverse demo     the console on a made-up day; no account
+//   npx lumniverse try      sample agents make the twelve mistakes in your workspace; watch Lumni catch them
+//   npx lumniverse init     connect your real agent (the one in this folder)
+//
+// `demo` (the console on a made-up day, no account) still works but isn't advertised.
 //
 // To run Lumni yourself, use Docker Compose: docs/self-hosting.md.
 // Node 22.
@@ -20,10 +21,10 @@ export const CLOUD_CONSOLE = 'https://app.lumniverse.com';
 
 const HELP = `lumniverse ${version}
 
-  npx lumniverse init     connect the agent in this folder (opens your browser)
-  npx lumniverse try      sample agents in your workspace, to see Lumni at work
+  npx lumniverse try      see it work: sample agents make real mistakes in your
+                          workspace, and Lumni catches them (signs you up if needed)
+  npx lumniverse init     connect your real agent: run it in the agent's folder
       --console URL       your own Lumni's console (default ${CLOUD_CONSOLE})
-  npx lumniverse demo     the console on a made-up day: no account
 
   Sign up: ${CLOUD_CONSOLE}
   Self-host with Docker Compose: https://github.com/lumnihq/lumni/blob/main/docs/self-hosting.md

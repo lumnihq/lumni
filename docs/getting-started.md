@@ -81,7 +81,7 @@ Use Python 3.11+ for all framework tests. Restate-server and ClickHouse-profile 
 cd console && bun serve.ts
 ```
 
-Open `http://localhost:5200`. It signs in with the admin key in `console/.env` and switches between your workspace (`?data=real`) and a made-up day (`?data=mock`). `npx lumniverse demo` serves the demo alone, with no API. See [console/README.md](../console/README.md).
+Open `http://localhost:5200`. It signs in with the admin key in `console/.env` and switches between your workspace (`?data=real`) and a made-up day (`?data=mock`). See [console/README.md](../console/README.md).
 
 ## Connect a real workflow
 

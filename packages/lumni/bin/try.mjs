@@ -30,6 +30,15 @@ export async function runTry(assets, consoleUrl, args = [], { fetchFn = fetch, l
     log(revoked ? '\n  ✓ Revoked the run’s key' : `\n  ! Couldn’t revoke the run’s key${key.key_id ? ` (${key.key_id})` : ''}. Revoke it in the console: Settings → API keys.`);
   }
   log(`\n  See what Lumni caught: ${consoleUrl}/today`);
-  log('  New workspaces only watch. Set yours to Protect (Settings), run this again, and watch Lumni stop it.\n');
+  log(`
+  That was sample agents. Next, your real one:
+
+    In your agent's folder:   npx lumniverse init
+    Or let your coding agent: npx skills add lumnihq/lumni
+                              then ask it to "add Lumni to the refund step"
+
+  Works with LangGraph, OpenAI Agents, Temporal, MCP, or plain
+  TypeScript, Python and Go. Step by step: ${consoleUrl}/start
+`);
   return code;
 }

@@ -251,7 +251,18 @@ describe('GitHub', () => {
     const back = await g.send(`/console/auth/oauth/github/callback?code=abc&state=${state}`, 'GET', undefined, true);
     expect(back.headers.get('location')).toBe('/start');
     const me = (await g.send('/v1/auth/session')).data;
-    expect(me).toMatchObject({ signed_in: true, user: { email: 'new@startup.dev', role: 'owner' }, tenant: { name: 'Octo’s workspace' } });
+    expect(me).toMatchObject({ signed_in: true, user: { email: 'new@startup.dev', role: 'owner' }, tenant: { name: 'Default' } });
     expect(me.tenant.id).not.toBe('t_123');
+  });
+
+  test('a newcomer from `npx lumniverse try` goes back to approve the terminal', async () => {
+    const t = setUp({ LUMNI_CONSOLE_GITHUB_CLIENT_ID: 'gh_id', LUMNI_CONSOLE_GITHUB_CLIENT_SECRET: 'gh_secret', LUMNI_CONSOLE_SIGNUP: 'open', LUMNI_CONSOLE_PLATFORM_KEY: 'platform_test_key' }, github('cli@startup.dev'));
+    await t.browser().send('/console/auth/setup', 'POST', { ...OWNER, workspace: 'Acme' });
+    const g = t.browser();
+    const start = await g.send(`/console/auth/oauth/github/start?next=${encodeURIComponent('/device?code=ABCD-EFGH')}`, 'GET', undefined, true);
+    const state = new URL(start.headers.get('location')!).searchParams.get('state');
+    const back = await g.send(`/console/auth/oauth/github/callback?code=abc&state=${state}`, 'GET', undefined, true);
+    expect(back.headers.get('location')).toBe('/device?code=ABCD-EFGH');
+    expect((await g.send('/v1/auth/session')).data).toMatchObject({ signed_in: true, user: { email: 'cli@startup.dev', role: 'owner' } });
   });
 });

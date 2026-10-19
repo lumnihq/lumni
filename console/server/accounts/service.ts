@@ -41,6 +41,9 @@ import type { Env } from '../env';
 import { HttpError, clearCookie, cookies, json, problem, readSetCookie, setCookie } from '../http';
 import { read, unreachable, type Fetch, type Upstream } from '../upstream';
 import { Billing } from './billing';
+
+/** The name every signed-up workspace starts with; owners rename it in Settings. */
+const DEFAULT_WORKSPACE = 'Default';
 import { ROLES, Sealer, Store, type Member, type Role, type User, type Workspace } from './store';
 
 const USER = 'lumni_user';
@@ -400,7 +403,8 @@ export class Accounts {
     const hash = await this.password(body.password);
     const user = this.store.createUser(email, name, hash, this.now());
     if (invite) return this.start(req, user, this.join(user, invite));
-    const ws = await this.newWorkspace(text(body.workspace, 80) || `${name.split(' ')[0]}’s workspace`, user);
+    // Everyone starts in “Default”; it can be renamed in Settings.
+    const ws = await this.newWorkspace(text(body.workspace, 80) || DEFAULT_WORKSPACE, user);
     return this.start(req, user, ws.id);
   }
 
@@ -481,7 +485,7 @@ export class Accounts {
         if (!saved.invite && this.state().signup !== 'open') return fail('There’s no account for that email. Ask a workspace owner for an invite.');
         user = this.store.createUser(who.email, who.name || who.email, null, this.now());
         if (!saved.invite) {
-          workspace = (await this.newWorkspace(`${(who.name || who.email).split(/[ @]/)[0]}’s workspace`, user)).id;
+          workspace = (await this.newWorkspace(DEFAULT_WORKSPACE, user)).id;
           created = true;
         }
       }
@@ -493,7 +497,8 @@ export class Accounts {
     const res = this.start(req, user, workspace);
     const h = new Headers(res.headers);
     // A brand-new workspace starts by connecting its first agent.
-    h.set('location', created ? '/start' : saved.next);
+    // A new account starts on Start, unless it was on its way somewhere (approving a terminal, say).
+    h.set('location', created && saved.next === '/today' ? '/start' : saved.next);
     h.delete('content-type');
     h.append('set-cookie', clearCookie(OAUTH, this.secure(req)));
     return new Response(null, { status: 302, headers: h });
