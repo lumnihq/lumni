@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Autonomy</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --orange-soft: #fff1e3; --orange-line: #fbd3a8; }
+  .wrap { padding: 34px 40px 48px; }
+
+  /* Headline. */
+  .head { display: flex; align-items: flex-end; gap: 32px; }
+  .head h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-top: 4px; }
+  .head h1 .soft { color: var(--ink3); }
+  .head h1 em { font-style: normal; color: var(--accent); }
+  .head p { font-size: 17px; color: var(--ink2); margin-top: 10px; font-weight: 500; }
+  .head .chips { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; padding-bottom: 3px; font-size: 13px; color: var(--ink2); font-weight: 550; text-align: right; }
+  .head .chips b { font-size: 15px; color: var(--ink); font-weight: 700; margin-bottom: 2px; }
+  .head h1 { white-space: nowrap; }
+  .chips .row { display: flex; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 8px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 650; white-space: nowrap; }
+  .chip .sw { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; }
+  .chip .sw.up { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .chip .sw.down { background: #fff; box-shadow: inset 0 0 0 2px var(--orange); }
+  .chip .sw.bar { background: none; width: 2px; border-radius: 0; border-left: 2px dashed var(--accent); height: 16px; margin: 0 6px; }
+  .chips .note { font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; margin-top: 26px; align-items: stretch; }
+
+  /* The ladder. */
+  .ladder { padding: 22px 24px 18px; position: relative; min-width: 0; }
+  .lh { display: flex; align-items: baseline; gap: 10px; }
+  .lh h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .lh span { font-size: 13px; color: var(--ink2); font-weight: 550; }
+  .lh .r { margin-left: auto; }
+  .legend { display: flex; gap: 16px; }
+  .legend > span { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; }
+  .legend .sw { width: 16px; height: 16px; border-radius: 5px; display: grid; place-items: center; }
+  .legend .sw.up { background: var(--accent); color: #fff; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .legend .sw.down { background: #fff; color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange); }
+  .wall { display: grid; grid-template-columns: 168px minmax(0, 1fr); column-gap: 16px; margin-top: 16px; position: relative; }
+  .lanes-l { display: flex; flex-direction: column; }
+  .lane-l { height: 164px; padding: 18px 0 0; border-top: 1px solid var(--line); }
+  .lane-l:first-child { border-top: 0; }
+  .lane-l b { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .lane-l b .rung { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .lane-l b .rung i { width: 4px; border-radius: 1px; background: var(--line2); }
+  .lane-l b .rung i.on { background: var(--ink); }
+  .lane-l.apex b .rung i.on { background: var(--accent); }
+  .lane-l p { font-size: 12.5px; color: var(--ink2); line-height: 1.38; margin-top: 6px; font-weight: 500; }
+  .lane-l .cnt { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: 650; color: var(--ink2); background: var(--wash); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .lane-l.apex .cnt { background: var(--accent-soft); color: var(--accent); }
+
+  .plot { position: relative; height: 656px; }
+  .plot .band { position: absolute; left: 0; right: 0; height: 164px; border-top: 1px solid var(--line); }
+  .plot .band:first-child { border-top: 0; border-radius: 14px 14px 0 0; background: linear-gradient(180deg, #f5f3ff 0%, rgba(245,243,255,.35) 100%); }
+  .plot .band .empty { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font-size: 13px; color: var(--ink3); font-weight: 550; }
+  .plot .earned { position: absolute; top: 164px; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, rgba(91,75,245,.045) 0 8px, transparent 8px 16px); border-left: 2px dashed var(--accent-line); }
+  .plot .earned span, .plot .floor span { position: absolute; top: -22px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+  .plot .earned span { left: 8px; color: var(--accent); top: 8px; }
+  .plot .floor { position: absolute; top: 164px; bottom: 0; border-left: 1.5px dashed var(--orange-line); }
+  .plot .floor span { right: 8px; top: 8px; color: var(--orange); font-weight: 600; }
+  .plot .gl { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgba(13,14,20,.035); }
+  .plot svg.paths { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .axis { position: relative; height: 34px; margin-left: 184px; border-top: 1px solid var(--line2); }
+  .axis span { position: absolute; top: 8px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+  .axis .cap { left: 0; color: var(--ink3); }
+  .axis .cap.r { right: 0; left: auto; }
+  .axis .mk-f { transform: translateX(-100%); padding-right: 8px; color: var(--orange); }
+  .axis .mk-b { padding-left: 8px; color: var(--accent); }
+  .axis .mk-f::after, .axis .mk-b::before { content: ''; position: absolute; top: -9px; height: 14px; border-left: 2px dashed currentColor; }
+  .axis .mk-f::after { right: -1px; } .axis .mk-b::before { left: -1px; }
+
+  .ghost { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 12px; border: 2px dashed var(--accent-2); background: rgba(240,238,255,.7); display: grid; place-items: center; color: var(--accent); opacity: 0; transition: opacity .5s var(--ease); }
+  .ghost.down { border-color: var(--orange); background: rgba(255,241,227,.7); color: var(--orange); }
+  .ghost.on { opacity: 1; }
+  .route { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 1.5 6; opacity: 0; transition: opacity .5s var(--ease); }
+  .route.on { opacity: 1; }
+  .trail { fill: none; stroke-linecap: round; }
+
+  .tok { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; padding: 0; opacity: 0; z-index: 2;
+    transition: transform 1.05s var(--spring), opacity .35s var(--ease); }
+  .tok.in { opacity: 1; }
+  .tok .sq { position: absolute; inset: 0; border-radius: 12px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 750; letter-spacing: -0.01em;
+    box-shadow: 0 6px 14px -8px rgba(13,14,20,.6); transition: box-shadow .3s, transform .2s var(--ease), background .4s; }
+  .tok:hover .sq { transform: translateY(-2px); }
+  .tok.promote .sq { background: var(--accent); box-shadow: 0 0 0 5px rgba(91,75,245,.16), 0 0 26px 4px rgba(91,75,245,.35), 0 10px 20px -8px rgba(91,75,245,.8); }
+  .tok.demote .sq { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2.5px var(--orange), 0 0 0 5px rgba(240,138,36,.12); }
+  .tok.fresh .sq { background: var(--accent); box-shadow: 0 10px 20px -8px rgba(91,75,245,.8); }
+  .tok.fresh-down .sq { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2px var(--orange); }
+  .tok.sel::after { content: ''; position: absolute; inset: -7px; border-radius: 17px; border: 2px solid var(--ink); }
+  .tok .chev { z-index: 1; position: absolute; top: -9px; right: -9px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: 0 2px 6px rgba(13,14,20,.18); }
+  .tok.promote .chev { color: var(--accent); }
+  .tok.demote .chev { color: var(--orange); }
+  .tok .cp { z-index: 1; position: absolute; right: -12px; bottom: -8px; height: 18px; padding: 0 6px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 11px; font-weight: 750; line-height: 18px; box-shadow: 0 0 0 1px var(--line2), 0 2px 5px rgba(13,14,20,.08); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tok .nm { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 650; white-space: nowrap; color: var(--ink); }
+  .tok.dim .nm { color: var(--ink2); }
+  .tok .ring { position: absolute; left: -12px; top: -12px; width: 68px; height: 68px; overflow: visible; }
+  .burst { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--accent); pointer-events: none; animation: burst .9s var(--ease) forwards; }
+  .burst.down { border-color: var(--orange); }
+  @keyframes burst { to { transform: scale(2.2); opacity: 0; } }
+
+  .callout { position: absolute; width: 270px; padding: 12px 14px; border-radius: 14px; background: #fff; box-shadow: var(--shadow), 0 0 0 1px var(--line); font-size: 13px; line-height: 1.4; font-weight: 550; color: var(--ink2); }
+  .callout b { color: var(--ink); }
+
+  .tip { position: absolute; z-index: 6; pointer-events: none; width: 250px; padding: 13px 14px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 12.5px; line-height: 1.4; box-shadow: 0 20px 40px -12px rgba(13,14,20,.5); opacity: 0; transition: opacity .15s; }
+  .tip.on { opacity: 1; }
+  .tip .t1 { display: flex; align-items: baseline; gap: 8px; font-size: 14.5px; font-weight: 700; }
+  .tip .t1 span { margin-left: auto; font-size: 12px; color: #b9bccb; font-weight: 600; }
+  .tip .t2 { color: #b9bccb; margin-top: 2px; }
+  .tip dl { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.12); }
+  .tip dt { color: #b9bccb; }
+  .tip dd { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .tip .hint { margin-top: 9px; color: #a99fff; font-weight: 650; }
+
+  .toast { position: absolute; left: 50%; bottom: 22px; z-index: 8; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; display: flex; align-items: center; gap: 12px; padding: 11px 12px 11px 16px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; box-shadow: 0 20px 44px -14px rgba(13,14,20,.6); transition: transform .45s var(--spring), opacity .25s; }
+  .toast.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+  .toast .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 0 4px rgba(133,120,255,.25); }
+  .toast.down .dot { background: var(--orange); box-shadow: 0 0 0 4px rgba(240,138,36,.25); }
+  .toast button { height: 28px; padding: 0 10px; border-radius: 8px; background: rgba(255,255,255,.1); color: #fff; font-size: 13px; font-weight: 650; }
+
+  /* The case. */
+  .case { padding: 22px 22px 22px; display: flex; flex-direction: column; min-width: 0; }
+  .case .tag.down { background: var(--orange-soft); color: #b45f0b; }
+  .case-h { display: flex; align-items: center; gap: 8px; }
+  .case-h small { margin-left: auto; font-size: 12.5px; color: var(--ink3); font-weight: 600; }
+  .tcard { position: relative; margin-top: 14px; padding: 18px 18px 16px; border-radius: 18px; overflow: hidden; background: linear-gradient(150deg, #f6f4ff 0%, #ffffff 46%, #f1efff 100%); box-shadow: inset 0 0 0 1px var(--accent-line), 0 14px 30px -18px rgba(91,75,245,.45); }
+  .tcard::before { content: ''; position: absolute; inset: -40% -20% auto auto; width: 220px; height: 220px; background: radial-gradient(circle, rgba(133,120,255,.18), transparent 65%); }
+  .tcard.down { background: linear-gradient(150deg, #fff6ec 0%, #ffffff 46%, #fff3e6 100%); box-shadow: inset 0 0 0 1px var(--orange-line), 0 14px 30px -18px rgba(240,138,36,.45); }
+  .tcard.down::before { background: radial-gradient(circle, rgba(240,138,36,.14), transparent 65%); }
+  .tcard.plain { background: linear-gradient(150deg, #f7f7fa 0%, #ffffff 60%); box-shadow: inset 0 0 0 1px var(--line); }
+  .tcard.plain::before { display: none; }
+  .tc-top { position: relative; display: flex; align-items: center; gap: 14px; }
+  .tc-av { width: 64px; height: 64px; border-radius: 17px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 23px; font-weight: 750; flex: none; position: relative; }
+  .tcard:not(.down):not(.plain) .tc-av { background: var(--accent); box-shadow: 0 10px 22px -8px rgba(91,75,245,.7); }
+  .tcard.down .tc-av { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 3px var(--orange); }
+  .tc-av .cp { position: absolute; right: -10px; bottom: -8px; height: 21px; padding: 0 7px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 750; line-height: 21px; box-shadow: 0 0 0 1px var(--line2); }
+  .tc-id { min-width: 0; flex: 1; }
+  .tc-id b { display: block; font-size: 21px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+  .tc-id small { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 13px; color: var(--ink2); font-weight: 600; white-space: nowrap; }
+  .mk { width: 18px; height: 18px; border-radius: 5px; color: #fff; font-size: 9.5px; font-weight: 800; display: grid; place-items: center; flex: none; }
+  .tc-trust { text-align: right; flex: none; }
+  .tc-trust b { display: block; font-size: 30px; font-weight: 750; letter-spacing: -0.03em; line-height: 1; }
+  .tc-trust small { font-size: 11.5px; color: var(--ink2); font-weight: 650; }
+  .tc-lv { position: relative; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed rgba(13,14,20,.12); font-size: 13px; font-weight: 650; }
+  .mini-rungs { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+  .mini-rungs i { width: 9px; border-radius: 2px; background: var(--line2); }
+  .mini-rungs i.on { background: var(--ink); }
+  .mini-rungs i.next { background: none; box-shadow: inset 0 0 0 1.5px var(--accent); border: 0; background-image: repeating-linear-gradient(0deg, rgba(91,75,245,.25) 0 2px, transparent 2px 4px); }
+  .mini-rungs i.prev { background: none; box-shadow: inset 0 0 0 1.5px var(--orange); }
+  .lvchip { padding: 3px 10px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12.5px; }
+  .lvchip.next { background: var(--accent); }
+  .lvchip.prev { background: var(--orange); }
+  .lvchip.ghosty { background: #fff; color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line2); }
+  .tc-lv .where { white-space: nowrap; margin-left: auto; color: var(--ink2); font-weight: 600; font-size: 12.5px; }
+
+  .bigstat { display: flex; align-items: flex-end; gap: 12px; margin-top: 18px; }
+  .bigstat b { font-size: 44px; font-weight: 750; letter-spacing: -0.035em; line-height: 1; }
+  .bigstat b.o { color: var(--orange); }
+  .bigstat div { padding-bottom: 3px; }
+  .bigstat small { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .delta { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--pop); color: var(--ink); white-space: nowrap; }
+  .delta.o { background: var(--orange-soft); color: #b45f0b; }
+  .case h4 { font-size: 13px; font-weight: 650; color: var(--ink2); margin: 18px 0 8px; display: flex; }
+  .case h4 span { margin-left: auto; font-weight: 550; color: var(--ink3); }
+  .ev { display: grid; grid-template-columns: minmax(0, 1fr) 46px 132px; align-items: center; gap: 12px; padding: 7px 0; font-size: 13.5px; font-weight: 600; border-top: 1px solid var(--line); }
+  .ev:first-of-type { border-top: 0; }
+  .ev b { text-align: right; font-variant-numeric: tabular-nums; }
+  .ev small { display: block; font-size: 11.5px; color: var(--ink2); font-weight: 550; }
+  .ev svg { width: 132px; height: 26px; overflow: visible; }
+  .changes { font-size: 14px; line-height: 1.45; font-weight: 550; }
+  .changes em { font-style: normal; font-weight: 700; }
+  .guard { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 14px; padding: 11px 12px; border-radius: 12px; background: var(--wash); font-size: 13px; font-weight: 600; line-height: 1.4; }
+  .guard svg { flex: none; margin-top: 1px; }
+  .acts { display: flex; gap: 10px; margin-top: auto; padding-top: 18px; }
+  .acts .btn { height: 42px; white-space: nowrap; }
+  .acts .btn.accent { flex: 1; justify-content: center; }
+  .btn.orange { background: var(--ink); color: #fff; flex: 1; justify-content: center; }
+  .done-note { display: flex; gap: 10px; align-items: center; margin-top: auto; padding: 13px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); font-size: 13.5px; font-weight: 650; line-height: 1.35; }
+  .done-note.o { background: var(--orange-soft); color: #b45f0b; }
+  .done-note button { margin-left: auto; color: inherit; font-weight: 700; flex: none; }
+  .watchbar { height: 8px; border-radius: 4px; background: var(--wash); margin-top: 8px; position: relative; overflow: hidden; }
+  .watchbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+  .ringbig svg { flex: none; }
+  .ringbig { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+  .ringbig p { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .ringbig p small { display: block; font-size: 13px; color: var(--ink2); font-weight: 550; margin-top: 4px; }
+  .case a.lnk { color: var(--accent); font-weight: 650; }
+
+  /* Over time. */
+  .time { margin-top: 20px; padding: 22px 26px 20px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 36px; }
+  .time h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .time h3 + p { font-size: 13px; color: var(--ink2); font-weight: 550; margin-top: 2px; }
+  .time svg { display: block; width: 100%; height: 190px; margin-top: 12px; overflow: visible; }
+  .side { border-left: 1px solid var(--line); padding-left: 32px; display: flex; flex-direction: column; justify-content: center; }
+  .side .big { font-size: 56px; font-weight: 750; letter-spacing: -0.04em; line-height: 1; display: flex; align-items: center; gap: 12px; }
+  .side .big .delta { font-size: 13px; letter-spacing: 0; margin: 0; }
+  .side .lab { font-size: 14px; font-weight: 650; margin-top: 6px; }
+  .side p { font-size: 14px; color: var(--ink2); font-weight: 550; margin-top: 14px; line-height: 1.45; }
+  .side p b { color: var(--ink); }
+  .side .pair { display: flex; gap: 24px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .side .pair small { white-space: nowrap; display: block; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+  .side .pair b { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .ev-lbl { font-family: var(--sans); font-size: 11.5px; font-weight: 650; }
+  .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.6s var(--ease) .4s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  /* Your workspace. */
+  .head h1.wrap1 { white-space: normal; max-width: 900px; text-wrap: balance; }
+  .lane-l.off b, .lane-l.off p { color: var(--ink3); }
+  .lane-l.off .rung i.on { background: var(--line2) !important; }
+  .lane-l.off .cnt { background: var(--wash); color: var(--ink3); }
+  .plot .band.off { background: repeating-linear-gradient(135deg, rgba(13,14,20,.025) 0 8px, transparent 8px 16px) !important; }
+  .ghost.off { border-color: var(--line2); background: rgba(255,255,255,.6); color: var(--ink3); }
+  .tc-id small.opline { margin-top: 2px; font-family: var(--mono); font-size: 11.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .legend > span { white-space: nowrap; }
+  .legend .cap { color: var(--ink3); font-weight: 550; }
+  .changes em { overflow-wrap: anywhere; }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .acts { flex-wrap: wrap; }
+  .calm-empty { margin-top: 26px; padding: 40px; text-align: center; }
+  .calm-empty b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .calm-empty p { color: var(--ink2); max-width: 520px; margin: 8px auto 0; }
+  .calm-empty .row { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+  /* Autopilot, in your workspace. */
+  .below { display: grid; grid-template-columns: auto 150px; grid-template-rows: auto auto; column-gap: 12px; align-items: center; margin-top: 12px; font-size: 13.5px; font-weight: 650; }
+  .below small { grid-column: 1 / 3; font-size: 12px; color: var(--ink3); font-weight: 600; margin-top: 4px; }
+  .below .inp { display: flex; align-items: center; height: 38px; padding: 0 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .below .inp:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+  .below .inp i { font-style: normal; color: var(--ink2); margin-right: 2px; }
+  .below input { border: 0; outline: 0; width: 100%; font: inherit; font-size: 15px; font-weight: 700; background: none; font-variant-numeric: tabular-nums; }
+  .revert { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 11px 14px; border-radius: 12px; background: var(--orange-soft); box-shadow: inset 0 0 0 1px var(--orange-line); color: #8a4708; font-size: 13.5px; font-weight: 550; line-height: 1.4; }
+  .time .revert svg { flex: none; width: 16px; height: 18px; margin-top: 1px; }
+  .revert b { color: #6b3606; font-weight: 700; }
+  .hist { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .hist h5 { display: flex; font-size: 12.5px; font-weight: 650; color: var(--ink2); margin-bottom: 4px; }
+  .hist h5 span { margin-left: auto; color: var(--ink3); font-weight: 550; }
+  .hr { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; font-size: 13px; font-weight: 550; color: var(--ink2); line-height: 1.35; }
+  .hr i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; }
+  .hr i.down { background: #fff; box-shadow: inset 0 0 0 2px var(--orange); }
+  .hr b { color: var(--ink); font-weight: 650; }
+  .hr b.op { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .hr time { font-size: 12px; color: var(--ink3); font-weight: 600; white-space: nowrap; }
+  .hr.sys { margin: 2px -8px; padding: 6px 8px; border-radius: 9px; background: var(--orange-soft); color: #8a4708; }
+  .hr.sys i { background: var(--orange); box-shadow: none; }
+  .hr.more, .hr.none { display: block; color: var(--ink3); }
+  .side .hist { padding-left: 0; }
+  .pilot-acts { flex-wrap: nowrap; }
+  .pilot-acts #pilot { flex: 1; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// Earned autonomy. Every named AI sits on a lane of the ladder (its level)
+// at a distance set by its trust: the clean streak and how often it slips.
+// Real levels are how strictly Lumni enforces each AI's main operation:
+// Watch is SHADOW, Warn is WARN, Enforce is ENFORCE. Autopilot is a grant
+// (/v1/config/autopilot) that skips your approval rules for one AI, under an amount.
+const LANE_H = 164, PLOT_W = 688 - 0, TRUST_LO = 25, TRUST_HI = 100, BAR = 88, FLOOR = 38;
+const BAR_STREAK = { small: 300, mid: 500, large: 5000, real: 50 };
+const SLIPS = 2; // mistakes in 1,000 that move an AI back down
+const MODES = ['SHADOW', 'WARN', 'ENFORCE'];
+const OLD_API = 'Needs a newer Lumni API';
+const LEVEL_OF_MODE = { SHADOW: 0, WARN: 1, ENFORCE: 2 };
+const HIST_TYPES = 'enforcement.set,enforcement.cleared,autopilot.granted,autopilot.reverted';
+const DAY_MS = 86400e3;
+const DESC = [
+  'Lumni only records what it would do. Nothing runs yet.',
+  'Lumni flags what it would stop, but lets it act.',
+  'Lumni steps in when it has to. The default.',
+  'Routine cases skip the person. Refunds under $200 no longer ask.',
+];
+const REAL_DESC = [
+  'Lumni only notes what it would have done. Everything goes through.',
+  'Lumni flags what it would stop, and lets it through.',
+  'Lumni steps in for real when it has to.',
+  'Routine cases under an amount you set skip the person. Lumni takes it back after 2 slips in 1,000.',
+];
+// What Autopilot changes, in the AI's own work.
+const CHANGES = {
+  ledger: (a) => `Bookings under <em>$2,000</em> go straight into ${a}. Today each one waits for a person in finance. Bigger bookings still ask.`,
+  dunning: (a) => `Payment retries and reminders under <em>$200</em> go out in ${a} without asking. Today a person approves each one. Bigger ones still ask.`,
+  router: () => `Leads under <em>50 seats</em> are routed without asking. Bigger deals still go to a person.`,
+  refund: () => `Refunds under <em>$200</em> no longer ask a person. Bigger refunds still do.`,
+};
+const DOWN = {
+  accounts: (a) => `Its account updates are <em>recorded, not sent</em> to ${a}. Lumni shows what it would have written, so its reads can be fixed first.`,
+};
+const HISTORY = [ // the demo's last 30 days of level changes, oldest first
+  { d: 3, id: 'quote', before: 0, to: 1 }, { d: 6, id: 'invoice', before: 1, to: 2 }, { d: 10, id: 'misc', before: 0, to: 1 }, { d: 13, id: 'router', before: 2, to: 3 },
+  { d: 16, id: 'accounts', before: 0, to: 1 }, { d: 19, id: 'pricer', before: 2, to: 1 }, { d: 23, id: 'triage', before: 1, to: 2 }, { d: 26, id: 'recon', before: 1, to: 0 },
+];
+
+const safe = (s) => Shell.esc(s);
+const chev = (dir, size = 10, sw = 2.2) => `<svg width="${size}" height="${size * 0.7}" viewBox="0 0 10 7" aria-hidden="true"><path d="${dir === 'up' ? 'M1.5 5.5L5 2l3.5 3.5' : 'M1.5 1.5L5 5l3.5-3.5'}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const shield = (c) => `<svg width="16" height="18" viewBox="0 0 16 18"><path d="M8 1.5l6 2.3v4.6c0 3.9-2.6 6.9-6 8.1-3.4-1.2-6-4.2-6-8.1V3.8z" fill="none" stroke="${c}" stroke-width="1.7" stroke-linejoin="round"/><path d="M5.3 9l1.9 1.9L10.9 7" fill="none" stroke="${c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const initials = (n) => (n === 'Everyone else' ? '+' : n.split(' ').length > 1 ? n[0].toUpperCase() + n.split(' ')[1][0].toLowerCase() : n.slice(0, 2));
+const avatar = (f) => safe(f.initials ?? initials(f.name));
+const per1k = (v, n) => (v / Math.max(1, n)) * 1000;
+const f1 = (v) => (v === 0 ? '0' : v < 10 ? v.toFixed(1).replace(/\.0$/, '') : fmtN(v));
+const median = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const xOf = (t) => 56 + ((t - TRUST_LO) / (TRUST_HI - TRUST_LO)) * (PLOT_W - 112);
+const laneTop = (lvl) => (3 - lvl) * LANE_H;
+const ROWY = [40, 120];
+const plural = (n, one, many) => (n === 1 ? one : many);
+const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const query = new URLSearchParams(location.search);
+
+let S = null; // page state for the current world
+let timers = [];
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+/** Real moves made on this page, so a fresh read still shows what you just did. */
+const MOVED = {};
+
+function trustOf(f, maxStreak) {
+  const s = Math.log10(f.streak + 1) / Math.log10(Math.max(2, maxStreak + 1));
+  const err = per1k(f.repeats + f.stale + f.bad * 10, f.n);
+  let t = 100 * (0.55 * s + 0.45 * (1 - Math.min(1, err / 60)));
+  // The flags are the verdict; keep each token on the right side of its line.
+  if (f.promote) t = Math.max(t, 91);
+  else if (f.demote) t = Math.min(t, 33);
+  else { t = Math.max(t, 43); if (f.level < 3) t = Math.min(t, 85); }
+  return Math.min(98, t);
+}
+
+// ─── who should move ────────────────────────────────
+
+function levelOf(f) { return S.levels[f.id]; }
+/** Real: below Enforce, and either clean for the bar or slipping more than its peers. */
+function realUp(f) { return levelOf(f) < 2 && (f.streak >= BAR_STREAK.real || f.demote); }
+function isUp(f) { return !S.done[f.id] && (S.real ? realUp(f) : f.promote); }
+function isDown(f) { return !S.real && f.demote && !S.done[f.id]; }
+/** Real: on Enforce with a clean record for the bar, so it has a case for Autopilot. */
+function isApex(f) { return S.real && !S.done[f.id] && levelOf(f) === 2 && !f.demote && (f.promote || f.streak >= BAR_STREAK.real); }
+const sharing = (f) => S.fleet.filter((o) => o.id !== f.id && o.op === f.op);
+
+// ─── layout ─────────────────────────────────────────
+
+/** Puts every token (and every ghost slot) in a lane without overlaps. */
+function layout() {
+  const items = [];
+  const byTrust = [...S.fleet].sort((a, b) => b.trust - a.trust);
+  for (const f of byTrust) items.push({ id: f.id, lvl: levelOf(f), x: xOf(f.trust), w: 104 });
+  for (const f of byTrust) {
+    if (isUp(f) || isApex(f)) items.push({ id: 'g-' + f.id, ghost: 'up', lvl: levelOf(f) + 1, x: xOf(f.trust), w: 50 });
+    if (isDown(f)) items.push({ id: 'g-' + f.id, ghost: 'down', lvl: levelOf(f) - 1, x: xOf(f.trust), w: 50 });
+  }
+  const rows = {};
+  const pos = {};
+  for (const it of items) {
+    let put = null;
+    const x0 = Math.max(44, Math.min(PLOT_W - 44, it.x));
+    for (let k = 0; k < 40 && !put; k++) {
+      const shift = k === 0 ? 0 : (k % 2 ? -1 : 1) * Math.ceil(k / 2) * 18;
+      const x = Math.max(44, Math.min(PLOT_W - 44, x0 + shift));
+      for (const r of [0, 1]) {
+        const key = it.lvl + '-' + r;
+        const row = (rows[key] ??= []);
+        if (row.every((o) => Math.abs(o.x - x) >= (o.w + it.w) / 2 + 6)) { row.push({ x, w: it.w }); put = { x, y: laneTop(it.lvl) + ROWY[r] }; break; }
+      }
+    }
+    pos[it.id] = { ...(put ?? { x: x0, y: laneTop(it.lvl) + ROWY[0] }), ghost: it.ghost, lvl: it.lvl };
+  }
+  return pos;
+}
+
+// ─── headline ───────────────────────────────────────
+
+function headline() {
+  if (S.real) {
+    const n = S.fleet.length;
+    const on = S.fleet.filter((f) => levelOf(f) >= 2).length;
+    const pilots = S.fleet.filter((f) => levelOf(f) === 3).length;
+    const ups = S.fleet.filter(isUp);
+    const soft = `<span class="soft">Lumni steps in for real on ${on} of ${n}${pilots ? `, ${pilots} on Autopilot` : ''}.</span>`;
+    if (ups.length === 1) return `${safe(ups[0].name)} has a case to move up. ${soft}`;
+    if (ups.length) return `${ups.length} AIs have a case to move up. ${soft}`;
+    return `Every AI is where its record puts it. ${soft}`;
+  }
+  const p = S.fleet.filter(isUp).length, d = S.fleet.filter(isDown).length;
+  const up = `${p} ${plural(p, 'AI has', 'AIs have')} earned more freedom.`;
+  if (p && d) return `${up} <span class="soft">${d} should lose some.</span>`;
+  if (p) return `${up} <span class="soft">The rest are on track.</span>`;
+  if (d) return `${d} ${plural(d, 'AI', 'AIs')} should lose some freedom. <span class="soft">The rest are on track.</span>`;
+  return `Every AI is on the level it earned. <span class="soft">Lumni keeps checking.</span>`;
+}
+
+function chips() {
+  const copies = S.fleet.reduce((s, f) => s + f.copies, 0);
+  const n = S.fleet.length;
+  if (S.real) {
+    return `<b>${n} ${plural(n, 'AI', 'AIs')}, ${fmtN(copies)} ${plural(copies, 'copy', 'copies')}</b>
+      <span>Bar to move up: ${fmtN(BAR_STREAK.real)} clean actions in a row.</span>
+      <span>Lumni takes Autopilot back after ${SLIPS} slips in 1,000.</span>`;
+  }
+  return `<b>${n} named AIs, ${fmtN(copies)} copies</b>
+    <span>Bar to climb: ${fmtN(BAR_STREAK[S.w.key])} clean actions in a row.</span>
+    <span>Lumni moves any AI back after ${SLIPS} slips in 1,000.</span>`;
+}
+
+// ─── the ladder ─────────────────────────────────────
+
+const laneCount = (lvl) => {
+  if (S.real && lvl === 3 && S.old) return 'Needs a newer API';
+  const on = S.fleet.filter((f) => levelOf(f) === lvl);
+  const cp = on.reduce((s, f) => s + f.copies, 0);
+  return on.length ? `${on.length} ${plural(on.length, 'AI', 'AIs')}${cp > on.length ? `, ${fmtN(cp)} copies` : ''}` : 'None yet';
+};
+
+function ladderHTML() {
+  const real = S.real;
+  const off = real && S.old;
+  const lanes = [3, 2, 1, 0].map((lvl) => `<div class="lane-l ${lvl === 3 ? 'apex' : ''} ${off && lvl === 3 ? 'off' : ''}" data-l="${lvl}"><b><span class="rung">${[0, 1, 2, 3].map((i) => `<i class="${i <= lvl ? 'on' : ''}" style="height:${5 + i * 3}px"></i>`).join('')}</span>${S.w.LEVELS[lvl]}</b>
+      <p>${(real ? REAL_DESC : DESC)[lvl]}</p><span class="cnt">${laneCount(lvl)}</span></div>`).join('');
+  const bands = [3, 2, 1, 0].map((lvl) => `<div class="band ${off && lvl === 3 ? 'off' : ''}" style="top:${laneTop(lvl)}px">${real && lvl === 3 ? `<div class="empty" id="pilotEmpty" style="${!off && S.fleet.some((f) => levelOf(f) === 3) ? 'display:none' : ''}">${off ? 'Autopilot needs a newer Lumni API' : 'No AI is on Autopilot yet'}</div>` : ''}</div>`).join('');
+  const grid = [40, 60, 80, 100].map((t) => `<div class="gl" style="left:${xOf(t)}px"></div>`).join('');
+  const legend = real
+    ? `<span><i class="sw up">${chev('up', 8)}</i>Ready to move up</span><span><i class="sw down">${chev('up', 8)}</i>Slips more than its peers</span>`
+    : `<span><i class="sw up">${chev('up', 8)}</i>Ready to climb</span><span><i class="sw down">${chev('down', 8)}</i>Should step down</span>`;
+  return `<div class="lh"><h2>The ladder</h2><span>${real ? 'Each lane is how far Lumni steps in.' : 'Each lane is a level. Further right means a better record.'}</span><span class="r legend">${legend}</span></div>
+    <div class="wall">
+      <div class="lanes-l" id="lanesL">${lanes}</div>
+      <div class="plot" id="plot">${bands}${grid}
+        ${real ? '' : `<div class="earned" style="left:${xOf(BAR)}px"></div><div class="floor" style="left:${xOf(FLOOR)}px"></div>`}
+        <svg class="paths" id="paths"></svg>
+        <div id="ghosts"></div><div id="toks"></div>
+      </div>
+    </div>
+    <div class="axis">
+      ${real ? '<span class="cap">Less proven</span><span class="cap r">More proven</span>' : `<span class="mk-f" style="left:${xOf(FLOOR)}px">Should step down</span><span class="mk-b" style="left:${xOf(BAR)}px">Earned the next level</span>`}</div>
+    <div class="tip" id="tip"></div>
+    <div class="toast" id="toast"></div>`;
+}
+
+function tokenHTML(f) {
+  const slips = S.real && f.demote && !S.done[f.id];
+  const cls = [isUp(f) && !slips ? 'promote' : '', isDown(f) || slips ? 'demote' : '', S.done[f.id] === 'promoted' ? 'fresh' : '', S.done[f.id] === 'demoted' ? 'fresh-down' : '', S.sel === f.id ? 'sel' : ''].join(' ');
+  const ring = S.real && levelOf(f) < 2 ? (() => {
+    const r = 31, c = 2 * Math.PI * r, frac = Math.min(1, Math.max(0.025, f.streak / BAR_STREAK.real));
+    return `<svg class="ring" viewBox="0 0 68 68"><circle cx="34" cy="34" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/>
+      <circle cx="34" cy="34" r="${r}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c * frac} ${c}" transform="rotate(-90 34 34)"/></svg>`;
+  })() : '';
+  const up = isUp(f) || isApex(f);
+  return `<button class="tok ${cls}" data-id="${safe(f.id)}" aria-label="${safe(f.name)}, ${S.w.LEVELS[levelOf(f)]}">${ring}
+    <span class="sq">${avatar(f)}</span>
+    ${up ? `<span class="chev">${chev('up')}</span>` : isDown(f) ? `<span class="chev">${chev('down')}</span>` : ''}
+    ${f.copies > 1 ? `<span class="cp">×${fmtN(f.copies)}</span>` : ''}
+    <span class="nm">${safe(f.name)}</span></button>`;
+}
+
+const tokEl = (id) => [...$$('#toks .tok')].find((e) => e.dataset.id === id);
+
+function renderTokens(first, animate = true) {
+  const pos = layout();
+  S.pos = pos;
+  const toks = $('#toks');
+  if (first) {
+    toks.innerHTML = S.fleet.map(tokenHTML).join('');
+    // Everyone starts below the wall and climbs to where their record puts them.
+    const order = [...S.fleet].sort((a, b) => levelOf(a) - levelOf(b) || a.trust - b.trust);
+    order.forEach((f, i) => {
+      const el = tokEl(f.id);
+      const p = pos[f.id];
+      if (!animate) { el.classList.add('in'); el.style.transform = `translate(${p.x}px, ${p.y}px)`; return; }
+      el.style.transition = 'none';
+      el.style.transform = `translate(${p.x}px, ${4 * LANE_H + 60}px)`;
+      el.getBoundingClientRect();
+      el.style.transition = '';
+      el.style.transitionDelay = `${0.15 + i * 0.08}s`;
+      requestAnimationFrame(() => { el.classList.add('in'); el.style.transform = `translate(${p.x}px, ${p.y}px)`; });
+    });
+    if (animate) later(() => toks.querySelectorAll('.tok').forEach((e) => (e.style.transitionDelay = '0s')), 1400 + order.length * 80);
+  } else {
+    for (const f of S.fleet) {
+      const el = tokEl(f.id);
+      if (!el) continue;
+      const fresh = document.createElement('div');
+      fresh.innerHTML = tokenHTML(f);
+      const nu = fresh.firstElementChild;
+      el.className = nu.className + ' in';
+      el.innerHTML = nu.innerHTML;
+      if (!el.dataset.moving) el.style.transform = `translate(${pos[f.id].x}px, ${pos[f.id].y}px)`;
+    }
+  }
+  drawRoutes(first && animate);
+}
+
+/** The ghost slots and the dotted routes to them. */
+function drawRoutes(first) {
+  const pos = S.pos;
+  const delay = first ? 1500 + S.fleet.length * 60 : 120;
+  const moving = S.fleet.filter((f) => isUp(f) || isDown(f) || isApex(f));
+  $('#ghosts').innerHTML = moving.map((f) => {
+    const g = pos['g-' + f.id];
+    return `<div class="ghost ${g.ghost === 'down' ? 'down' : ''} ${isApex(f) && S.old ? 'off' : ''}" style="transform:translate(${g.x}px, ${g.y}px)">${chev(g.ghost, 12)}</div>`;
+  }).join('');
+  const routes = moving.map((f) => {
+    const a = pos[f.id], g = pos['g-' + f.id];
+    const up = g.ghost === 'up';
+    const y1 = a.y + (up ? -30 : 44), y2 = g.y + (up ? 28 : -28);
+    const my = (y1 + y2) / 2;
+    return `<path class="route" d="M${a.x},${y1} C${a.x},${my} ${g.x},${my} ${g.x},${y2}" stroke="${isApex(f) && S.old ? 'var(--ink3)' : up ? 'var(--accent)' : 'var(--orange)'}"/>`;
+  }).join('');
+  const trails = S.trails.map((t) => `<path class="trail" d="${t.d}" stroke="${t.up ? 'var(--accent)' : 'var(--orange)'}" stroke-width="2.4" stroke-dasharray="1.5 6" opacity=".55"/>`).join('');
+  $('#paths').innerHTML = trails + routes;
+  later(() => { $$('#ghosts .ghost, #paths .route').forEach((e) => e.classList.add('on')); }, delay);
+}
+
+// ─── hover ──────────────────────────────────────────
+
+function tipHTML(f) {
+  const app = S.w.app(f.app), team = S.w.team(f.team);
+  const where = S.real ? `${safe(app.name)}, mostly ${safe(f.op)}` : `${team?.name ?? 'Support'} team, ${app?.name}`;
+  return `<div class="t1">${safe(f.name)}${f.copies > 1 ? ` <span>×${fmtN(f.copies)} copies</span>` : ''}</div>
+    <div class="t2">${where}. On ${S.w.LEVELS[levelOf(f)]}.</div>
+    <dl><dt>Trust</dt><dd>${Math.round(f.trust)}</dd>
+      <dt>Clean in a row</dt><dd>${fmtN(f.streak)}</dd>
+      <dt>Repeats tried, per 1,000</dt><dd>${f1(f.r.repeats)}</dd>
+      <dt>Old reads, per 1,000</dt><dd>${f1(f.r.stale)}</dd>
+      <dt>Didn’t happen, per 1,000</dt><dd>${f1(f.r.bad)}</dd></dl>
+    <div class="hint">${isUp(f) ? `Ready to ${S.real ? 'move up' : 'climb'}. Click for the case.` : isDown(f) ? 'Should step down. Click for the case.' : 'Click for its full record.'}</div>`;
+}
+
+function wireTokens() {
+  const tip = $('#tip');
+  $('#toks').addEventListener('mouseover', (e) => {
+    const b = e.target.closest('.tok'); if (!b) return;
+    showTip(S.fleet.find((x) => x.id === b.dataset.id));
+  });
+  $('#toks').addEventListener('mouseout', (e) => { if (e.target.closest('.tok') && !e.relatedTarget?.closest?.('.tok')) tip.classList.remove('on'); });
+  $('#toks').addEventListener('click', (e) => {
+    const b = e.target.closest('.tok'); if (!b) return;
+    S.sel = b.dataset.id; S.note = null;
+    $$('#toks .tok').forEach((t) => t.classList.toggle('sel', t.dataset.id === S.sel));
+    renderCase();
+  });
+}
+
+function showTip(f) {
+  const tip = $('#tip'), lad = $('#ladder'), plot = $('#plot');
+  tip.innerHTML = tipHTML(f);
+  const p = S.pos[f.id];
+  const pr = plot.getBoundingClientRect(), lr = lad.getBoundingClientRect();
+  let x = pr.left - lr.left + p.x + 58, y = pr.top - lr.top + p.y - 70;
+  if (x + 260 > lr.width) x = pr.left - lr.left + p.x - 58 - 250;
+  y = Math.max(10, Math.min(lr.height - 230, y));
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  tip.classList.add('on');
+}
+
+// ─── the case ───────────────────────────────────────
+
+function dotplot(key, f, color) {
+  const W = 132, H = 26, has = S.fleet.filter((x) => x.r[key] != null), vals = has.map((x) => x.r[key]);
+  const max = Math.max(...vals, 0.0001) * 1.08;
+  const X = (v) => 4 + (v / max) * (W - 8);
+  const med = median(vals);
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <line x1="4" x2="${W - 4}" y1="13" y2="13" stroke="var(--line2)" stroke-width="1.5" stroke-linecap="round"/>
+    ${has.filter((x) => x.id !== f.id).map((x) => `<circle cx="${X(x.r[key]).toFixed(1)}" cy="13" r="3" fill="var(--ink3)" opacity=".55"/>`).join('')}
+    <line x1="${X(med)}" x2="${X(med)}" y1="4" y2="22" stroke="var(--ink)" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="${X(f.r[key]).toFixed(1)}" cy="13" r="5.5" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`;
+}
+
+function card(f, mode) {
+  const app = S.w.app(f.app);
+  const where = S.real ? `${safe(app.name)}</small><small class="opline">Mostly ${safe(f.op)}` : `${S.w.team(f.team).name}, ${app.name}`;
+  const lvl = levelOf(f);
+  const target = mode === 'up' ? lvl + 1 : mode === 'down' ? lvl - 1 : -1;
+  const rungs = [0, 1, 2, 3].map((i) => `<i class="${i === target ? (mode === 'up' ? 'next' : 'prev') : i <= lvl ? 'on' : ''}" style="height:${7 + i * 5}px"></i>`).join('');
+  return `<div class="tcard ${mode === 'down' ? 'down' : mode === 'up' ? '' : 'plain'}">
+    <div class="tc-top">
+      <span class="tc-av">${avatar(f)}${f.copies > 1 ? `<span class="cp">×${fmtN(f.copies)}</span>` : ''}</span>
+      <div class="tc-id"><b>${safe(f.name)}</b><small><span class="mk" style="background:${safe(app.color)}">${safe(app.mark)}</span>${where}</small></div>
+      <div class="tc-trust"><b class="num">${Math.round(f.trust)}</b><small>trust</small></div>
+    </div>
+    <div class="tc-lv"><span class="mini-rungs">${rungs}</span>
+      <span class="lvchip">${S.w.LEVELS[lvl]}</span>
+      ${target >= 0 ? `<span style="color:${mode === 'up' ? 'var(--accent)' : 'var(--orange)'};display:grid">${chev(mode, 12)}</span><span class="lvchip ${mode === 'up' ? 'next' : 'prev'}">${S.w.LEVELS[target]}</span>` : ''}
+      <span class="where">${fmtN(f.n)} today</span></div>
+  </div>`;
+}
+
+function evidence(f, hot) {
+  const rows = [
+    ['repeats', 'Repeats tried', 'Lumni stopped them'],
+    ['stale', 'Old reads', 'it acted on outdated info'],
+    ['bad', 'Didn’t happen', 'said done, app shows nothing'],
+  ];
+  // Real: how old its reads are, from Lumni's freshness checks, when it read anything versioned.
+  const lag = S.real && f.lag != null
+    ? `<div class="ev"><span>How old its reads are<small>median${f.lagP90 != null ? `, slowest tenth ${fmtN(f.lagP90)}s` : ''}</small></span><b>${fmtN(f.lag)}s</b>${dotplot('lag', f, 'var(--accent)')}</div>` : '';
+  return `<h4>Per 1,000 actions, against the fleet <span>fewer is better</span></h4>
+    ${rows.map(([k, t, s]) => `<div class="ev"><span>${t}<small>${s}</small></span><b style="${hot === k ? 'color:var(--orange)' : ''}">${f1(f.r[k])}</b>${dotplot(k, f, hot === k ? 'var(--orange)' : hot ? 'var(--ink)' : 'var(--accent)')}</div>`).join('')}${lag}`;
+}
+
+function renderCase() {
+  const f = S.fleet.find((x) => x.id === S.sel);
+  const el = $('#case');
+  if (S.real) { el.innerHTML = realCase(f); wireReal(f); return; }
+  const medStreak = median(S.fleet.map((x) => x.streak));
+  const lvl = levelOf(f);
+  const appName = S.w.app(f.app).name;
+  const asks = Math.max(1, Math.round(f.n * 0.03));
+
+  if (S.done[f.id] === 'promoted' || S.done[f.id] === 'demoted') {
+    const up = S.done[f.id] === 'promoted';
+    el.innerHTML = `<div class="case-h"><span class="tag ${up ? 'accent' : 'down'}">${up ? 'Just promoted' : 'Just moved down'}</span><small>by you, just now</small></div>
+      ${card(f, 'none')}
+      <div class="bigstat"><b class="num">0</b><div><small>slips since the move</small><span class="delta">${up ? `Watching its first ${fmtN(1000)}` : `${fmtN(BAR_STREAK[S.w.key])} clean to climb back`}</span></div></div>
+      <h4>${up ? 'Lumni is watching for slips' : 'Its way back up'} <span>${up ? `${SLIPS} in 1,000 moves it back` : 'counted automatically'}</span></h4>
+      <div class="watchbar"><i style="width:${up ? 3 : 1}%"></i></div>
+      ${evidence(f, up ? null : 'stale')}
+      <h4>What changed</h4>
+      <p class="changes">${up ? (CHANGES[f.id] ?? CHANGES.refund)(appName) : (DOWN[f.id] ?? DOWN.accounts)(appName)}</p>
+      <div class="guard">${shield(up ? 'var(--accent)' : 'var(--orange)')}<span>${up ? `If it makes ${SLIPS} mistakes in 1,000, Lumni moves it back to Enforce on its own and tells you why.` : `After ${fmtN(BAR_STREAK[S.w.key])} clean actions in a row, Lumni will make the case to move it back up.`}</span></div>
+      <div class="done-note ${up ? '' : 'o'}">${up ? `About ${fmtN(asks)} fewer asks a day for your team.` : `No account updates will reach ${appName} until it climbs back.`}<button id="undo">Undo</button></div>`;
+    $('#undo').onclick = () => undo(f.id);
+    return;
+  }
+
+  if (isUp(f)) {
+    el.innerHTML = `<div class="case-h"><span class="tag accent">The case for promotion</span><small>from its record, not a feeling</small></div>
+      ${card(f, 'up')}
+      <div class="bigstat"><b class="num" data-n="${f.streak}">${fmtN(f.streak)}</b><div><small>clean actions in a row</small><span class="delta">${f1(f.streak / Math.max(1, medStreak))}x the fleet’s median</span></div></div>
+      ${evidence(f)}
+      <h4>What changes at Autopilot</h4>
+      <p class="changes">${(CHANGES[f.id] ?? CHANGES.refund)(appName)} That’s about <em>${fmtN(asks)} fewer asks a day</em>.</p>
+      <div class="guard">${shield('var(--accent)')}<span>Lumni will move it back automatically if it makes ${SLIPS} mistakes in 1,000.</span></div>
+      <div class="acts"><button class="btn accent" id="go">${chev('up', 11)} Promote to Autopilot</button><button class="btn" id="nope">Not yet</button></div>`;
+    $('#go').onclick = () => move(f.id, +1);
+    $('#nope').onclick = () => notYet(f.id);
+    return;
+  }
+
+  if (isDown(f)) {
+    const medStale = median(S.fleet.map((x) => x.r.stale));
+    el.innerHTML = `<div class="case-h"><span class="tag down">The case for less freedom</span><small>from its record, not a feeling</small></div>
+      ${card(f, 'down')}
+      <div class="bigstat"><b class="num o">${f1(f.r.stale)}</b><div><small>old reads in every 1,000 actions</small><span class="delta o">${f1(f.r.stale / Math.max(0.1, medStale))}x the fleet’s median</span></div></div>
+      ${evidence(f, 'stale')}
+      <h4>What changes at ${S.w.LEVELS[lvl - 1]}</h4>
+      <p class="changes">${(DOWN[f.id] ?? DOWN.accounts)(appName)} Today ${fmtN(f.stale)} of its updates used a copy older than ${f.lag} seconds.</p>
+      <div class="guard">${shield('var(--orange)')}<span>Lumni moves it back up on its own after ${fmtN(BAR_STREAK[S.w.key])} clean actions in a row.</span></div>
+      <div class="acts"><button class="btn orange" id="go">${chev('down', 11)} Move to ${S.w.LEVELS[lvl - 1]}</button><button class="btn" id="nope">Not yet</button></div>`;
+    $('#go').onclick = () => move(f.id, -1);
+    $('#nope').onclick = () => notYet(f.id);
+    return;
+  }
+
+  // Anyone else: where it stands, and what it needs for the next level.
+  const bar = BAR_STREAK[S.w.key];
+  const need = Math.max(0, bar - f.streak);
+  const top = lvl === 3;
+  el.innerHTML = `<div class="case-h"><span class="tag">Where it stands</span><small>${S.done[f.id] === 'notyet' ? 'you said not yet' : 'from its record'}</small></div>
+    ${card(f, 'none')}
+    <div class="bigstat"><b class="num">${fmtN(f.streak)}</b><div><small>clean actions in a row</small><span class="delta ${f.streak >= medStreak ? '' : 'o'}">${f.streak >= medStreak ? `${f1(f.streak / Math.max(1, medStreak))}x the fleet’s median` : 'below the fleet’s median'}</span></div></div>
+    ${evidence(f)}
+    <h4>${top ? 'Holding Autopilot' : `To reach ${S.w.LEVELS[lvl + 1]}`}</h4>
+    <p class="changes">${top ? `No slips in its last 1,000 actions. Lumni moves it back if it makes ${SLIPS}.`
+      : S.done[f.id] === 'notyet' ? `You said not yet. Lumni will make the case again after <em>${fmtN(bar * 2)} more</em> clean actions.`
+      : need ? `It needs <em>${fmtN(need)} more</em> clean actions in a row, and fewer than ${SLIPS} slips in 1,000.` : `Its streak is long enough. It needs fewer slips: under ${SLIPS} in 1,000, and a trust of ${BAR}.`}</p>
+    <div class="guard">${shield('var(--ink2)')}<span>Levels only move on evidence. Lumni makes the case, and a person says yes.</span></div>
+    <div class="acts"><a class="btn" href="/journey?story=${f.stale > f.repeats ? 'sam' : 'omar'}">See its last step-in</a></div>`;
+}
+
+// ─── the case, in your workspace ────────────────────
+
+/** What a level means for one operation, in plain words. */
+function realChange(f, to) {
+  const op = `<em>${safe(f.op)}</em>`;
+  return [
+    `Lumni only notes what it would have done on ${op}. Repeats and clashes go through, and show up as would-haves.`,
+    `Lumni flags what it would stop on ${op}, and lets it through.`,
+    `Lumni stops repeats and clashes on ${op} for real, sends it back when its info is out of date, and asks a person where a rule says so.`,
+  ][to];
+}
+
+/** How a streak compares with the fleet, without dividing by nothing. */
+function streakDelta(f, med) {
+  if (!f.streak) return ['its last action was a step-in', 'o'];
+  if (!med) return ['the fleet’s median is 0', ''];
+  return f.streak >= med ? [`${f1(f.streak / med)}x the fleet’s median`, ''] : ['below the fleet’s median', 'o'];
+}
+
+/** One of its step-ins today, for "See how it got here". */
+function lastStep(f) {
+  for (const k of ['stop', 'recheck', 'wait', 'bad']) {
+    const p = (S.w.patterns[k] ?? []).find((x) => x.team === f.team && x.app === f.app && x.story);
+    if (p) return `/journey?id=${encodeURIComponent(p.story)}`;
+  }
+  return null;
+}
+
+/** "Tue 10:02 AM", or "Oct 3, 10:02 AM" when it's older than a week. */
+function when(ms) {
+  const o = { timeZone: S.w.zone || undefined, hour: 'numeric', minute: '2-digit' };
+  return new Date(ms).toLocaleString('en-US', S.w.now - ms < 6 * DAY_MS ? { ...o, weekday: 'short' } : { ...o, month: 'short', day: 'numeric' });
+}
+const isMoneyPtr = (p) => /amount|price|total|cost|usd|value|refund|charge/i.test(p ?? '');
+const amountLabel = (v, ptr) => (isMoneyPtr(ptr) ? '$' : '') + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const ruleName = (r) => `“${safe(r.name || r.id)}”`;
+const names = (list) => (list.length < 3 ? list.join(' and ') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`);
+
+/** What an Autopilot grant for this AI would skip: its approval rules on its main operation. */
+function pilotPlan(f) {
+  if (S.old) return { state: 'off', why: OLD_API };
+  if (!f.op) return { state: 'off', why: 'Lumni hasn’t seen a main operation for it yet' };
+  if (S.rules === undefined) return { state: 'off', why: 'Reading your rules…' };
+  if (S.rules === null) return { state: 'off', why: 'Your rules couldn’t be read just now' };
+  const rules = S.rules.filter((r) => r.enabled !== false && r.outcome === 'REQUIRE_APPROVAL' && (r.operation === f.op || r.operation === '*'));
+  if (!rules.length) return { state: 'none', why: `No approval rule applies to ${f.op}`, rules };
+  const withT = rules.find((r) => r.numeric_threshold != null);
+  const pointer = withT?.argument_pointer || '/amount';
+  const value = S.below[f.id] ?? (withT ? withT.numeric_threshold * 4 : 100);
+  return { state: 'ok', rules, pointer, value, threshold: withT?.numeric_threshold ?? null };
+}
+
+/** The Autopilot part of an Enforce case: what it skips, the amount, and the button. */
+function pilotOffer(f, apex) {
+  const p = pilotPlan(f);
+  const op = `<em>${safe(f.op ?? 'its main operation')}</em>`;
+  const btn = (on) => `<button class="btn ${apex ? 'accent' : ''}" id="pilot" ${on ? '' : `disabled title="${safe(p.why)}"`}>${chev('up', 11)} Promote to Autopilot</button>`;
+  if (p.state === 'off') return { html: `<h4>Autopilot</h4><p class="changes">${p.why === OLD_API ? 'Autopilot needs a newer Lumni API than this workspace runs.' : `${safe(p.why)}.`}</p>`, btn: btn(false) };
+  if (p.state === 'none') {
+    return { html: `<h4>What Autopilot would change</h4><p class="changes">Nothing. No rule of yours asks a person before ${op}, so Autopilot has nothing to skip for it. On Enforce it already runs without asking.</p>`, btn: btn(false) };
+  }
+  const bar = BAR_STREAK.real;
+  const short = !apex ? ` Its record is short of the bar: ${fmtN(f.streak)} clean in a row, and the bar is ${fmtN(bar)}.` : '';
+  return {
+    html: `<h4>What Autopilot would change</h4>
+      <p class="changes">${names(p.rules.map(ruleName))} would stop asking a person about its ${op} under <em>${amountLabel(p.value, p.pointer)}</em>. Bigger ones still ask, and every other check still runs.${short}</p>
+      <label class="below"><span>Skip the person under</span><span class="inp">${isMoneyPtr(p.pointer) ? '<i>$</i>' : ''}<input id="below" type="number" min="1" step="any" value="${p.value}" aria-label="Amount under which Autopilot skips the person"></span><small>${p.threshold != null ? `The rule asks above ${amountLabel(p.threshold, p.pointer)}` : `Read from ${safe(p.pointer)}`}</small></label>
+      <div class="guard">${shield('var(--accent)')}<span>If it slips ${SLIPS} times in 1,000 actions, Lumni takes Autopilot back on its own and tells you.</span></div>`,
+    btn: btn(true),
+  };
+}
+
+/** An AI on Autopilot: the grant, its slips so far, and the way to take it back. */
+function pilotCase(f, fresh) {
+  const g = f.autopilot ?? S.grants[f.id] ?? null;
+  const since = g?.since ? Date.parse(g.since) : null;
+  const max = g?.revertAfter?.slips ?? SLIPS, per = g?.revertAfter?.per ?? 1000;
+  const slips = g?.slips ?? 0;
+  const skips = (g?.skipRules ?? []).map((id) => S.rules?.find((r) => r.id === id)).filter(Boolean);
+  const ptr = g?.below?.pointer, under = g?.below?.value;
+  return `<div class="case-h"><span class="tag accent">${fresh ? 'Just put on Autopilot' : 'On Autopilot'}</span><small>${since ? `since ${safe(when(since))}` : 'from its grant'}</small></div>
+    ${card(f, 'none')}
+    <div class="bigstat"><b class="num ${slips ? 'o' : ''}">${fmtN(slips)}<span style="font-size:24px;color:var(--ink3)"> of ${fmtN(max)}</span></b><div><small>slips in its last ${fmtN(per)} actions</small><span class="delta ${slips ? 'o' : ''}">${slips ? `${fmtN(max - slips)} more and Lumni takes it back` : 'Clean since the grant'}</span></div></div>
+    <div class="watchbar"><i style="width:${Math.max(2, (slips / Math.max(1, max)) * 100)}%;${slips ? 'background:var(--orange)' : ''}"></i></div>
+    <h4>What it skips</h4>
+    <p class="changes">${skips.length ? names(skips.map(ruleName)) : `${fmtN(g?.skipRules?.length ?? 0)} approval ${plural(g?.skipRules?.length ?? 0, 'rule', 'rules')}`} ${plural(skips.length || g?.skipRules?.length || 0, 'doesn’t', 'don’t')} ask a person about its <em>${safe(g?.operation ?? f.op ?? '')}</em>${under != null ? ` under <em>${amountLabel(under, ptr)}</em>` : ''}. Bigger ones still ask.</p>
+    ${evidence(f)}
+    <div class="guard">${shield('var(--accent)')}<span>If it slips ${fmtN(max)} times in ${fmtN(per)} actions, Lumni takes Autopilot back on its own. A slip is an old read or an action that didn’t happen.</span></div>
+    <div class="acts"><button class="btn orange" id="takeback" ${S.old ? `disabled title="${OLD_API}"` : ''}>${chev('down', 11)} Take it back</button></div>`;
+}
+
+function realCase(f) {
+  const lvl = levelOf(f);
+  const bar = BAR_STREAK.real;
+  const medStreak = median(S.fleet.map((x) => x.streak));
+  const share = sharing(f);
+  const shareNote = share.length ? ` This is set for <em>${safe(f.op)}</em>, so ${share.map((o) => safe(o.name)).join(' and ')} ${plural(share.length, 'moves', 'move')} with it.` : '';
+  const link = lastStep(f);
+  const noOp = f.op ? '' : `disabled title="Lumni hasn’t seen a main operation for it yet"`;
+  const down = lvl > 0 && lvl < 3 ? `<button class="btn" id="down" ${noOp} title="Move down to ${S.w.LEVELS[lvl - 1]}">${chev('down', 11)} ${lvl === 2 ? 'Move down' : `Move down to ${S.w.LEVELS[lvl - 1]}`}</button>` : '';
+  const moved = S.done[f.id];
+
+  if (lvl === 3) return pilotCase(f, moved === 'promoted');
+
+  if (moved === 'promoted' || moved === 'demoted') {
+    const up = moved === 'promoted';
+    const pilotBack = MOVED[f.id]?.pilot;
+    return `<div class="case-h"><span class="tag ${up ? 'accent' : 'down'}">${pilotBack ? 'Autopilot taken back' : up ? 'Just moved up' : 'Just moved down'}</span><small>by you, on this page</small></div>
+      ${card(f, 'none')}
+      <h4>What changed</h4>
+      <p class="changes">${pilotBack ? `Its approval rules on <em>${safe(f.op)}</em> ask a person again, at every amount. Everything else stays on Enforce.` : `${realChange(f, lvl)}${shareNote}`}</p>
+      ${evidence(f)}
+      <div class="guard">${shield(up ? 'var(--accent)' : 'var(--orange)')}<span>Lumni never moves Watch, Warn or Enforce on its own. You can move it back at any time.</span></div>
+      <div class="done-note ${up ? '' : 'o'}">Now on ${S.w.LEVELS[lvl]} for ${safe(f.op)}.${pilotBack ? '' : '<button id="undo">Undo</button>'}</div>`;
+  }
+
+  if (lvl === 2) {
+    const apex = isApex(f);
+    const offer = pilotOffer(f, apex);
+    const [dt, dc] = streakDelta(f, medStreak);
+    return `<div class="case-h"><span class="tag ${apex ? 'accent' : ''}">${apex ? 'The case for Autopilot' : 'On Enforce'}</span><small>${moved === 'notyet' ? 'you said not yet' : 'from its record today'}</small></div>
+      ${card(f, apex ? 'up' : 'none')}
+      <div class="bigstat"><b class="num">${fmtN(f.streak)}</b><div><small>clean actions in a row</small><span class="delta ${dc}">${dt}</span></div></div>
+      ${evidence(f)}
+      ${offer.html}
+      <div class="acts pilot-acts">${offer.btn}${down}</div>`;
+  }
+
+  if (isUp(f)) {
+    const slips = f.demote;
+    const medSlip = median(S.fleet.map((x) => x.r.stale + x.r.bad));
+    const hot = f.r.stale >= f.r.bad ? 'stale' : 'bad';
+    const big = slips
+      ? `<div class="bigstat"><b class="num o">${f1(f.r.stale + f.r.bad)}</b><div><small>old reads and misses in every 1,000 actions</small><span class="delta o">${medSlip ? `${f1((f.r.stale + f.r.bad) / medSlip)}x the fleet’s median` : 'the fleet’s median is 0'}</span></div></div>`
+      : `<div class="bigstat"><b class="num">${fmtN(f.streak)}</b><div><small>clean actions in a row</small><span class="delta ${streakDelta(f, medStreak)[1]}">${streakDelta(f, medStreak)[0]}</span></div></div>`;
+    return `<div class="case-h"><span class="tag ${slips ? 'down' : 'accent'}">${slips ? 'It slips more than its peers' : 'The case for moving up'}</span><small>from its record today</small></div>
+      ${card(f, 'up')}
+      ${big}
+      ${evidence(f, slips ? hot : null)}
+      <h4>What changes at ${S.w.LEVELS[lvl + 1]}</h4>
+      <p class="changes">${f.op ? `${realChange(f, lvl + 1)}${shareNote}` : 'Lumni hasn’t seen a main operation for it yet, so there’s nothing to move. Levels are set per operation.'}</p>
+      <div class="guard">${shield(slips ? 'var(--orange)' : 'var(--accent)')}<span>${slips ? `On ${S.w.LEVELS[lvl]}, Lumni lets its slips through. One level up, it ${lvl + 1 === 2 ? 'steps in on them for real' : 'flags each one'}.` : `${fmtN(f.streak)} clean actions in a row while Lumni ${lvl ? 'only flagged' : 'only watched'}, so stepping in shouldn’t get in its way.`}</span></div>
+      <div class="acts"><button class="btn accent" id="go" ${noOp}>${chev('up', 11)} Move up to ${S.w.LEVELS[lvl + 1]}</button><button class="btn" id="nope">Not yet</button></div>`;
+  }
+
+  const need = Math.max(0, bar - f.streak);
+  const [dt, dc] = streakDelta(f, medStreak);
+  return `<div class="case-h"><span class="tag">Where it stands</span><small>${moved === 'notyet' ? 'you said not yet' : 'from its record today'}</small></div>
+    ${card(f, 'none')}
+    <div class="bigstat"><b class="num">${fmtN(f.streak)}</b><div><small>clean actions in a row</small><span class="delta ${dc}">${dt}</span></div></div>
+    ${evidence(f)}
+    <h4>To reach ${S.w.LEVELS[lvl + 1]}</h4>
+    <p class="changes">${moved === 'notyet' ? 'You said not yet. Nothing changed.' : `It needs <em>${fmtN(need)} more</em> clean actions in a row.`}${shareNote}</p>
+    <div class="guard">${shield('var(--ink2)')}<span>Lumni never moves Watch, Warn or Enforce on its own. You decide, from its record.</span></div>
+    <div class="acts"><button class="btn" id="go" ${noOp}>${chev('up', 11)} Move up to ${S.w.LEVELS[lvl + 1]}</button>${down}${link ? `<a class="btn" href="${link}">See its last step-in</a>` : ''}</div>`;
+}
+
+function wireReal(f) {
+  $('#go')?.addEventListener('click', () => moveReal(f.id, +1));
+  $('#down')?.addEventListener('click', () => moveReal(f.id, -1));
+  $('#nope')?.addEventListener('click', () => notYet(f.id));
+  $('#undo')?.addEventListener('click', () => undoReal(f.id));
+  $('#pilot')?.addEventListener('click', () => grantPilot(f.id));
+  $('#takeback')?.addEventListener('click', () => takeBack(f.id));
+  $('#below')?.addEventListener('input', (e) => {
+    const v = Number(e.target.value);
+    if (v > 0) S.below[f.id] = v;
+    const p = pilotPlan(f);
+    const em = $$('#case .changes em')[1];
+    if (em && p.state === 'ok') em.textContent = amountLabel(p.value, p.pointer);
+    $('#pilot').disabled = !(v > 0);
+  });
+}
+
+/** Locks the case's buttons while a write is out, and labels the one pressed. */
+function pending(sel, text) {
+  $$('#case button').forEach((b) => (b.disabled = true));
+  const b = $(sel);
+  if (b) b.textContent = text;
+}
+
+/** Real: the override for this operation now, so an undo can go back to the default. */
+async function overrideOf(op) {
+  try {
+    const r = await Shell.api.get('/v1/enforcement');
+    return (r?.items ?? []).find((e) => e.operation === op && (e.rule ?? '*') === '*')?.mode ?? null;
+  } catch { return undefined; }
+}
+
+/** A real move: change how strictly its main operation is enforced, then climb. */
+async function moveReal(id, dir) {
+  const f = S.fleet.find((x) => x.id === id);
+  const from = levelOf(f), to = from + dir;
+  if (from === 3 && dir < 0) return takeBack(id);
+  if (to === 3) return grantPilot(id);
+  if (to < 0 || to > 2 || !f.op) return;
+  const my = S;
+  pending(dir > 0 ? '#go' : '#down', 'Moving…');
+  const had = await overrideOf(f.op);
+  if (S !== my) return;
+  const res = await Shell.write('PUT', '/v1/config/enforcement', { operation: f.op, rule: '*', mode: MODES[to] },
+    { ok: `${f.name} is on ${S.w.LEVELS[to]} for ${f.op}.`, reload: false });
+  if (S !== my) return;
+  if (!res) { renderCase(); return; }
+  // Undo goes back to exactly what was there: the same override, or none.
+  MOVED[id] = MOVED[id]?.to === from ? { ...MOVED[id], to } : { from, to, had };
+  for (const o of sharing(f)) S.levels[o.id] = to;
+  move(id, dir);
+  later(() => Shell.refresh(), reduce() ? 300 : 2400);
+}
+
+async function undoReal(id) {
+  const f = S.fleet.find((x) => x.id === id);
+  const m = MOVED[id];
+  if (!m) return;
+  const my = S;
+  pending('#undo', 'Undoing…');
+  const back = m.from, dir = back > levelOf(f) ? +1 : -1;
+  // It was on the workspace default before you moved it: clear the override rather than pin a mode.
+  const res = m.had === null && !S.old
+    ? await Shell.write('DELETE', '/v1/config/enforcement', { operation: f.op, rule: '*' }, { ok: `${f.name} is back on the workspace default for ${f.op}.`, reload: false })
+    : await Shell.write('PUT', '/v1/config/enforcement', { operation: f.op, rule: '*', mode: MODES[back] }, { ok: `${f.name} is back on ${S.w.LEVELS[back]} for ${f.op}.`, reload: false });
+  if (S !== my) return;
+  if (!res) { renderCase(); return; }
+  delete MOVED[id];
+  for (const o of sharing(f)) S.levels[o.id] = back;
+  move(id, back - levelOf(f));
+  delete S.done[id];
+  renderCase();
+  later(() => Shell.refresh(), reduce() ? 300 : 2400);
+}
+
+/** Autopilot: skip its approval rules on its main operation, under the amount you chose. */
+async function grantPilot(id) {
+  const f = S.fleet.find((x) => x.id === id);
+  const p = pilotPlan(f);
+  if (p.state !== 'ok' || !(p.value > 0)) return;
+  const my = S;
+  pending('#pilot', 'Promoting…');
+  const body = { operation: f.op, skip_rules: p.rules.map((r) => r.id), below: { pointer: p.pointer, value: p.value }, revert_after: { slips: SLIPS, per: 1000 } };
+  const res = await Shell.write('PUT', `/v1/config/autopilot/${encodeURIComponent(f.id)}`, body,
+    { ok: `${f.name} is on Autopilot under ${amountLabel(p.value, p.pointer)}. Lumni is watching for slips.`, reload: false });
+  if (S !== my) return;
+  if (!res) { renderCase(); return; }
+  S.grants[id] = { since: res.since ?? new Date().toISOString(), slips: res.slips ?? 0, operation: f.op, skipRules: body.skip_rules, below: body.below, revertAfter: body.revert_after };
+  MOVED[id] = { from: 2, to: 3, pilot: true };
+  move(id, +1);
+  later(() => Shell.refresh(), reduce() ? 300 : 2600);
+}
+
+async function takeBack(id) {
+  const f = S.fleet.find((x) => x.id === id);
+  const my = S;
+  pending('#takeback', 'Taking it back…');
+  const res = await Shell.write('DELETE', `/v1/config/autopilot/${encodeURIComponent(f.id)}`, undefined,
+    { ok: `Autopilot taken back from ${f.name}. Its approval rules ask a person again.`, reload: false });
+  if (S !== my) return;
+  if (!res) { renderCase(); return; }
+  delete S.grants[id];
+  MOVED[id] = { from: 3, to: 2, pilot: true };
+  move(id, -1);
+  later(() => Shell.refresh(), reduce() ? 300 : 2600);
+}
+// ─── moves ──────────────────────────────────────────
+
+function toast(text, down, ms = 5200) {
+  const t = $('#toast');
+  t.className = 'toast' + (down ? ' down' : '');
+  t.innerHTML = `<span class="dot"></span>${text}<button>Undo</button>`;
+  t.querySelector('button').onclick = () => undo(S.last);
+  requestAnimationFrame(() => t.classList.add('on'));
+  clearTimeout(S.toastT);
+  if (ms) S.toastT = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+function move(id, dir, instant) {
+  const f = S.fleet.find((x) => x.id === id);
+  const from = { ...S.pos[id] };
+  S.levels[id] += dir;
+  S.done[id] = dir > 0 ? 'promoted' : 'demoted';
+  S.last = id;
+  const pos = layout();
+  const to = pos[id];
+  const up = dir > 0;
+  const y1 = from.y, y2 = to.y, my = (y1 + y2) / 2;
+  const d = `M${from.x},${y1} C${from.x},${my} ${to.x},${my} ${to.x},${y2}`;
+  S.trails.push({ d, up });
+  const el = tokEl(id);
+  el.dataset.moving = '1';
+  renderTokens(false);
+  // The climb: the token rides its route, and the trail draws behind it.
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const live = document.createElementNS(svgNS, 'path');
+  live.setAttribute('d', d); live.setAttribute('class', 'trail');
+  live.setAttribute('stroke', up ? 'var(--accent)' : 'var(--orange)'); live.setAttribute('stroke-width', '4');
+  $('#paths').appendChild(live);
+  const len = live.getTotalLength();
+  live.style.strokeDasharray = `${len} ${len}`;
+  const ms = instant || reduce() ? 0 : 1300;
+  const t0 = performance.now();
+  el.style.transition = 'opacity .35s';
+  const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+  const after = () => {
+    $('#h1').innerHTML = headline();
+    renderLaneCounts();
+    renderTime(false);
+    if (!S.real) toast(up ? `${f.name} is on Autopilot. Lumni is watching for slips.` : `${f.name} is on ${S.w.LEVELS[S.levels[id]]}. Its updates are recorded, not sent.`, !up, instant ? 0 : 5200);
+  };
+  const step = (t) => {
+    const p = ms ? Math.min(1, (t - t0) / ms) : 1;
+    const e = ease(p);
+    const pt = live.getPointAtLength(len * e);
+    el.style.transform = `translate(${pt.x}px, ${pt.y}px)`;
+    live.style.strokeDashoffset = String(len * (1 - e));
+    if (p < 1) return requestAnimationFrame(step);
+    el.style.transition = '';
+    delete el.dataset.moving;
+    const b = document.createElement('div');
+    b.className = 'burst' + (up ? '' : ' down');
+    b.style.left = to.x - 22 + 'px'; b.style.top = to.y - 22 + 'px';
+    $('#ghosts').appendChild(b);
+    live.style.transition = 'opacity 1.2s var(--ease)';
+    later(() => { live.style.opacity = '0'; }, 500);
+    after();
+  };
+  requestAnimationFrame(step);
+  renderCase();
+}
+
+function notYet(id) {
+  const f = S.fleet.find((x) => x.id === id);
+  S.done[id] = 'notyet'; S.last = id;
+  renderTokens(false); renderCase();
+  $('#h1').innerHTML = headline();
+  if (S.real) return Shell.toast(`Not yet for ${f.name}. Nothing changed.`);
+  toast(`Not yet for ${f.name}. Lumni will make the case again after ${fmtN(BAR_STREAK[S.w.key] * 2)} more clean actions.`, f.demote);
+}
+
+function undo(id) {
+  if (!id || !S.done[id]) return;
+  const f = S.fleet.find((x) => x.id === id);
+  if (S.done[id] !== 'notyet') { S.levels[id] = f.level; S.trails.pop(); }
+  delete S.done[id];
+  $('#toast').classList.remove('on');
+  renderTokens(false); renderCase(); renderLaneCounts(); renderTime(false);
+  $('#h1').innerHTML = headline();
+}
+
+function renderLaneCounts() {
+  for (const lvl of [0, 1, 2, 3]) {
+    const el = $(`#lanesL [data-l="${lvl}"] .cnt`);
+    if (el) el.textContent = laneCount(lvl);
+  }
+  const empty = $('#pilotEmpty');
+  if (empty && !S.old) empty.style.display = S.fleet.some((f) => levelOf(f) === 3) ? 'none' : '';
+}
+
+// ─── over time ──────────────────────────────────────
+
+function renderTime(first) {
+  const el = $('#time');
+  if (S.real) return realTime(el, first);
+  const n = S.fleet.reduce((s, f) => s + f.n, 0);
+  const avgOf = (lv) => S.fleet.reduce((s, f) => s + lv[f.id] * f.n, 0) / n;
+  const freeOf = (lv) => S.fleet.reduce((s, f) => s + (lv[f.id] >= 2 ? f.n : 0), 0) / n;
+  // Replay the month: each AI starts where it was before its one change.
+  const evs = HISTORY;
+  const start = Object.fromEntries(S.fleet.map((f) => [f.id, f.level]));
+  for (const e of evs) start[e.id] = e.before;
+  const series = [];
+  const cur = { ...start };
+  for (let d = 0; d <= 30; d++) {
+    for (const e of evs) if (e.d === d) cur[e.id] = e.to;
+    series.push(avgOf(cur));
+  }
+  const today = avgOf(S.levels);
+  const nowFree = freeOf(S.levels), thenFree = freeOf(start);
+  const W = 912, H = 200, L = 70, top = 34, bot = 172;
+  const lo = 1, hi = 2.12;
+  const X = (d) => L + (d / 31) * (W - L - 8);
+  const Y = (v) => bot - ((v - lo) / (hi - lo)) * (bot - top);
+  let path = `M${X(0)},${Y(series[0])}`;
+  for (let d = 1; d <= 30; d++) path += ` H${X(d)} V${Y(series[d])}`;
+  path += ` H${X(30.6)}`;
+  const moved = today !== series[30];
+  if (moved) path += ` V${Y(today)} H${X(31)}`;
+  const endY = Y(moved ? today : series[30]);
+  const name = (id) => S.fleet.find((f) => f.id === id).name;
+  const marks = evs.map((e, i) => {
+    const up = e.to > e.before;
+    const x = X(e.d), y = Y(series[e.d]);
+    const lbl = up ? (i % 2 === 0 ? -12 : -28) : 22;
+    return `<circle cx="${x}" cy="${y}" r="4.5" fill="#fff" stroke="${up ? 'var(--accent)' : 'var(--orange)'}" stroke-width="2"/>
+      <text class="ev-lbl" x="${x}" y="${y + lbl}" text-anchor="middle" fill="${up ? 'var(--ink2)' : '#b45f0b'}">${name(e.id)}${up ? '' : ', down'}</text>`;
+  }).join('');
+  el.innerHTML = `<div><h3>Autonomy over time</h3><p>Your fleet’s average level, weighted by actions, the last 30 days</p>
+    <svg viewBox="0 0 ${W} ${H}" style="height:${H}px">
+      <defs><linearGradient id="ag" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5b4bf5" stop-opacity=".16"/><stop offset="1" stop-color="#5b4bf5" stop-opacity="0"/></linearGradient></defs>
+      ${[[2, 'Enforce'], [1.5, 'Halfway'], [1, 'Warn']].map(([v, t]) => `<line x1="${L}" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" ${v === 1.5 ? 'stroke-dasharray="2 4"' : ''}/><text x="0" y="${Y(v) + 4}" font-family="var(--sans)" font-size="12" font-weight="600" fill="var(--ink3)">${t}</text>`).join('')}
+      <path d="${path} V${bot} H${L}Z" fill="url(#ag)"/>
+      <path class="${first ? 'draw' : ''}" style="--len:2400" d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linejoin="round"/>
+      ${marks}
+      <circle cx="${X(31)}" cy="${endY}" r="12" fill="var(--accent)" opacity=".15"/><circle cx="${X(31)}" cy="${endY}" r="5.5" fill="var(--accent)"/>
+      ${moved ? `<text class="ev-lbl" x="${X(31) - 12}" y="${endY - 14}" text-anchor="end" fill="var(--accent)">${S.done.ledger ? 'Ledger booker, just now' : 'Just now'}</text>` : ''}
+      ${[0, 10, 20].map((d) => `<text x="${X(d)}" y="${H - 2}" font-family="var(--sans)" font-size="11.5" font-weight="600" fill="var(--ink3)">${30 - d} days ago</text>`).join('')}
+      <text x="${X(31)}" y="${H - 2}" text-anchor="end" font-family="var(--sans)" font-size="11.5" font-weight="650" fill="var(--ink)">Today</text>
+    </svg></div>
+    <div class="side">
+      <div class="big"><span class="num" id="freeN">${Math.round(nowFree * 100)}%</span><span class="delta">+${Math.round((nowFree - thenFree) * 100)} pts</span></div>
+      <div class="lab">of actions run without asking anyone</div>
+      <p>Your fleet runs <b>${Math.round(nowFree * 100)}%</b> of actions without asking anyone, up from <b>${Math.round(thenFree * 100)}%</b> a month ago.</p>
+      <div class="pair"><div><small>Climbed</small><b>${evs.filter((e) => e.to > e.before).length + Object.values(S.done).filter((v) => v === 'promoted').length}</b></div>
+        <div><small>Stepped down</small><b>${evs.filter((e) => e.to < e.before).length + Object.values(S.done).filter((v) => v === 'demoted').length}</b></div>
+        <div><small>Moved back on its own</small><b>0</b></div></div>
+    </div>`;
+  if (first) countUp($('#freeN'), Math.round(nowFree * 100), { suffix: '%', ms: 1200 });
+}
+
+/** The audit log as level changes, oldest first: one per change, with the AIs it moved. */
+function histChanges() {
+  const dflt = LEVEL_OF_MODE[S.w.mode] ?? 0;
+  const lv = (m) => LEVEL_OF_MODE[m] ?? dflt;
+  const out = [];
+  for (const e of S.hist ?? []) {
+    const at = Date.parse(e.at);
+    if (!(at >= S.w.now - 30 * DAY_MS)) continue;
+    const t = e.target ?? {};
+    let ais, before, after, op;
+    if (e.type === 'enforcement.set' || e.type === 'enforcement.cleared') {
+      if ((t.rule ?? '*') !== '*') continue;
+      op = t.operation;
+      ais = S.fleet.filter((f) => f.op && f.op === op);
+      before = e.before?.mode ? lv(e.before.mode) : dflt;
+      after = e.type === 'enforcement.cleared' ? dflt : lv(e.after?.mode);
+    } else if (e.type === 'autopilot.granted' || e.type === 'autopilot.reverted') {
+      op = t.operation ?? e.after?.operation ?? e.before?.operation;
+      ais = S.fleet.filter((f) => f.id === t.actor_id);
+      const wasOn = !!e.before && e.before.active !== false;
+      before = e.type === 'autopilot.granted' ? (wasOn ? 3 : 2) : 3;
+      after = e.type === 'autopilot.granted' ? 3 : 2;
+      if (!ais.length && t.actor_id) ais = [{ id: t.actor_id, name: t.actor_id, ghost: true }];
+    } else continue;
+    if (before === after) continue;
+    const slips = e.after?.revert_after?.slips ?? e.before?.revert_after?.slips ?? SLIPS;
+    const per = e.after?.revert_after?.per ?? e.before?.revert_after?.per ?? 1000;
+    out.push({ at, type: e.type, by: e.by, op, ais, before, after, system: e.by === 'system', slips, per });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+const whoMoved = (c) => (c.ais.length ? names(c.ais.map((f) => `<b>${safe(f.name)}</b>`)) : `<b class="op">${safe(c.op ?? 'An operation')}</b>`);
+function changeText(c) {
+  const by = c.system ? 'by Lumni, on its own' : `by ${safe(c.by ?? 'someone')}`;
+  if (c.after === 3) return `${whoMoved(c)} ${plural(c.ais.length, 'was', 'were')} put on Autopilot ${by}`;
+  if (c.before === 3) return c.system ? `${whoMoved(c)} lost Autopilot after ${fmtN(c.slips)} slips in ${fmtN(c.per)}` : `${whoMoved(c)} came off Autopilot ${by}`;
+  return `${whoMoved(c)} moved ${c.after > c.before ? 'up' : 'down'} to ${S.w.LEVELS[c.after]} ${by}`;
+}
+
+/** Real: each AI's level over the last 30 days, read back from Lumni's audit log. */
+function realTime(el, first) {
+  if (S.hist === undefined) {
+    el.innerHTML = `<div><h3>Autonomy over time</h3><p>Reading the last 30 days of level changes…</p><svg viewBox="0 0 912 190" style="height:190px"></svg></div><div class="side"></div>`;
+    return;
+  }
+  if (S.hist === null) return todayOnly(el, first);
+  const n = S.fleet.reduce((s, f) => s + f.n, 0);
+  const share = S.fleet.reduce((s, f) => s + (levelOf(f) >= 2 ? f.n : 0), 0) / Math.max(1, n);
+  const changes = histChanges();
+  const t1 = S.w.now, t0 = t1 - 30 * DAY_MS;
+  const W = 912, H = 214, L = 84, R0 = 784;
+  const X = (t) => L + ((t - t0) / (t1 - t0)) * (R0 - L);
+  const Y = (l) => 20 + (3 - l) * 52;
+  const lanes = [[3, 'Autopilot'], [2, 'Enforce'], [1, 'Warn'], [0, 'Watch']];
+  // Lines: the AIs that moved in front, each a step line; the rest held their level.
+  const moved = S.fleet.filter((f) => changes.some((c) => c.ais.includes(f)));
+  const held = S.fleet.filter((f) => !moved.includes(f));
+  const off = (i, k) => (i - (k - 1) / 2) * 3;
+  const line = (f, i, k, hot) => {
+    const mine = changes.filter((c) => c.ais.includes(f));
+    let lvl = levelOf(f);
+    for (const c of [...mine].reverse()) lvl = c.before;
+    const o = off(i, k);
+    let d = `M${L},${(Y(lvl) + o).toFixed(1)}`;
+    for (const c of mine) { d += ` H${X(c.at).toFixed(1)} V${(Y(c.after) + o).toFixed(1)}`; lvl = c.after; }
+    d += ` H${R0}`;
+    if (lvl !== levelOf(f)) d += ` V${(Y(levelOf(f)) + o).toFixed(1)}`;
+    return `<path class="${hot && first ? 'draw' : ''}" style="--len:1800" d="${d}" fill="none" stroke="${hot ? 'var(--accent)' : '#d6d8e1'}" stroke-width="${hot ? 2.4 : 1.6}" stroke-linejoin="round" opacity="${hot ? 0.9 : 1}"/>`;
+  };
+  const lines = held.map((f, i) => line(f, i, held.length, false)).join('') + moved.map((f, i) => line(f, i, moved.length, true)).join('');
+  const dots = changes.map((c) => {
+    const x = X(c.at), y = Y(c.after);
+    const up = c.after > c.before;
+    return (c.system ? `<circle cx="${x}" cy="${y}" r="10" fill="var(--orange)" opacity=".18"/>` : '') +
+      `<circle cx="${x}" cy="${y}" r="${c.system ? 5.5 : 4.5}" fill="${c.system ? 'var(--orange)' : '#fff'}" stroke="${up ? 'var(--accent)' : 'var(--orange)'}" stroke-width="2"/>`;
+  }).join('');
+  // One label per cluster of changes close in time, so a busy morning stays readable.
+  const clusters = [];
+  for (const c of changes) {
+    const x = X(c.at), last = clusters.at(-1);
+    if (last && x - last.x1 < 40) { last.list.push(c); last.x1 = x; } else clusters.push({ x0: x, x1: x, list: [c] });
+  }
+  const labels = clusters.map((k) => {
+    const who = [...new Set(k.list.flatMap((c) => (c.ais.length ? c.ais.map((f) => f.name) : [c.op ?? ''])))];
+    const top = Math.min(...k.list.map((c) => Y(c.after)));
+    const x = (k.x0 + k.x1) / 2, right = x > R0 - 70;
+    const txt = k.list.length === 1 || who.length === 1 ? `${who[0]}${k.list.length > 1 ? `, ${k.list.length} changes` : ''}` : `${k.list.length} changes`;
+    const sys = k.list.some((c) => c.system);
+    return `<text class="ev-lbl" x="${right ? x - 12 : x}" y="${top - 12}" text-anchor="${right ? 'end' : 'middle'}" fill="${sys ? '#b45f0b' : 'var(--ink2)'}">${safe(txt)}</text>`;
+  }).join('');
+  const marks = dots + labels;
+  const ends = lanes.map(([l]) => {
+    const on = S.fleet.filter((f) => levelOf(f) === l);
+    const shown = on.slice(0, 4);
+    return shown.map((f, j) => `<g><rect x="${R0 + 14 + j * 26}" y="${Y(l) - 11}" width="22" height="22" rx="6" fill="${l === 3 ? 'var(--accent)' : S.done[f.id] ? 'var(--accent)' : 'var(--ink)'}"/><text x="${R0 + 25 + j * 26}" y="${Y(l) + 4}" text-anchor="middle" font-family="var(--sans)" font-size="9.5" font-weight="750" fill="#fff">${avatar(f)}</text></g>`).join('') +
+      (on.length > 4 ? `<text x="${W}" y="${Y(l) + 4}" text-anchor="end" font-family="var(--sans)" font-size="11.5" font-weight="650" fill="var(--ink2)">+${on.length - 4}</text>` : '');
+  }).join('');
+  const reverts = changes.filter((c) => c.system && c.before === 3);
+  const banner = reverts.length ? `<div class="revert">${shield('var(--orange)')}<span>${reverts.slice(-2).reverse().map((c) => `<b>Lumni took Autopilot back from ${names(c.ais.map((f) => safe(f.name)))}</b> on its own, ${safe(when(c.at))}, after ${fmtN(c.slips)} slips in ${fmtN(c.per)}.`).join(' ')}${reverts.length > 2 ? ` And ${reverts.length - 2} more.` : ''} It runs on Enforce again, and its approval rules ask a person.</span></div>` : '';
+  const rows = [...changes].reverse();
+  const list = rows.length
+    ? rows.slice(0, 5).map((c) => `<div class="hr ${c.system ? 'sys' : ''}"><i class="${c.after > c.before ? 'up' : 'down'}"></i><span>${changeText(c)}</span><time>${safe(when(c.at))}</time></div>`).join('') + (rows.length > 5 ? `<div class="hr more">And ${fmtN(rows.length - 5)} more in the last 30 days</div>` : '')
+    : `<div class="hr none">No AI changed level in the last 30 days. Each one has held where it is.</div>`;
+  el.innerHTML = `<div><h3>Autonomy over time</h3><p>Each AI’s level, the last 30 days, from Lumni’s own record of every change</p>
+    ${banner}
+    <svg viewBox="0 0 ${W} ${H}" style="height:${H}px">
+      ${lanes.map(([l, t]) => `<line x1="${L}" x2="${R0}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--line)" ${l === 3 ? 'stroke-dasharray="2 4"' : ''}/><text x="0" y="${Y(l) + 4}" font-family="var(--sans)" font-size="12" font-weight="600" fill="${l === 3 ? 'var(--accent)' : 'var(--ink3)'}">${t}</text>`).join('')}
+      ${lines}${marks}${ends}
+      ${[30, 20, 10].map((d) => `<text x="${X(t1 - d * DAY_MS)}" y="${H - 2}" font-family="var(--sans)" font-size="11.5" font-weight="600" fill="var(--ink3)">${d} days ago</text>`).join('')}
+      <text x="${R0}" y="${H - 2}" text-anchor="end" font-family="var(--sans)" font-size="11.5" font-weight="650" fill="var(--ink)">Today, ${safe(S.w.timeLabel)}</text>
+    </svg></div>
+    <div class="side">
+      <div class="big"><span class="num" id="freeN">${Math.round(share * 100)}%</span></div>
+      <div class="lab">of today’s actions came from AIs on Enforce or Autopilot</div>
+      <div class="hist"><h5>Changes, newest first <span>${fmtN(changes.length)} in 30 days</span></h5>${list}</div>
+    </div>`;
+  if (first) countUp($('#freeN'), Math.round(share * 100), { suffix: '%', ms: 1200 });
+}
+
+/** Real, when the history can't be read: where each AI is now. */
+function todayOnly(el, first) {
+  const n = S.fleet.reduce((s, f) => s + f.n, 0);
+  const onEnforce = S.fleet.reduce((s, f) => s + (levelOf(f) === 2 ? f.n : 0), 0) / Math.max(1, n);
+  const W = 912, L = 80, R = 900;
+  const Y = (l) => 24 + (2 - l) * 56;
+  const at = [2, 1, 0].map((l) => S.fleet.filter((f) => (l === 2 ? levelOf(f) >= 2 : levelOf(f) === l)));
+  const dots = at.map((list, i) => {
+    const l = 2 - i;
+    return list.map((f, j) => {
+      const x = R - j * 30;
+      return `<g><rect x="${x - 12}" y="${Y(l) - 12}" width="24" height="24" rx="7" fill="${S.done[f.id] ? 'var(--accent)' : 'var(--ink)'}"/><text x="${x}" y="${Y(l) + 4}" text-anchor="middle" font-family="var(--sans)" font-size="10" font-weight="750" fill="#fff">${avatar(f)}</text></g>`;
+    }).join('') + (list.length ? '' : `<text x="${R}" y="${Y(l) + 4}" text-anchor="end" font-family="var(--sans)" font-size="12" font-weight="600" fill="var(--ink3)">None today</text>`);
+  }).join('');
+  const movedHere = Object.keys(MOVED).length;
+  el.innerHTML = `<div><h3>Autonomy over time</h3><p>${S.old ? 'Past levels need a newer Lumni API, so this shows where each AI is now.' : 'Lumni’s record of level changes couldn’t be read just now, so this shows where each AI is now.'}</p>
+    <svg viewBox="0 0 ${W} 178" style="height:178px">
+      ${[[2, 'Enforce'], [1, 'Warn'], [0, 'Watch']].map(([l, t]) => `<line x1="${L}" x2="${W}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--line)"/><text x="0" y="${Y(l) + 4}" font-family="var(--sans)" font-size="12" font-weight="600" fill="var(--ink3)">${t}</text>`).join('')}
+      ${dots}
+      <text x="${R + 12}" y="176" text-anchor="end" font-family="var(--sans)" font-size="11.5" font-weight="650" fill="var(--ink)">Today, ${safe(S.w.timeLabel)}</text>
+    </svg></div>
+    <div class="side">
+      <div class="big"><span class="num" id="freeN">${Math.round(onEnforce * 100)}%</span></div>
+      <div class="lab">of today’s actions came from AIs on Enforce</div>
+      <p>Those are the ones Lumni steps in on for real. The rest it only ${S.fleet.some((f) => levelOf(f) === 1) ? 'flags or ' : ''}watches.</p>
+      <div class="pair"><div><small>On Enforce</small><b>${at[0].length}</b></div><div><small>Warn or Watch</small><b>${at[1].length + at[2].length}</b></div><div><small>Moved on this page</small><b>${movedHere}</b></div></div>
+    </div>`;
+  if (first) countUp($('#freeN'), Math.round(onEnforce * 100), { suffix: '%', ms: 1200 });
+}
+
+// ─── page ───────────────────────────────────────────
+
+function render(w, first) {
+  timers.forEach(clearTimeout); timers = [];
+  const real = Shell.isReal;
+  const keep = S?.sel;
+  if (!w.fleet.length) return renderEmpty(w);
+  const maxStreak = Math.max(...w.fleet.map((f) => f.streak));
+  const fleet = w.fleet.map((f) => ({ ...f, trust: trustOf(f, maxStreak), r: { repeats: per1k(f.repeats, f.n), stale: per1k(f.stale, f.n), bad: per1k(f.bad, f.n), lag: real ? f.lag ?? null : null } }));
+  const levels = Object.fromEntries(fleet.map((f) => [f.id, f.level]));
+  S = { w, real, fleet, levels, done: {}, trails: [], sel: null, old: real && w.source === 'snapshots', rules: undefined, hist: undefined, grants: {}, below: {} };
+  // A move you made here stays marked after Lumni is read again.
+  if (real) for (const [id, m] of Object.entries(MOVED)) if (levels[id] === m.to && m.to !== m.from) S.done[id] = m.to > m.from ? 'promoted' : 'demoted';
+  // Open on the one asked for, then the strongest case to move.
+  const asked = query.get('ai');
+  const cands = real
+    ? fleet.filter((f) => isUp(f) || isApex(f)).sort((a, b) => b.demote - a.demote || b.streak - a.streak)
+    : fleet.filter((f) => f.promote).sort((a, b) => per1k(a.repeats + a.stale + a.bad, a.n) - per1k(b.repeats + b.stale + b.bad, b.n) || b.streak - a.streak);
+  S.sel = [keep, first ? asked : null, cands[0]?.id, fleet[0].id].find((id) => id && fleet.some((f) => f.id === id));
+
+  $('#main').innerHTML = `
+    <section class="head ${first ? 'rise' : ''}">
+      <div><div class="eyebrow">${real ? `${safe(w.scale.org)}, ${safe(w.dayLabel)}` : `${w.scale.org}, ${w.dayLabel}`}</div>
+        <h1 id="h1" class="${real ? 'wrap1' : ''}">${headline()}</h1>
+        <p>${real ? 'Each level is how strictly Lumni enforces an AI’s main operation. Move one on its record.' : 'Autonomy is earned from evidence, never set by a feeling.'}</p></div>
+      <div class="chips">${chips()}</div>
+    </section>
+    <section class="grid">
+      <article class="card ladder ${first ? 'rise' : ''}" id="ladder" style="animation-delay:.08s">${ladderHTML()}</article>
+      <aside class="card case ${first ? 'rise' : ''}" id="case" style="animation-delay:.16s"></aside>
+    </section>
+    <section class="card time ${first ? 'rise' : ''}" id="time" style="animation-delay:.24s"></section>`;
+
+  renderTokens(true, first);
+  wireTokens();
+  renderCase();
+  renderTime(first);
+  if (real) readHistory(S, first);
+  if (first) shot(fleet, real);
+}
+
+/** Real: your approval rules (what Autopilot can skip) and the last 30 days of level changes. */
+async function readHistory(my, first) {
+  if (my.old) { my.rules = null; my.hist = null; renderCase(); renderTime(false); return; }
+  const from = new Date(my.w.now - 30 * DAY_MS).toISOString();
+  const [rules, hist] = await Promise.all([
+    Shell.api.get('/v1/config/policy-rules').then((r) => r?.items ?? [], () => null),
+    Shell.api.get(`/v1/audit?type=${HIST_TYPES}&from=${encodeURIComponent(from)}&limit=200`).then((r) => r?.items ?? [], () => null),
+  ]);
+  if (S !== my) return;
+  S.rules = rules; S.hist = hist;
+  renderCase();
+  renderTime(first);
+}
+
+function renderEmpty(w) {
+  S = null;
+  $('#main').innerHTML = `
+    <section class="head rise"><div><div class="eyebrow">${safe(w.scale.org)}, ${safe(w.dayLabel)}</div>
+      <h1 id="h1">No AI has acted today yet. <span class="soft">The ladder fills in as they do.</span></h1>
+      <p>Each AI lands on the level its main operation runs at, with its record beside it.</p></div></section>
+    <section class="card calm-empty rise" style="animation-delay:.08s">
+      <b>Nothing to move yet</b>
+      <p>Once your agents send actions through Lumni, each one shows up here on Watch, Warn or Enforce. Then you can move it on its record.</p>
+      <div class="row"><a class="btn" href="/flow">See today’s flow</a><a class="btn" href="/fixes">See fixes</a></div>
+    </section>`;
+}
+
+// Screenshot states. Demo: promoted, demote, demoted, notyet, hover.
+// Real: promote (move the open case up), undo (then undo it), down (move it
+// down), pilot (put an Enforce AI on Autopilot), takeback (then take it back), hover.
+function shot(fleet, real) {
+  const s = query.get('shot');
+  if (!s) return;
+  if (s === 'hover') later(() => showTip(fleet.find((f) => f.id === S.sel)), 2400);
+  if (real) {
+    if (s === 'promote') later(() => $('#go')?.click(), 2000);
+    if (s === 'down') later(() => { const f = fleet.find((x) => x.level === 2); if (f) { tokEl(f.id).click(); $('#down')?.click(); } }, 2000);
+    if (s === 'undo') { later(() => $('#go')?.click(), 2000); setTimeout(() => $('#undo')?.click(), 6500); }
+    if (s === 'pilot' || s === 'takeback') {
+      // The first AI on Enforce that an approval rule covers.
+      const pick = () => fleet.find((x) => x.level === 2 && pilotPlan(x).state === 'ok');
+      later(() => { const f = pick(); if (f) { tokEl(f.id).click(); $('#pilot')?.click(); } }, 2000);
+      // A plain timer: the page reads the workspace again in between, which drops its own timers.
+      if (s === 'takeback') setTimeout(() => $('#takeback')?.click(), 7000);
+    }
+    return;
+  }
+  if (s === 'promoted') later(() => move(S.sel, +1, false), 2600);
+  if (s === 'demote') later(() => { const d = fleet.find((f) => f.demote); if (d) tokEl(d.id).click(); }, 400);
+  if (s === 'demoted') later(() => { const d = fleet.find((f) => f.demote); if (d) { tokEl(d.id).click(); move(d.id, -1, false); } }, 2600);
+  if (s === 'notyet') later(() => { $('#nope').click(); later(() => { tokEl('dunning').click(); $('#nope').click(); }, 300); }, 2400);
+}
+
+Shell.boot({ nav: 'Autonomy', onWorld: render });
+</script>
+</body>
+</html>

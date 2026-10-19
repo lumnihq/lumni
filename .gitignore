@@ -1,0 +1,43 @@
+.DS_Store
+.env
+.idea/
+.vscode/
+/bin/
+coverage/
+dist/
+tmp/
+*.out
+*.test
+sdk/typescript/node_modules/
+sdk/typescript/dist/
+sdk/python/.venv/
+sdk/python/build/
+sdk/python/dist/
+sdk/python/**/*.egg-info/
+__pycache__/
+.pytest_cache/
+.venv/
+test-results/
+
+node_modules/
+packages/lumni/assets/
+
+# Local tooling and test output
+.mcp.json
+.frontface-test-data/
+*.db
+
+# Private or working material: kept locally, not published
+design/
+marketing/
+research/
+.claude/
+console/docs/BRIEF.md
+console/docs/builders.md
+docs/release-0.2.md
+# Leftovers of the removed UIs
+frontend/
+frontface/
+frontanti/
+!deploy/Dockerfile.test
+

@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Journey</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; }
+  .head {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    padding: 34px 40px 0;
+  }
+  .head h1 {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    max-width: 900px;
+  }
+  .head p { margin-top: 8px; font-size: 16px; color: var(--ink2); max-width: 860px; }
+  .head .controls { flex: none; white-space: nowrap; margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .swap { animation: swap 0.5s var(--ease) both; }
+  @keyframes swap { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } }
+
+  .head .btn:disabled { opacity: .4; pointer-events: none; }
+  .speed { display: flex; padding: 3px; border-radius: 10px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .speed button { height: 32px; min-width: 44px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .speed button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(10,15,28,.12); }
+
+  /* Which story to play. */
+  .storyrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 22px 40px 16px; }
+  .stories { display: flex; gap: 10px; flex: none; }
+  .finder { position: relative; flex: none; }
+  .finder input {
+    width: 300px; height: 44px; padding: 0 14px 0 38px;
+    border: 0; border-radius: 14px; background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font: 600 14px var(--sans); color: var(--ink);
+    transition: box-shadow .2s, width .35s var(--ease);
+  }
+  .finder input:focus { outline: none; width: 380px; box-shadow: inset 0 0 0 2px var(--accent), 0 8px 24px -10px rgba(91,75,245,.4); }
+  .finder svg { position: absolute; left: 13px; top: 14px; }
+  .finder kbd { position: absolute; right: 10px; top: 12px; font: 600 11px var(--sans); color: var(--ink3); padding: 2px 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line2); }
+  .finder input:focus ~ kbd { opacity: 0; }
+  .drop {
+    position: absolute; left: 0; top: 52px; z-index: 30; width: 460px;
+    padding: 10px; border-radius: 18px; background: #fff;
+    box-shadow: 0 30px 70px -20px rgba(30,20,90,.35), 0 0 0 1px rgba(13,14,20,.05);
+    opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none;
+    transition: opacity .2s, transform .25s var(--ease);
+  }
+  .drop.on { opacity: 1; transform: none; pointer-events: auto; }
+  .drop h5 { font-size: 12px; font-weight: 650; color: var(--ink3); padding: 8px 10px 6px; }
+  .hitrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border-radius: 12px; text-align: left; font-size: 13.5px; font-weight: 600; }
+  .hitrow:hover, .hitrow.sel { background: var(--accent-soft); }
+  .hitrow i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .hitrow span { flex: 1; line-height: 1.3; }
+  .hitrow span small { display: block; font-weight: 500; color: var(--ink2); font-size: 12px; }
+  .hitrow b { font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .drop .foot2 { padding: 8px 10px 4px; font-size: 12px; color: var(--ink3); border-top: 1px solid var(--line); margin-top: 6px; }
+  .drop mark { background: #fff3a8; border-radius: 3px; }
+  .story { white-space: nowrap; }
+  .story {
+    display: flex; align-items: center; gap: 10px;
+    height: 44px; padding: 0 16px 0 8px;
+    border-radius: 14px;
+    background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 14px; font-weight: 650;
+    transition: box-shadow .2s, transform .2s var(--ease);
+  }
+  .story:hover { transform: translateY(-1px); }
+  .story[aria-pressed='true'] { box-shadow: inset 0 0 0 1.5px var(--ink), var(--shadow); }
+  .story .ai { width: 28px; height: 28px; }
+  .story small { font-size: 12.5px; font-weight: 600; color: var(--ink2); margin-left: 4px; }
+  .story .k { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .k.ok { background: var(--ink); }
+  .k.stop { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-line); }
+  .k.bad { background: var(--red); }
+  .k.recheck { background: var(--orange); }
+  .k.wait { background: var(--sky); }
+
+  .mapcard { margin: 0 40px; position: relative; height: 560px; overflow: hidden; }
+  .legend {
+    flex-basis: 100%; order: 3; flex-wrap: wrap; row-gap: 6px; padding-top: 2px;
+    display: flex; gap: 18px; font-size: 12.5px; font-weight: 600; color: var(--ink2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+  .legend i.sq { width: 11px; height: 11px; border-radius: 3px; }
+
+  svg.map { position: absolute; inset: 0; width: 1360px; height: 560px; overflow: visible; }
+  .base path, .base line { fill: none; stroke: #e3e5ea; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  .lit path { fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  .ghost { fill: none; stroke: var(--ink3); stroke-width: 2.5; stroke-dasharray: 7 7; opacity: 0; transition: opacity .6s; animation: march 1s linear infinite; }
+  .ghost.on { opacity: 1; }
+  @keyframes march { to { stroke-dashoffset: -14; } }
+  .dim { opacity: .3; transition: opacity .5s; }
+
+  .bar { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
+
+  /* Stops. */
+  .node circle.c { fill: #fff; stroke: #c9cdd4; stroke-width: 2.5; transition: fill .3s, stroke .3s, r .35s var(--spring); }
+  .node circle.dot { fill: transparent; transition: fill .3s; }
+  .node circle.halo { fill: none; stroke: transparent; stroke-width: 7; opacity: .25; transition: stroke .3s; }
+  .node text { font-family: var(--sans); }
+  .node .t { font-size: 14px; font-weight: 700; fill: var(--ink); text-anchor: middle; }
+  .node .s { font-size: 12px; font-weight: 500; fill: var(--ink2); text-anchor: middle; }
+  .node[data-state='busy'] circle.c { stroke: var(--ink); }
+  .node[data-state='busy'] circle.halo { stroke: var(--ink); animation: breathe 1.1s ease-in-out infinite; }
+  .node[data-state='pass'] circle.c { stroke: var(--accent); }
+  .node[data-state='pass'] circle.dot { fill: var(--accent); }
+  .node[data-state='wait'] circle.c { stroke: var(--sky); }
+  .node[data-state='wait'] circle.dot { fill: var(--sky); }
+  .node[data-state='recheck'] circle.c { stroke: var(--orange); }
+  .node[data-state='recheck'] circle.dot { fill: var(--orange); }
+  .node[data-state='ask'] circle.c { stroke: var(--ink); }
+  .node[data-state='ask'] circle.dot { fill: var(--ink); }
+  .node[data-state='hit'] circle.c { fill: var(--accent); stroke: #fff; stroke-width: 4; r: 16; }
+  .node[data-state='hit'] circle.halo { stroke: var(--accent); stroke-width: 14; r: 22; opacity: .18; animation: breathe 1.6s ease-in-out infinite; }
+  .node[data-state='hit'] circle.dot { fill: #fff; r: 5; }
+  .node[data-state='bad'] circle.c { stroke: var(--red); fill: #fff; }
+  .node[data-state='bad'] circle.dot { fill: var(--red); }
+  .node[data-state='off'] { opacity: .3; }
+  /* Only watching, or nothing to read back: dashed and grey. */
+  .node[data-state='would'] circle.c, .node[data-state='none'] circle.c { stroke: var(--ink3); stroke-dasharray: 4 3; }
+  .node[data-state='would'] circle.dot, .node[data-state='none'] circle.dot { fill: var(--ink3); }
+  .hub[data-state='none'] circle.c { fill: var(--wash); }
+  .spoke[data-state='none'] line { stroke: var(--ink3); stroke-dasharray: 4 6; }
+  .node.up text { transform: translateY(-74px); }
+  .node[data-state='off'] .s { opacity: 0; }
+  @keyframes breathe { 50% { opacity: .05; } }
+
+  .hub circle.c { r: 36; stroke-width: 3; }
+  .hub .t { font-size: 15px; }
+  .hub[data-state='pass'] circle.c { fill: var(--accent-soft); }
+  .hub[data-state='bad'] circle.c { fill: #fff3f2; }
+
+  .spoke line { stroke: #e3e5ea; stroke-width: 3; stroke-linecap: round; transition: stroke .3s; }
+  .spoke[data-state='busy'] line { stroke: var(--ink); stroke-dasharray: 5 6; animation: march .6s linear infinite; }
+  .spoke[data-state='pass'] line { stroke: var(--accent); }
+  .spoke[data-state='bad'] line { stroke: var(--red); }
+  .spoke[data-state='off'] { opacity: .3; }
+
+  .pill rect { fill: #fff; stroke: #c9cdd4; stroke-width: 2.5; transition: stroke .3s, fill .3s; }
+  .pill circle { fill: #c9cdd4; transition: fill .3s; }
+  .pill[data-state='busy'] rect { stroke: var(--ink); }
+  .pill[data-state='busy'] circle { fill: var(--ink); animation: blink 1s infinite; }
+  .pill[data-state='busy'] circle:nth-of-type(2) { animation-delay: .15s; }
+  .pill[data-state='busy'] circle:nth-of-type(3) { animation-delay: .3s; }
+  .pill[data-state='pass'] rect { stroke: var(--accent); fill: var(--accent-soft); }
+  .pill[data-state='pass'] circle { fill: var(--accent); }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  .arc-label { font-family: var(--sans); font-size: 12.5px; font-weight: 700; fill: var(--orange); text-anchor: middle; opacity: 0; transition: opacity .4s; }
+  .arc-label.on { opacity: 1; }
+
+  /* The thing travelling. */
+  #tok { transition: opacity .25s; filter: drop-shadow(0 4px 8px rgba(10,15,28,.25)); }
+  #tok rect { fill: var(--ink); }
+  #tok text { font-family: var(--sans); font-size: 12.5px; font-weight: 700; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+  .dotk { fill: var(--ink); }
+
+  .ripple { fill: none; stroke-width: 2; animation: ripple .9s var(--ease) forwards; }
+  @keyframes ripple { from { r: 12; opacity: .7; } to { r: 44; opacity: 0; } }
+
+  /* Callouts sit over the map in the same pixels. */
+  .callout {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: var(--paper);
+    box-shadow: var(--shadow-lg);
+    font-size: 13px; font-weight: 600;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
+    animation: pop .45s var(--spring) both;
+    pointer-events: none;
+  }
+  .callout .ai, .callout .human { width: 22px; height: 22px; font-size: 9.5px; }
+  .callout.lime { background: var(--accent); color: #fff; box-shadow: 0 12px 30px -8px rgba(91,75,245,.55); }
+  .callout.ghostc { background: transparent; box-shadow: none; color: var(--ink2); border: 1.5px dashed var(--ink3); }
+  .callout.bad { background: var(--bad-bg); color: var(--bad); }
+  .callout.fresh { background: #fff4e8; color: #8a4a08; box-shadow: inset 0 0 0 1.5px #f8cf9f; transform: none; animation-name: popdown; }
+  @keyframes popdown { from { opacity: 0; transform: translateY(-8px) scale(.96); } }
+  .callout.fresh b { font-weight: 750; color: #6b3800; }
+  .callout a, .result a.same { pointer-events: auto; color: inherit; font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
+  .callout.link { pointer-events: auto; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, -80%) scale(.85); } }
+
+  .result {
+    position: absolute;
+    left: 40px; top: 486px;
+    display: flex; align-items: center; gap: 12px;
+    animation: pop2 .6s var(--spring) both;
+  }
+  .result .big { font-size: 30px; font-weight: 750; letter-spacing: -.025em; }
+  .result .chip { padding: 6px 14px; border-radius: 12px; }
+  .result .chip.lime { background: var(--accent); color: #fff; box-shadow: 0 14px 34px -10px rgba(91,75,245,.6); }
+  .result .chip.bad { background: var(--bad-bg); color: var(--bad); }
+  .result .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .result .chip.none { background: var(--wash); color: var(--ink2); box-shadow: inset 0 0 0 1.5px var(--line2); }
+  .result .chip.ink { background: var(--ink); color: #fff; }
+  .callout .human svg { display: block; }
+
+  /* Nothing to replay. */
+  .empty { display: none; }
+  .mapcard.is-empty svg.map { opacity: .16; filter: grayscale(1); }
+  .mapcard.is-empty .empty {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 480px; padding: 26px 28px; border-radius: 20px; background: var(--paper); box-shadow: var(--shadow-lg);
+  }
+  .empty b { font-size: 20px; font-weight: 700; letter-spacing: -.015em; }
+  .empty p { font-size: 14.5px; color: var(--ink2); line-height: 1.45; }
+  .empty .btn { margin-top: 6px; }
+  @keyframes pop2 { from { opacity: 0; transform: scale(.8) translateY(10px); } }
+
+  /* Narration and stages. */
+  .foot { display: flex; align-items: center; gap: 20px; padding: 18px 40px 30px; }
+  .say {
+    flex: 1;
+    display: flex; align-items: center; gap: 12px;
+    min-height: 52px;
+    padding: 0 18px 0 12px;
+    border-radius: 16px;
+    background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 15.5px; font-weight: 550;
+  }
+  .say time { margin-left: auto; font-size: 13px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+  .say .txt { display: flex; align-items: center; gap: 8px; animation: swap .4s var(--ease) both; }
+  .say .txt .ai, .say .txt .human { width: 24px; height: 24px; font-size: 10px; }
+
+  .stages { display: flex; gap: 6px; align-items: center; }
+  .stg {
+    display: flex; align-items: center; gap: 8px;
+    height: 36px; padding: 0 14px 0 6px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--line2);
+    background: var(--paper);
+    font-size: 13px; font-weight: 650; color: var(--ink3);
+    transition: all .3s;
+  }
+  .stg b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--wash); color: var(--ink3); transition: all .3s; }
+  .stg.on { color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .stg.on b { background: var(--ink); color: #fff; }
+  .stg.done { color: var(--ink); }
+  .stg.done b { background: var(--accent); color: #fff; }
+  .hint { font-size: 12.5px; color: var(--ink3); margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+
+  <section class="head">
+    <div id="headtext">
+      <h1 id="title">&nbsp;</h1>
+      <p id="sub">&nbsp;</p>
+    </div>
+    <div class="controls">
+      <button class="btn" id="play" style="width:104px">Pause</button>
+      <button class="btn" id="restart">Restart</button>
+      <div class="speed" id="speed">
+        <button data-s="0.5">0.5×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="2">2×</button>
+      </div>
+      <a class="btn primary" id="share" href="/share">Share proof</a>
+    </div>
+  </section>
+
+  <div class="storyrow">
+    <div class="finder">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#a3a7b3" stroke-width="2"><circle cx="7" cy="7" r="5.5"/><path d="M11 11l3.5 3.5" stroke-linecap="round"/></svg>
+      <input id="find" placeholder="Find any action" autocomplete="off" />
+      <kbd>/</kbd>
+      <div class="drop" id="drop"></div>
+    </div>
+    <nav class="stories" id="stories"></nav>
+      <div class="legend">
+      <span><i style="background:var(--ink)"></i>On its way</span>
+      <span><i style="background:var(--orange)"></i>Looked again</span>
+      <span><i style="background:var(--sky)"></i>Waited its turn</span>
+      <span><i style="background:var(--accent)"></i>Proven</span>
+      <span><i class="sq" style="background:var(--accent);border-radius:50%;box-shadow:0 0 0 3px var(--accent-line)"></i>Lumni stepped in</span>
+      <span><i style="background:repeating-linear-gradient(90deg,var(--ink3) 0 5px,transparent 5px 9px)"></i>Would have</span>
+      <span><i style="background:var(--red)"></i>Didn’t happen</span>
+    </div>
+  </div>
+
+  <section class="card mapcard" id="mapcard">
+
+    <svg class="map" viewBox="0 0 1360 560" id="map">
+      <g class="base" id="base">
+        <path id="L-a" d="M70,170 H260" />
+        <path id="L-arc" d="M260,170 C226,60 104,60 70,170" style="stroke:transparent" />
+        <path id="L-b" d="M260,170 H450" />
+        <path id="L-c" d="M450,170 H640" />
+        <path id="L-d" d="M640,170 H830" />
+        <path id="L-fa" d="M830,170 C880,170 880,90 940,90 H1040" />
+        <path id="L-fb" d="M830,170 H1040" />
+        <path id="L-fc" d="M830,170 C880,170 880,250 940,250 H1040" />
+        <path id="L-ma" d="M1040,90 H1120 C1170,90 1160,170 1210,170" />
+        <path id="L-mb" d="M1040,170 H1210" />
+        <path id="L-mc" d="M1040,250 H1120 C1170,250 1160,170 1210,170" />
+        <path id="L-ret" d="M1270,170 H1290 Q1320,170 1320,200 V370 Q1320,400 1290,400 H896" />
+        <path id="L-out" d="M824,400 H420" />
+        <path id="L-end" d="M420,400 H120" />
+        <path id="L-drop" d="M450,170 C450,320 420,290 420,400" style="stroke:transparent" />
+      </g>
+      <g id="spokes"></g>
+      <g class="lit" id="lit"></g>
+      <path class="ghost" id="ghost" d="M450,170 H1040" />
+      <text class="arc-label" id="arclabel" x="165" y="72">looked again</text>
+
+      <line class="bar" x1="70" y1="146" x2="70" y2="194" />
+      <line class="bar" id="endbar" x1="120" y1="376" x2="120" y2="424" />
+      <g id="nodes"></g>
+      <g id="ripples"></g>
+      <g id="dots"></g>
+      <g id="tok" opacity="0"><rect rx="13" height="26" /><text></text></g>
+    </svg>
+    <div id="callouts"></div>
+    <div class="empty" id="empty"></div>
+  </section>
+
+  <footer class="foot">
+    <div class="say" id="say"><span class="txt">&nbsp;</span></div>
+    <div class="stages" id="stages"></div>
+  </footer>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// ─── the map's fixed stops ─────────────────────────────
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent?.appendChild(e);
+  return e;
+};
+
+const STOPS = {
+  start: { x: 70, y: 170, t: '', s: '', bar: true },
+  fresh: { x: 260, y: 170, t: 'Up to date?', s: 'its info is fresh' },
+  done: { x: 450, y: 170, t: 'Done already?', s: 'no repeat' },
+  other: { x: 640, y: 170, t: 'Anyone else on it?', s: 'no clash' },
+  rule: { x: 830, y: 170, t: 'Allowed?', s: 'your rules' },
+  appA: { x: 1040, y: 90, t: '', s: '' },
+  appB: { x: 1040, y: 170, t: '', s: '' },
+  appC: { x: 1040, y: 250, t: '', s: '' },
+  rcpt: { x: 420, y: 400, t: 'Receipt', s: 'written' },
+};
+const HUB = { x: 860, y: 400 };
+const SPOKE_ANGLES = [-150, -90, -30, 30, 90, 150];
+const nodes = {};
+
+function buildStops() {
+  const g = $('#nodes');
+  for (const [id, s] of Object.entries(STOPS)) {
+    if (s.bar) continue;
+    const n = el('g', { class: 'node', 'data-state': 'idle', transform: `translate(${s.x},${s.y})` }, g);
+    el('circle', { class: 'halo', r: 16 }, n);
+    el('circle', { class: 'c', r: 11 }, n);
+    el('circle', { class: 'dot', r: 5 }, n);
+    const above = id.startsWith('app');
+    const t = el('text', { class: 't', y: above ? -36 : 36 }, n);
+    const sub = el('text', { class: 's', y: above ? -21 : 52 }, n);
+    t.textContent = s.t;
+    sub.textContent = s.s;
+    nodes[id] = { g: n, t, sub };
+  }
+  // The proof hub, with its six spokes.
+  const hub = el('g', { class: 'node hub', 'data-state': 'idle', transform: `translate(${HUB.x},${HUB.y})` }, g);
+  el('circle', { class: 'halo', r: 40 }, hub);
+  el('circle', { class: 'c', r: 36 }, hub);
+  const ht = el('text', { class: 't', y: 5 }, hub);
+  ht.textContent = 'Proof';
+  nodes.hub = { g: hub, t: ht };
+
+  const sg = $('#spokes');
+  SPOKE_ANGLES.forEach((a, i) => {
+    const r = (a * Math.PI) / 180;
+    const x = HUB.x + Math.cos(r) * 100, y = HUB.y + Math.sin(r) * 100;
+    const sp = el('g', { class: 'spoke', 'data-state': 'idle' }, sg);
+    el('line', { x1: HUB.x + Math.cos(r) * 38, y1: HUB.y + Math.sin(r) * 38, x2: x, y2: y }, sp);
+    const n = el('g', { class: 'node', 'data-state': 'idle', transform: `translate(${x},${y})` }, g);
+    el('circle', { class: 'halo', r: 14 }, n);
+    el('circle', { class: 'c', r: 9 }, n);
+    el('circle', { class: 'dot', r: 4 }, n);
+    const vertical = Math.abs(Math.abs(a) - 90) < 1;
+    const left = Math.cos(r) < -0.1;
+    const anchor = vertical ? 'middle' : left ? 'end' : 'start';
+    const dx = vertical ? 0 : left ? -18 : 18;
+    const dy = vertical ? (a < 0 ? -26 : 32) : -2;
+    const t = el('text', { class: 't', x: dx, y: dy, style: `text-anchor:${anchor};font-size:13px` }, n);
+    const sub = el('text', { class: 's', x: dx, y: dy + 15, style: `text-anchor:${anchor}` }, n);
+    nodes['k' + i] = { g: n, t, sub, spoke: sp };
+  });
+
+  // Where the apps' lines meet again.
+  const pill = el('g', { class: 'pill', 'data-state': 'idle', transform: 'translate(1210,155)' }, g);
+  el('rect', { width: 60, height: 30, rx: 15 }, pill);
+  [18, 30, 42].forEach((cx) => el('circle', { cx, cy: 15, r: 3.2 }, pill));
+  const pt = el('text', { class: 't', x: 30, y: -12, style: 'font-size:13px;text-anchor:middle;font-family:var(--sans);font-weight:700' }, pill);
+  pt.textContent = 'All written';
+  nodes.pill = { g: pill, label: pt };
+
+  const st = el('text', { class: 'node-start', x: 56, y: 222, style: 'font:700 14px var(--sans);text-anchor:start' }, g);
+  const ss = el('text', { x: 56, y: 238, style: 'font:500 12px var(--sans);fill:var(--ink2);text-anchor:start' }, g);
+  nodes.start = { t: st, sub: ss };
+  const et = el('text', { x: 120, y: 452, style: 'font:700 14px var(--sans);text-anchor:middle' }, g);
+  const es = el('text', { x: 120, y: 468, style: 'font:500 12px var(--sans);fill:var(--ink2);text-anchor:middle' }, g);
+  et.textContent = 'Done';
+  nodes.end = { t: et, sub: es };
+}
+
+// ─── the clock: pausable, with speed and skipping ─────
+
+const clock = { speed: 1, paused: false, run: 0, skip: 0, stageNow: 0, anims: new Set() };
+
+function loop(prev) {
+  requestAnimationFrame((t) => {
+    const dt = Math.min(64, t - prev);
+    if (!clock.paused) {
+      for (const a of [...clock.anims]) {
+        a.t += dt * clock.speed;
+        const p = Math.min(1, a.t / a.ms);
+        a.fn(p);
+        if (p >= 1) { clock.anims.delete(a); a.done(); }
+      }
+    }
+    loop(t);
+  });
+}
+loop(performance.now());
+
+const skipping = () => clock.stageNow < clock.skip;
+function anim(ms, fn) {
+  const run = clock.run;
+  if (skipping() || ms <= 0) { fn(1); return Promise.resolve(); }
+  return new Promise((resolve) => {
+    clock.anims.add({ t: 0, ms, fn, done: () => run === clock.run && resolve() });
+  });
+}
+const wait = (ms) => anim(ms, () => {});
+const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+
+// ─── drawing ────────────────────────────────────────
+
+const COLORS = { ink: 'var(--ink)', replan: 'var(--orange)', wait: 'var(--sky)', ask: 'var(--ink)', ok: 'var(--accent)', bad: 'var(--red)' };
+
+function lit(id, color = 'ink') {
+  const src = document.getElementById('L-' + id);
+  const p = el('path', { d: src.getAttribute('d'), stroke: COLORS[color] }, $('#lit'));
+  const len = p.getTotalLength();
+  p.style.strokeDasharray = len;
+  p.style.strokeDashoffset = len;
+  return { p, len, src };
+}
+
+function placeTok(x, y) {
+  $('#tok').setAttribute('transform', `translate(${x},${y})`);
+}
+
+async function move(id, ms, color = 'ink', { token = true } = {}) {
+  const { p, len, src } = lit(id, color);
+  const L = src.getTotalLength();
+  if (token) $('#tok').setAttribute('opacity', 1);
+  await anim(ms, (q) => {
+    const e = ease(q);
+    p.style.strokeDashoffset = len * (1 - e);
+    if (token) {
+      const pt = src.getPointAtLength(L * e);
+      placeTok(pt.x, pt.y);
+    }
+  });
+}
+
+async function dot(id, ms, color = 'ink') {
+  const { p, len, src } = lit(id, color);
+  const L = src.getTotalLength();
+  const d = el('circle', { r: 6, class: 'dotk', fill: COLORS[color] }, $('#dots'));
+  await anim(ms, (q) => {
+    const e = ease(q);
+    p.style.strokeDashoffset = len * (1 - e);
+    const pt = src.getPointAtLength(L * e);
+    d.setAttribute('cx', pt.x);
+    d.setAttribute('cy', pt.y);
+  });
+  d.remove();
+}
+
+function state(id, s, sub) {
+  const n = nodes[id];
+  n.g.dataset.state = s;
+  if (n.spoke) n.spoke.dataset.state = s === 'idle' || s === 'off' ? s : s;
+  if (sub !== undefined && n.sub) n.sub.textContent = sub;
+  if (['pass', 'hit', 'bad', 'wait', 'ask', 'recheck'].includes(s) && !skipping()) ripple(id, s);
+}
+
+function ripple(id, s) {
+  const tr = nodes[id].g.getAttribute('transform');
+  const c = el('circle', { class: 'ripple', transform: tr, stroke: s === 'hit' ? 'var(--accent)' : COLORS[{ pass: 'ok', bad: 'bad', wait: 'wait', ask: 'ask', recheck: 'replan' }[s]] }, $('#ripples'));
+  setTimeout(() => c.remove(), 1000);
+}
+
+function label(id, t, s) {
+  const n = nodes[id];
+  if (t !== undefined) n.t.textContent = t;
+  if (s !== undefined && n.sub) n.sub.textContent = s;
+}
+
+function callout(x, y, html, cls = '') {
+  const d = document.createElement('div');
+  d.className = 'callout ' + cls;
+  d.style.left = x + 'px';
+  d.style.top = y + 'px';
+  d.innerHTML = html;
+  $('#callouts').appendChild(d);
+  return d;
+}
+
+function result(html) {
+  const d = document.createElement('div');
+  d.className = 'result';
+  d.innerHTML = html;
+  $('#callouts').appendChild(d);
+  return d;
+}
+
+function say(html, time) {
+  if (skipping()) { $('#say').innerHTML = `<span class="txt">${html}</span><time>${time ?? ''}</time>`; return; }
+  $('#say').innerHTML = `<span class="txt">${html}</span><time>${time ?? ''}</time>`;
+}
+
+const STAGES = ['Asked', 'Checks', 'Apps', 'Proof', 'Receipt'];
+function stage(i) {
+  clock.stageNow = i;
+  $$('.stg').forEach((s, j) => {
+    s.classList.toggle('on', j === i);
+    s.classList.toggle('done', j < i);
+  });
+}
+function finish() {
+  clock.stageNow = 99;
+  $$('.stg').forEach((s) => { s.classList.remove('on'); s.classList.add('done'); });
+}
+
+const av = (w, human) => `<span class="${human ? 'human' : 'ai'}">${w}</span>`;
+
+// ─── the stories ────────────────────────────────────
+
+const SPOKES_OFF = (from) => { for (let i = from; i < 6; i++) state('k' + i, 'off'); };
+
+const DEMO = [
+    {
+      id: 'sam', ai: 'Pr', who: 'Pricing AI', name: 'Sam’s plan', note: 'went through', k: 'ok', tok: 'Sam’s plan',
+      title: 'Sam’s plan changed, and it’s right in every app',
+      sub: 'Pricing AI asked at 2:12 PM. Lumni made it look again, wait its turn and ask you, then checked all three apps.',
+      setup() {
+        label('start', 'Pricing AI', 'asks to change Sam’s plan');
+        label('appA', 'Stripe', 'change the plan');
+        label('appB', 'Salesforce', 'update the plan');
+        label('appC', 'Gmail', 'email a receipt');
+        ['Stripe shows Pro', 'Salesforce matches', 'Email went out', 'Price is today’s', 'Right customer', 'Nothing else moved'].forEach((t, i) => label('k' + i, t, ''));
+        label('end', 'Done', 'receipt r_8f21');
+      },
+      async play() {
+        stage(0);
+        say(`${av('Pr')} Pricing AI wants to move Sam to the Pro plan.`, '2:12:03 PM');
+        await move('a', 1100);
+        stage(1);
+        state('fresh', 'busy');
+        await wait(600);
+        state('fresh', 'recheck', 'it was 3 minutes old');
+        say(`Its info on Sam was 3 minutes old, so Lumni sent it back to look again.`, '2:12:04 PM');
+        $('#arclabel').classList.add('on');
+        callout(165, 52, 'round 2', 'swap');
+        await move('arc', 1100, 'replan');
+        await move('a', 700, 'replan');
+        state('fresh', 'pass', 'has the latest now');
+        await move('b', 800);
+        state('done', 'busy');
+        await wait(450);
+        state('done', 'pass', 'first time today');
+        await move('c', 800);
+        state('other', 'wait', 'Fraud AI is on Sam’s card');
+        say(`${av('Fr')} Fraud AI is checking Sam’s card. Pricing AI waits its turn.`, '2:12:05 PM');
+        const c1 = callout(640, 120, `${av('Fr')} Fraud AI goes first`);
+        await wait(1600);
+        c1.remove();
+        state('other', 'pass', 'its turn now');
+        await move('d', 800);
+        state('rule', 'ask', 'plan changes over $500 ask you');
+        say(`${av('AK', true)} Changes over $500 ask you first. You approved it from Slack.`, '2:12:41 PM');
+        await wait(900);
+        const c2 = callout(830, 120, `${av('AK', true)} You approved`);
+        await wait(900);
+        c2.remove();
+        state('rule', 'pass', 'you approved');
+        stage(2);
+        $('#tok').setAttribute('opacity', 0);
+        say('Lumni lets it through to all three apps at once.', '2:12:42 PM');
+        await Promise.all([dot('fa', 900), dot('fb', 900), dot('fc', 900)]);
+        state('appA', 'pass'); state('appB', 'pass'); state('appC', 'pass');
+        await Promise.all([dot('ma', 700), dot('mb', 700), dot('mc', 700)]);
+        nodes.pill.g.dataset.state = 'busy';
+        await wait(700);
+        nodes.pill.g.dataset.state = 'pass';
+        stage(3);
+        await move('ret', 1300);
+        state('hub', 'busy');
+        say('Then it reads each app back to prove the change really landed.', '2:12:44 PM');
+        for (let i = 0; i < 6; i++) state('k' + i, 'busy');
+        for (let i = 0; i < 6; i++) { await wait(330); state('k' + i, 'pass', ['plan is Pro', 'plan is Pro', 'delivered', '$540 a year', 'Sam Lee', '0 other changes'][i]); }
+        state('hub', 'pass');
+        stage(4);
+        await move('out', 1000, 'ok');
+        state('rcpt', 'pass', 'r_8f21');
+        await move('end', 700, 'ok');
+        finish();
+        say(`Sam is on Pro in Stripe, Salesforce and his inbox. Proof is on the receipt.`, '2:12:46 PM');
+        result(`<span class="chip ok big">Right plan in 3 apps</span>`);
+      },
+    },
+    {
+      id: 'omar', ai: 'Su', who: 'Support AI', name: 'Omar’s refund', note: 'caught', k: 'stop', tok: 'Refund $60',
+      title: 'Omar got one $60 refund, not two',
+      sub: 'Support AI tried to refund Omar again at 2:13 PM. Lumni found the first refund from 2 minutes before and stopped this one.',
+      setup() {
+        label('start', 'Support AI', 'asks to refund Omar $60');
+        label('appA', '', ''); label('appB', 'Stripe', 'refund $60'); label('appC', '', '');
+        state('appA', 'off'); state('appC', 'off');
+        $('#L-fa').classList.add('dim'); $('#L-fc').classList.add('dim'); $('#L-ma').classList.add('dim'); $('#L-mc').classList.add('dim');
+        ['', '', '', '', '', ''].forEach((t, i) => { label('k' + i, t, ''); state('k' + i, 'off'); });
+        label('end', 'Done', 'receipt r_c204');
+        nodes.done.g.classList.add('up');
+      },
+      async play() {
+        stage(0);
+        say(`${av('Su')} Support AI wants to refund Omar $60.`, '2:13:22 PM');
+        await move('a', 1100);
+        stage(1);
+        state('fresh', 'busy');
+        await wait(500);
+        state('fresh', 'pass', 'info is fresh');
+        await move('b', 900);
+        state('done', 'busy');
+        say('Lumni looks for the same refund earlier today…', '2:13:22 PM');
+        await wait(1000);
+        state('done', 'hit', 'yes, at 2:11 PM');
+        say(`It already went out. ${av('Su')} Support AI refunded Omar at 2:11 PM. Lumni stopped the second one.`, '2:13:22 PM');
+        callout(560, 270, `Same refund, 2 minutes ago`, 'lime');
+        await wait(900);
+        $('#ghost').classList.add('on');
+        callout(860, 128, 'would have refunded Omar again', 'ghostc');
+        await wait(1300);
+        stage(4);
+        await move('drop', 1300, 'ink');
+        state('rcpt', 'hit', 'why it stopped');
+        await move('end', 800);
+        finish();
+        say('Omar got $60, not $120. The receipt shows both requests and why.', '2:13:23 PM');
+        const r = result(`<span class="chip lime big"><span class="num" id="kept">$0</span> kept</span>`);
+        countUp($('#kept', r), 60, { prefix: '$' });
+      },
+    },
+    {
+      id: 'priya', ai: 'Bi', who: 'Billing AI', name: 'Priya’s refund', note: 'didn’t happen', k: 'bad', tok: 'Refund $40',
+      title: 'Priya’s $40 refund didn’t happen',
+      sub: 'Billing AI said it refunded Priya. Lumni read Stripe back three times, and there’s no refund. It needs you.',
+      setup() {
+        label('start', 'Billing AI', 'asks to refund Priya $40');
+        label('appA', '', ''); label('appB', 'Stripe', 'refund $40'); label('appC', '', '');
+        state('appA', 'off'); state('appC', 'off');
+        $('#L-fa').classList.add('dim'); $('#L-fc').classList.add('dim'); $('#L-ma').classList.add('dim'); $('#L-mc').classList.add('dim');
+        ['Refund in Stripe', 'Amount is $40', 'Right customer', 'Charge from Sep 22', '', ''].forEach((t, i) => label('k' + i, t, ''));
+        SPOKES_OFF(4);
+        label('end', 'Needs you', 'receipt r_a7e0');
+      },
+      async play() {
+        stage(0);
+        say(`${av('Bi')} Billing AI wants to refund Priya $40.`, '1:58:10 PM');
+        await move('a', 1100);
+        stage(1);
+        for (const [id, s] of [['fresh', 'info is fresh'], ['done', 'first time'], ['other', 'no one else'], ['rule', 'under $100 is fine']]) {
+          state(id, 'busy');
+          await wait(380);
+          state(id, 'pass', s);
+          if (id !== 'rule') await move({ fresh: 'b', done: 'c', other: 'd' }[id], 650);
+        }
+        stage(2);
+        say(`All checks pass. ${av('Bi')} Billing AI calls Stripe and says “I refunded Priya $40.”`, '1:58:11 PM');
+        await move('fb', 900);
+        state('appB', 'pass', 'says done');
+        await move('mb', 700);
+        nodes.pill.g.dataset.state = 'pass';
+        stage(3);
+        await move('ret', 1300);
+        state('hub', 'busy');
+        say('Lumni reads Stripe back to make sure…', '1:58:41 PM');
+        for (let i = 0; i < 4; i++) state('k' + i, 'busy');
+        for (let i = 1; i < 4; i++) { await wait(350); state('k' + i, 'pass', ['', '$40', 'Priya Shah', 'still paid'][i]); }
+        for (let n = 1; n <= 3; n++) {
+          label('k0', 'Refund in Stripe', `checking, ${n} of 3`);
+          await wait(800);
+        }
+        state('k0', 'bad', 'not there after 3 checks');
+        state('hub', 'bad');
+        say('Stripe shows no refund. Her $40 charge from Sep 22 is still paid.', '2:13:10 PM');
+        stage(4);
+        await move('out', 1000, 'bad');
+        state('rcpt', 'bad', 'didn’t happen');
+        await move('end', 700, 'bad');
+        $('#endbar').style.stroke = 'var(--red)';
+        finish();
+        say(`Priya never got her $40. It’s waiting in Needs you with a retry button.`, '2:13:10 PM');
+        result(`<span class="chip bad big">Priya never got her $40</span><a class="btn primary" href="/needs-you">Retry refund</a>`);
+      },
+    },
+];
+
+// ─── your workspace: any action, from its record ─────
+
+const E = (s) => Shell.esc(s);
+const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
+const lowerFirst = (s) => (s && !/^[A-Z]{2}/.test(s) ? s[0].toLowerCase() + s.slice(1) : s || '');
+const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const ORDER = ['fresh', 'done', 'other', 'rule'];
+/** The line into each check, and where the one before it sits. */
+const INTO = { fresh: 'a', done: 'b', other: 'c', rule: 'd' };
+const PREV_X = { fresh: 70, done: 260, other: 450, rule: 640 };
+const PASSED = { fresh: 'info is fresh', done: 'not a repeat', other: 'no one else on it', rule: 'allowed' };
+const WOULD = { stop: 'would have stopped it', recheck: 'would have sent it back', wait: 'would have held it', ask: 'would have asked you' };
+const BAD = ['MISMATCH', 'PARTIAL', 'FAILED'];
+const PERSON = '<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="3.6" r="2.4"/><path d="M1.6 11c.3-2.6 2.1-4.1 4.4-4.1s4.1 1.5 4.4 4.1z"/></svg>';
+const BASE_D = {};
+
+/** "version 31", or a short tag when versions aren't numbers. */
+const ver = (v) => (/^\d+$/.test(String(v)) ? `version ${v}` : `“${clip(v, 12)}”`);
+function ago(ms) {
+  if (ms == null || !(ms >= 0)) return '';
+  const s = ms / 1000;
+  return s < 60 ? `${Math.max(1, Math.round(s))} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+}
+/** An actor id as its name, from the world's AIs or teams, else the id itself. */
+function nameOf(id) {
+  if (!id) return null;
+  const w = Shell.world;
+  return w?.fleet?.find((f) => f.id === id)?.name ?? w?.teams?.find((t) => t.id === id)?.name ?? id;
+}
+/** What the AI read against the latest, as one sentence, from the freshness record. */
+function freshWords(f) {
+  if (!f?.observed) return null;
+  const by = nameOf(f.changedBy);
+  if (f.current && String(f.current) !== String(f.observed)) {
+    const a = ago(f.ageMs);
+    return `It read ${ver(f.observed)}; the latest was ${String(ver(f.current)).replace('version ', '')}${a ? `, ${a} newer` : ''}${by ? `, changed by ${by}` : ''}`;
+  }
+  return `It read ${ver(f.observed)}, the latest`;
+}
+
+function setD(id, d) {
+  const p = id === 'ghost' ? $('#ghost') : document.getElementById('L-' + id);
+  BASE_D[id] ??= p.getAttribute('d');
+  p.setAttribute('d', d);
+}
+
+/** Only the app this action reached, and only the one proof check Lumni has. */
+function oneApp(j) {
+  label('appA', '', ''); label('appB', clip(j.app.name, 22), clip(lowerFirst(j.did), 26)); label('appC', '', '');
+  state('appA', 'off'); state('appC', 'off');
+  for (const id of ['fa', 'fc', 'ma', 'mc']) $('#L-' + id).classList.add('dim');
+  for (let i = 0; i < 6; i++) {
+    label('k' + i, '', '');
+    if (i !== 1) { nodes['k' + i].g.style.display = 'none'; nodes['k' + i].spoke.style.display = 'none'; }
+  }
+}
+
+/** How the trip goes, read once from the record. */
+function planOf(j) {
+  const byId = Object.fromEntries((j.stages ?? []).map((s) => [s.id, s]));
+  const hit = ORDER.map((id) => byId[id]).find((s) => s?.hit && !s.would) ?? null;
+  const o = j.outcome;
+  const ap = j.approval?.status ?? null;
+  let halt = null;
+  if (hit?.kind === 'stop' || j.end === 'stop') halt = 'stop';
+  else if (hit?.kind === 'ask' && ap !== 'APPROVED') halt = ap === 'DENIED' ? 'denied' : ap === 'EXPIRED' ? 'expired' : 'pending';
+  else if ((hit?.kind === 'recheck' || hit?.kind === 'wait') && !o) halt = hit.kind;
+  const proof = halt ? null : o?.status === 'VERIFIED' ? 'proven' : BAD.includes(o?.status) ? 'bad' : o?.status === 'PENDING' ? 'pending' : 'blind';
+  return { byId, hit, halt, proof, o, ap, tries: Math.max(0, o?.attempts ?? 0, j.attempts ?? 0) };
+}
+
+function titleOf(j, P) {
+  const did = clip(j.did, 70);
+  const app = j.app.name;
+  if (P.hit || (j.stages ?? []).some((s) => s.hit)) return clip(j.title, 96);
+  if (P.proof === 'proven') return `“${did}” happened, and ${app} agrees`;
+  if (P.proof === 'bad') return `“${did}” didn’t happen`;
+  if (P.proof === 'pending') return `“${did}” is being checked in ${app}`;
+  return j.app.checked ? `“${did}” isn’t confirmed by ${app}` : `“${did}” isn’t checked in ${app}`;
+}
+
+function subOf(j, P) {
+  const app = j.app.name;
+  const out = [`${j.who.name} asked at ${j.time}.`];
+  for (const s of j.stages ?? []) {
+    if (s.hit && s.would) out.push(`Lumni was only watching here. It ${WOULD[s.kind] ?? 'would have stepped in'} because ${s.words}, and it went ahead.`);
+  }
+  const h = P.hit;
+  const why = h?.words ?? 'one of Lumni’s checks caught it';
+  if (P.halt === 'stop') out.push(`Lumni stopped it because ${why}${j.kept ? `, so ${fmtMoney(j.kept)} didn’t go out twice` : ''}.`);
+  else if (h?.kind === 'recheck') out.push(`${cap(why)}, so Lumni sent it back to look again.`);
+  else if (h?.kind === 'wait') out.push(`${cap(why)}, so it waited its turn.`);
+  else if (h?.kind === 'ask') out.push({ pending: 'A rule asks a person first, and it’s waiting for you.', denied: 'A rule asks a person first, and you said no.', expired: 'A rule asks a person first, and nobody answered in time.' }[P.halt] ?? 'A rule asks a person first, and it was approved.');
+  else if (!out[1]) out.push('All four checks passed.');
+  if (P.halt === 'recheck' || P.halt === 'wait') out.push('Lumni has no record of it going ahead yet.');
+  if (P.proof === 'proven') out.push(`Lumni read it back from ${app}, and it matches.`);
+  if (P.proof === 'bad') out.push(`${app} shows nothing${P.tries ? ` after ${plural(P.tries, 'check')}` : ''}.`);
+  if (P.proof === 'pending') out.push(`Lumni is still checking ${app}.`);
+  if (P.proof === 'blind') out.push(j.app.checked ? `${app} didn’t say whether it happened.` : `Lumni can’t check ${app} while its checker is off.`);
+  const st = { ACTIVE: 'It’s still in progress.', RESERVED: 'It’s still in progress.', PROPOSED: 'It hasn’t started.', FAILED: `${j.who.name} reported that it failed.` }[j.status];
+  if (st && !P.halt) out.push(st);
+  return out.join(' ');
+}
+
+const NOTE = { stop: 'stopped', recheck: 'looked again', wait: 'waited', ask: 'asked you', bad: 'didn’t happen', proven: 'proven', blind: 'not checked', pending: 'checking' };
+
+function realStory(j, dup = null) {
+  const P = planOf(j);
+  const app = E(j.app.name);
+  const who = E(j.who.name);
+  const me = av(E(j.who.initials), j.who.human);
+  const did = E(lowerFirst(clip(j.did, 60)));
+  const k = P.halt === 'stop' ? 'stop' : P.proof === 'bad' ? 'bad' : 'ok';
+  return {
+    id: j.id, real: true, k, tok: clip(j.did, 24),
+    title: titleOf(j, P), sub: subOf(j, P),
+    setup() {
+      label('start', clip(j.who.name, 24), `asks to ${clip(lowerFirst(j.did), 30)}`);
+      oneApp(j);
+      label('end', P.halt === 'pending' ? 'Waiting' : P.proof === 'bad' ? 'Needs you' : 'Done', j.receipt ? `receipt ${clip(j.receipt, 18)}` : `action ${clip(j.id, 18)}`);
+      nodes.pill.label.textContent = P.halt ? '' : 'Said done';
+      if (P.halt) { state('k1', 'off'); nodes.k1.g.style.display = 'none'; nodes.k1.spoke.style.display = 'none'; }
+      if (P.halt === 'pending') { label('end', '', ''); label('rcpt', '', ''); }
+    },
+    async play() {
+      stage(0);
+      say(`${me} ${who} asks to ${did}.`, E(j.time));
+      await move('a', 1100);
+      stage(1);
+      let stopAt = null;
+      for (const [i, id] of ORDER.entries()) {
+        const s = P.byId[id];
+        if (i > 0) await move(INTO[id], 650);
+        state(id, 'busy');
+        await wait(420);
+        if (!s) { state(id, 'none', 'didn’t run'); continue; }
+        if (!s.hit) {
+          state(id, 'pass', id === 'fresh' && j.freshness?.observed ? clip(`read ${ver(j.freshness.observed)}, the latest`, 30) : PASSED[id]);
+          continue;
+        }
+        const fw = id === 'fresh' ? freshWords(j.freshness) : null;
+        if (fw) callout(STOPS.fresh.x - 110, 252, E(fw), 'fresh');
+        const x = STOPS[id].x;
+        const words = s.words ?? 'one of Lumni’s checks caught it';
+        if (s.would) {
+          state(id, 'would', WOULD[s.kind] ?? 'would have stepped in');
+          say(`A rule here is only watching. It ${E(WOULD[s.kind] ?? 'would have stepped in')}, because ${E(words)}.${fw ? ` ${E(fw)}.` : ''}`);
+          callout(x, 128, `Only watching: ${E(clip(words, 40))}`, 'ghostc');
+          await wait(1700);
+          continue;
+        }
+        if (s.kind === 'recheck') {
+          state(id, 'recheck', clip(words, 30));
+          say(fw ? `${E(fw)}. So Lumni sent it back to look again.` : `${E(cap(words))}, so Lumni sent it back to look again.`);
+          setD('arc', `M${x},170 C${x - 34},60 ${PREV_X[id] + 34},60 ${PREV_X[id]},170`);
+          $('#arclabel').setAttribute('x', (x + PREV_X[id]) / 2);
+          $('#arclabel').classList.add('on');
+          await move('arc', 1100, 'replan');
+          if (P.halt === 'recheck') { stopAt = id; break; }
+          await move(INTO[id], 700, 'replan');
+          state(id, 'pass', 'has the latest now');
+          continue;
+        }
+        if (s.kind === 'wait') {
+          state(id, 'wait', clip(words, 30));
+          say(`${E(cap(words))}, so ${who} waits its turn.`);
+          const c = callout(x, 120, 'Waits its turn');
+          await wait(1600);
+          if (P.halt === 'wait') { stopAt = id; break; }
+          c.remove();
+          state(id, 'pass', 'its turn now');
+          continue;
+        }
+        if (s.kind === 'ask') {
+          state(id, 'ask', 'a person decides');
+          say(`${E(cap(words))}, so Lumni asks a person first.`);
+          await wait(700);
+          const how = { pending: 'Waiting for you', denied: 'You said no', expired: 'Nobody answered' }[P.halt] ?? 'A person approved';
+          const c = callout(x, 120, `<span class="human">${PERSON}</span>${how}`);
+          await wait(1100);
+          if (P.halt) { stopAt = id; break; }
+          c.remove();
+          state(id, 'pass', 'approved');
+          continue;
+        }
+        state(id, 'hit', clip(words, 30));
+        nodes[id].g.classList.add('up');
+        if (j.duplicateOf) {
+          const first = dup ? `“${E(clip(dup.did, 40))}” from ${E(dup.time)}` : 'an earlier action';
+          say(`It’s the same as ${first}, so Lumni stopped it. ${app} was never called.`);
+          callout(Math.min(1180, x + 110), 270, `Same as ${dup ? `“${E(clip(dup.did, 30))}”` : 'an earlier action'} <a href="/journey?id=${encodeURIComponent(j.duplicateOf)}">open</a>`, 'lime link');
+        } else {
+          say(`${E(cap(fw ?? words))}, so Lumni stopped it. ${app} was never called.`);
+          callout(Math.min(1180, x + 110), 270, E(cap(clip(words, 44))), 'lime');
+        }
+        await wait(900);
+        setD('ghost', `M${x},170 H1040`);
+        $('#ghost').classList.add('on');
+        callout(Math.min(1150, (x + 1040) / 2 + 80), 128, j.decision?.type === 'DEDUPLICATE' ? `${app} would have seen it twice` : `it would have reached ${app}`, 'ghostc');
+        await wait(1300);
+        stopAt = id;
+        break;
+      }
+
+      // It ended at a check: the receipt says why.
+      if (stopAt) {
+        const x = STOPS[stopAt].x;
+        if (P.halt === 'pending') {
+          finish();
+          say(`It’s waiting in Needs you. Nothing has reached ${app}.`, E(j.time));
+          result(`<span class="chip ink big">Waiting for you</span><a class="btn primary" href="/needs-you">Open Needs you</a>`);
+          return;
+        }
+        stage(4);
+        nodes[stopAt].g.classList.add('up');
+        setD('drop', `M${x},170 C${x},320 420,290 420,400`);
+        await move('drop', 1300, 'ink');
+        state('rcpt', P.halt === 'stop' ? 'hit' : 'pass', P.halt === 'stop' ? 'why it stopped' : 'written');
+        await move('end', 800);
+        finish();
+        if (P.halt === 'stop') {
+          say(`${app} was never called. The receipt shows why.`, E(j.time));
+          if (j.kept > 0) {
+            const r = result(`<span class="chip lime big"><span class="num" id="kept">$0</span> kept</span>`);
+            countUp($('#kept', r), j.kept, { prefix: '$' });
+          } else result(`<span class="chip lime big">${j.decision?.type === 'DEDUPLICATE' ? 'Done once, not twice' : 'Nothing went out'}</span>`);
+          if (j.duplicateOf) $('#callouts .result:last-child').insertAdjacentHTML('beforeend', `<a class="btn" href="/journey?id=${encodeURIComponent(j.duplicateOf)}">Open the first one</a>`);
+        } else {
+          const t = { recheck: 'Sent back to look again', wait: 'Held until the way was clear', denied: 'You said no', expired: 'Nobody answered' }[P.halt];
+          say(`${E(t)}. Lumni has no record of it reaching ${app}.`);
+          result(`<span class="chip none big">${E(t)}</span>`);
+        }
+        return;
+      }
+
+      // Through every check, on to the app.
+      stage(2);
+      say(`Every check is clear. ${who} calls ${app}.`);
+      await move('fb', 900);
+      state('appB', 'pass', P.o ? 'said done' : 'called');
+      await move('mb', 700);
+      nodes.pill.g.dataset.state = 'pass';
+      stage(3);
+      await move('ret', 1300);
+      state('hub', 'busy');
+      state('k1', 'busy');
+      label('k1', `Reading ${clip(j.app.name, 18)} back`, '');
+      say(`Lumni reads ${app} back to make sure it happened.`);
+      if (P.proof === 'proven') {
+        await wait(900);
+        state('k1', 'pass', P.tries > 1 ? `it matches, after ${plural(P.tries, 'check')}` : P.tries === 1 ? 'it matches, first check' : 'it matches');
+        label('k1', `Read back from ${clip(j.app.name, 18)}`);
+        state('hub', 'pass');
+        stage(4);
+        await move('out', 1000, 'ok');
+        state('rcpt', 'pass', 'proven');
+        await move('end', 700, 'ok');
+        finish();
+        say(`${app} shows it${P.tries ? `, on Lumni’s ${P.tries === 1 ? 'first check' : `check ${P.tries}`}` : ''}. The proof is on the receipt.`);
+        result(`<span class="chip ok big">Proven in ${app}</span>`);
+      } else if (P.proof === 'bad') {
+        const n = Math.min(3, P.tries);
+        for (let t = 1; t <= n; t++) { label('k1', `Reading ${clip(j.app.name, 18)} back`, `checking, ${t} of ${P.tries}`); await wait(800); }
+        if (!n) await wait(900);
+        state('k1', 'bad', P.tries ? `nothing after ${plural(P.tries, 'check')}` : 'no sign of it');
+        label('k1', `${clip(j.app.name, 18)} shows nothing`);
+        state('hub', 'bad');
+        say(`${who} said it was done, but ${app} shows nothing.`);
+        stage(4);
+        await move('out', 1000, 'bad');
+        state('rcpt', 'bad', 'didn’t happen');
+        await move('end', 700, 'bad');
+        $('#endbar').style.stroke = 'var(--red)';
+        finish();
+        const r = result(`<span class="chip bad big">${app} shows nothing</span>${j.outcome?.id ? '<button class="btn primary" data-retry>Check it again</button>' : ''}`);
+        r.querySelector('[data-retry]')?.addEventListener('click', async (e) => {
+          e.currentTarget.disabled = true;
+          const ok = await Shell.write('POST', `/v1/outcomes/${encodeURIComponent(j.outcome.id)}/retry`, {}, { ok: `Lumni is reading ${j.app.name} again.`, reload: false });
+          if (!ok) e.currentTarget.disabled = false;
+        });
+      } else if (P.proof === 'pending') {
+        await wait(900);
+        label('k1', `Checking ${clip(j.app.name, 18)}`, P.tries ? `${plural(P.tries, 'check')} so far` : 'not back yet');
+        finish();
+        say(`Lumni is still checking ${app}. Read it again in a minute.`);
+        result(`<span class="chip none big">Still checking ${app}</span>`);
+      } else {
+        await wait(900);
+        state('k1', 'none', j.app.checked ? 'nothing came back' : 'its checker is off');
+        label('k1', j.app.checked ? `No read-back from ${clip(j.app.name, 18)}` : `Can’t check ${clip(j.app.name, 18)}`);
+        nodes.hub.g.dataset.state = 'none';
+        stage(4);
+        await move('out', 1000);
+        state('rcpt', 'pass', 'written');
+        await move('end', 700);
+        finish();
+        if (j.app.checked) {
+          say(`${app} didn’t say whether it happened, so nothing here proves it.`);
+          result(`<span class="chip none big">Not confirmed by ${app}</span>`);
+        } else {
+          say(`Lumni can’t check ${app} while its checker is off. Switch it on and the next one is proven.`);
+          const r = result(`<span class="chip none big">Can’t check ${app}</span><button class="btn primary" id="check-app">Check ${app}</button>`);
+          $('#check-app', r).onclick = (e) => checkApp(j.app, e.currentTarget);
+        }
+      }
+    },
+  };
+}
+
+let afterWrite = false;
+async function checkApp(a, btn) {
+  btn.disabled = true;
+  const r = await Shell.write('POST', `/v1/console/apps/${encodeURIComponent(a.id)}/checker`, { on: true }, { ok: `Lumni checks ${a.name} from now on.`, reload: true });
+  if (!r) { btn.disabled = false; return; }
+  afterWrite = true;
+}
+
+// ─── running a story ────────────────────────────────
+
+let current = null;
+
+function reset() {
+  clock.run++;
+  clock.anims.clear();
+  clock.paused = false;
+  clock.stageNow = 0;
+  $('#play').textContent = 'Pause';
+  $('#lit').innerHTML = '';
+  $('#dots').innerHTML = '';
+  $('#callouts').innerHTML = '';
+  $('#ghost').classList.remove('on');
+  $('#arclabel').classList.remove('on');
+  $('#arclabel').setAttribute('x', 165);
+  for (const id in BASE_D) setD(id, BASE_D[id]);
+  $('#tok').setAttribute('opacity', 0);
+  $('#endbar').style.stroke = '';
+  $$('#base path').forEach((p) => p.classList.remove('dim'));
+  $$('.node.up').forEach((n) => n.classList.remove('up'));
+  nodes.pill.label.textContent = 'All written';
+  nodes.pill.g.dataset.state = 'idle';
+  for (const id in nodes) {
+    if (nodes[id].g) { nodes[id].g.dataset.state = 'idle'; nodes[id].g.style.display = ''; }
+    if (nodes[id].spoke) { nodes[id].spoke.dataset.state = 'idle'; nodes[id].spoke.style.display = ''; }
+    if (STOPS[id]) label(id, STOPS[id].t, STOPS[id].s);
+  }
+  nodes.hub.t.textContent = 'Proof';
+  $$('.stg').forEach((s) => s.classList.remove('on', 'done'));
+}
+
+async function play(story, skipTo = 0) {
+  reset();
+  current = story;
+  clock.skip = skipTo;
+  const run = clock.run;
+  story.setup();
+  const tk = $('#tok text');
+  tk.textContent = story.tok;
+  const w = tk.getComputedTextLength() + 26;
+  $('#tok rect').setAttribute('width', w);
+  $('#tok rect').setAttribute('x', -w / 2);
+  $('#tok rect').setAttribute('y', -13);
+  placeTok(70, 170);
+  await story.play();
+  if (run === clock.run) $('#play').textContent = 'Replay';
+}
+
+function head(title, sub, animate = true) {
+  $('#title').textContent = title;
+  $('#sub').textContent = sub;
+  if (animate) { $('#headtext').classList.remove('swap'); void $('#headtext').offsetWidth; $('#headtext').classList.add('swap'); }
+}
+
+function showStory(story, animateHead = true, skipTo = 0) {
+  empty(null);
+  head(story.title, story.sub, animateHead);
+  $$('.story').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === story.id)));
+  return play(story, skipTo);
+}
+
+/** A calm card over the map when there's nothing to replay. */
+function empty(card) {
+  $('#mapcard').classList.toggle('is-empty', !!card);
+  $('#empty').innerHTML = card ? `<b>${E(card.title)}</b><p>${E(card.text)}</p>${card.actions ?? ''}` : '';
+  if (card) {
+    reset();
+    current = null;
+    $('#play').disabled = $('#restart').disabled = true;
+  } else {
+    $('#play').disabled = $('#restart').disabled = false;
+  }
+}
+
+function renderStories() {
+  $('#stories').innerHTML = DEMO
+    .map((s) => `<button class="story" data-id="${s.id}" aria-pressed="false"><span class="ai">${s.ai}</span>${s.name}<small>${s.note}</small><span class="k ${s.k}"></span></button>`)
+    .join('');
+  $('#stories').onclick = (e) => {
+    const b = e.target.closest('.story');
+    if (b) showStory(DEMO.find((s) => s.id === b.dataset.id));
+  };
+}
+
+/** Up to three of today's real patterns, one per kind of catch. */
+function realChips(w) {
+  const P = w.patterns ?? {};
+  const top = (k) => (P[k] ?? []).find((p) => p.story);
+  const look = [top('recheck'), top('wait')].filter(Boolean).sort((a, b) => b.n - a.n)[0];
+  const picks = [['stop', top('stop')], [look === top('recheck') ? 'recheck' : 'wait', look], ['bad', top('bad')]].filter(([, p]) => p);
+  $('#stories').innerHTML = picks.map(([k, p]) => {
+    const [by, ...rest] = String(p.t).split('’s ');
+    const what = rest.length ? rest.join('’s ').split(':')[0] : String(p.t).split(':')[0];
+    const ini = rest.length ? cap(by.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toLowerCase()) : '?';
+    return `<button class="story" data-id="${E(p.story)}" aria-pressed="false" title="${E(p.t)}"><span class="ai">${E(ini || '?')}</span>${E(cap(clip(what, 26)))}<small>${NOTE[k]}${p.n > 1 ? `, ${fmtN(p.n)} like it` : ''}</small><span class="k ${k}"></span></button>`;
+  }).join('');
+  $('#stories').onclick = (e) => {
+    const b = e.target.closest('.story');
+    if (b) openReal(b.dataset.id);
+  };
+}
+
+// ─── loading one real action ────────────────────────
+
+let loadSeq = 0;
+
+async function openReal(id, { skipTo = 0, animate = true } = {}) {
+  const seq = ++loadSeq;
+  $$('.story').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+  let j;
+  try {
+    j = await Shell.api.get(`/v1/console/journey/${encodeURIComponent(id)}`);
+  } catch (e) {
+    if (seq !== loadSeq || e.status === 401) return;
+    head(e.status === 404 ? 'That action isn’t in this workspace' : 'This action couldn’t be read', e.status === 404 ? 'It may be from another day, or another workspace. Find one of today’s actions instead.' : e.message);
+    const first = defaultStory(world);
+    empty({ title: 'Nothing to replay here', text: 'Search for an action above, or replay one of today’s catches.', actions: first ? `<button class="btn primary" data-open="${E(first)}">Replay today’s top catch</button>` : '' });
+    return;
+  }
+  if (seq !== loadSeq) return;
+  // A stopped repeat names the action it repeated; read it for its words and time.
+  const dup = j.duplicateOf ? await Shell.api.get(`/v1/console/journey/${encodeURIComponent(j.duplicateOf)}`).catch(() => null) : null;
+  if (seq !== loadSeq) return;
+  const url = new URL(location.href);
+  url.searchParams.set('id', id);
+  url.searchParams.delete('story');
+  history.replaceState(null, '', url.pathname + url.search);
+  $('#share').href = `/share?id=${encodeURIComponent(id)}`;
+  await showStory(realStory(j, dup), animate, skipTo);
+}
+
+function defaultStory(w) {
+  return w?.patterns?.stop?.find((p) => p.story)?.story ?? null;
+}
+
+async function startReal(w, id, opts) {
+  id ??= defaultStory(w);
+  if (!id) {
+    try {
+      const r = await Shell.api.get('/v1/console/receipts?limit=1');
+      id = r?.items?.[0]?.id ?? null;
+    } catch {}
+  }
+  if (!id) {
+    head('Nothing to replay yet today', 'Every action your AIs send through Lumni can be replayed here, check by check.');
+    empty({ title: 'No actions yet today', text: 'Connect an agent and send its first action through Lumni. It shows up here with every check it passed and what the app says happened.', actions: '<a class="btn primary" href="/today">Open Today</a>' });
+    return;
+  }
+  return openReal(id, opts);
+}
+
+$('#empty').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-open]');
+  if (b) openReal(b.dataset.open);
+});
+
+$('#stages').innerHTML = STAGES.map((s, i) => `<button class="stg" data-i="${i}"><b>${i + 1}</b>${s}</button>`).join('') + '<span class="hint">Click a stage to jump</span>';
+$('#stages').onclick = (e) => {
+  const b = e.target.closest('.stg');
+  if (b && current) play(current, Number(b.dataset.i));
+};
+$('#play').onclick = () => {
+  if (!current) return;
+  if ($('#play').textContent === 'Replay') return play(current);
+  clock.paused = !clock.paused;
+  $('#play').textContent = clock.paused ? 'Play' : 'Pause';
+};
+$('#restart').onclick = () => current && play(current);
+$('#speed').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  clock.speed = Number(b.dataset.s);
+  $$('#speed button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+};
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === '/') { e.preventDefault(); $('#find').focus(); return; }
+  if (e.key === ' ') { e.preventDefault(); $('#play').click(); }
+  if (e.key === 'r') $('#restart').click();
+  if (e.key >= '1' && e.key <= '5' && current) play(current, Number(e.key) - 1);
+});
+
+// ─── boot ───────────────────────────────────────────
+
+const qs = new URLSearchParams(location.search);
+const shot = qs.get('shot');
+let world = null;
+
+function bootDemo() {
+  renderStories();
+  const s = DEMO.find((x) => x.id === shot) ?? DEMO.find((x) => x.id === qs.get('story')) ?? DEMO[0];
+  showStory(s, true, DEMO.some((x) => x.id === shot) ? 99 : 0);
+}
+
+buildStops();
+Shell.boot({
+  nav: 'Journey',
+  onWorld(w, first) {
+    world = w;
+    finder(w);
+    if (!Shell.isReal) {
+      if (first) bootDemo();
+      return;
+    }
+    realChips(w);
+    const skipTo = afterWrite || (first && (shot === 'end' || shot === 'check')) ? 99 : 0;
+    afterWrite = false;
+    const run = startReal(w, first ? qs.get('id') : current?.id ?? null, { skipTo, animate: first });
+    if (first && shot === 'check') run.then(() => $('#check-app')?.click());
+  },
+});
+
+// ─── finding one action among millions ──────────────
+
+const KCOL = { stop: 'var(--accent)', recheck: 'var(--orange)', wait: 'var(--sky)', ask: 'var(--ink)', bad: 'var(--red)', none: '#c9cdd4' };
+const STEP_OF = { done: 'stop', onit: 'stop', superseded: 'stop', stop: 'stop', recheck: 'recheck', wait: 'wait', turns: 'wait', slow: 'wait', ask: 'ask' };
+const PEOPLE = ['Omar Haddad', 'Priya Shah', 'Sam Lee', 'Dana Ruiz', 'Kai Rhee', 'Ben Ito', 'Zoe Hart', 'Nina Cole', 'Initech', 'Hooli', 'Umbra', 'Vandelay'];
+let fw = null;
+let searchT = 0;
+let searchSeq = 0;
+
+function finder(w) {
+  fw = w;
+  $('#find').placeholder = Shell.isReal ? `Find any of your ${fmtN(w.total)} actions today` : `Find any of ${fmtN(w.total)} actions`;
+  $('#find').value = '';
+  drawDrop('');
+}
+
+function hl(t, q) {
+  const safe = E(t);
+  if (!q) return safe;
+  const needle = E(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(needle, 'ig'), (m) => `<mark>${m}</mark>`);
+}
+
+function worthReplaying() {
+  const pats = ['stop', 'bad', 'recheck', 'wait'].flatMap((k) => (fw.patterns[k] ?? []).filter((p) => p.story).map((p) => ({ ...p, k })));
+  if (!pats.length) return Shell.isReal ? '<h5>Nothing stood out today yet</h5>' : '';
+  return '<h5>Worth replaying today</h5>' + pats.sort((a, b) => (b.kept || b.n) - (a.kept || a.n)).slice(0, 5)
+    .map((p) => row(p.story, KCOL[p.k], E(clip(p.t, 70)), `${fmtN(p.n)} like this${p.kept ? `, ${fmtMoney(p.kept)} kept` : ''}`)).join('');
+}
+
+function foot() {
+  return Shell.isReal
+    ? `<div class="foot2">Searching your ${fmtN(fw.total)} actions today by what was done, AI, app, customer or id. Enter opens the first.</div>`
+    : `<div class="foot2">Searching ${fmtN(fw.total)} actions by customer, AI, app or reason. Enter opens the first.</div>`;
+}
+
+function drawDrop(q) {
+  if (!fw) return;
+  const ql = q.trim().toLowerCase();
+  if (Shell.isReal) {
+    clearTimeout(searchT);
+    if (!ql) { $('#drop').innerHTML = worthReplaying() + foot(); return; }
+    searchT = setTimeout(() => search(q.trim()), 200);
+    return;
+  }
+  let html = '';
+  if (!ql) html += worthReplaying();
+  else {
+    const pats = ['stop', 'bad', 'recheck', 'wait'].flatMap((k) => (fw.patterns[k] ?? []).map((p) => ({ ...p, k })));
+    const people = PEOPLE.filter((n) => n.toLowerCase().includes(ql)).slice(0, 3);
+    const hits = pats.filter((p) => p.t.toLowerCase().includes(ql) || fw.app(p.app)?.name.toLowerCase().includes(ql) || fw.team(p.team)?.name.toLowerCase().includes(ql)).slice(0, 4);
+    if (people.length) html += '<h5>Customers</h5>' + people.map((n, i) => row(['omar', 'priya', 'sam'][i % 3], 'var(--ink)', hl(n, ql), `${3 + ((n.length * 7) % 19)} actions today`)).join('');
+    if (hits.length) html += '<h5>Patterns</h5>' + hits.map((p) => row(p.story, KCOL[p.k], hl(p.t, ql), `${fmtN(p.n)} today`)).join('');
+    if (!people.length && !hits.length) html += `<h5>Nothing matches “${E(q)}” today</h5>`;
+  }
+  $('#drop').innerHTML = html + foot();
+}
+
+async function search(q) {
+  const seq = ++searchSeq;
+  let r;
+  try {
+    r = await Shell.api.get(`/v1/console/receipts?q=${encodeURIComponent(q)}&limit=8`);
+  } catch (e) {
+    if (seq === searchSeq) $('#drop').innerHTML = `<h5>${E(e.message)}</h5>` + foot();
+    return;
+  }
+  if (seq !== searchSeq) return;
+  const items = (r?.items ?? []).slice(0, 8);
+  const time = (at) => new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const html = items.length
+    ? `<h5>${r.matched > items.length ? `First ${items.length} of ${fmtN(r.matched)} actions` : plural(items.length, 'action')}</h5>` + items.map((it) => {
+        const k = it.proof?.kind === 'bad' ? 'bad' : it.verdict?.would ? 'none' : STEP_OF[it.verdict?.kind] ?? 'none';
+        return row(it.id, KCOL[k], hl(clip(it.did, 70), q), `${E(it.who?.name)}, ${E(it.app?.name)}, ${time(it.at)}. ${E(it.proof?.text ?? '')}`);
+      }).join('')
+    : `<h5>Nothing matches “${E(q)}” today</h5>`;
+  $('#drop').innerHTML = html + foot();
+  return items;
+}
+
+function row(story, color, t, sub) {
+  return `<button class="hitrow" data-story="${E(story)}"><i style="background:${color}"></i><span>${t}<small>${sub}</small></span><b>Replay</b></button>`;
+}
+
+function openStory(id) {
+  $('#find').blur();
+  if (Shell.isReal) return openReal(id);
+  const s = DEMO.find((x) => x.id === id);
+  if (s) showStory(s);
+}
+
+$('#find').addEventListener('focus', () => $('#drop').classList.add('on'));
+$('#find').addEventListener('blur', () => $('#drop').classList.remove('on'));
+$('#find').addEventListener('input', (e) => drawDrop(e.target.value));
+$('#drop').addEventListener('mousedown', (e) => {
+  const b = e.target.closest('.hitrow');
+  if (!b) return;
+  e.preventDefault();
+  openStory(b.dataset.story);
+});
+$('#find').addEventListener('keydown', async (e) => {
+  if (e.key === 'Escape') $('#find').blur();
+  if (e.key !== 'Enter') return;
+  const q = $('#find').value.trim();
+  if (Shell.isReal && q) {
+    clearTimeout(searchT);
+    const items = await search(q);
+    if (items?.length) openStory(items[0].id);
+    return;
+  }
+  const f = $('#drop .hitrow');
+  if (f) openStory(f.dataset.story);
+});
+
+// For screenshots: ?find=refund opens the finder with that search.
+Shell.ready.then(async () => {
+  const q = qs.get('find');
+  if (!q) return;
+  await sleep(300);
+  $('#find').focus();
+  $('#find').value = q === '1' ? '' : q;
+  drawDrop($('#find').value);
+});
+</script>
+</body>
+</html>

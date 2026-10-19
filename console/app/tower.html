@@ -1,0 +1,1662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Tower</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; --sky-soft: #e3f0ff; --scope: #0d0e14; }
+
+  .head { display: flex; align-items: flex-end; gap: 24px; padding: 32px 40px 0; }
+  .head h1 { font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.12; max-width: 1060px; }
+  .head h1 .c { color: var(--accent); }
+  .head h1 .h { color: var(--sky); }
+  .head p { margin-top: 10px; font-size: 16px; color: var(--ink2); }
+  .head .right { margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px; padding-bottom: 4px; }
+  .live { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(91, 75, 245, .16); } }
+
+  .main { display: grid; grid-template-columns: 780px 560px; gap: 20px; padding: 24px 40px 0; align-items: start; }
+
+  /* The radar. */
+  .scope { position: relative; height: 760px; border-radius: 20px; background: var(--scope); overflow: hidden; box-shadow: var(--shadow-lg); }
+  .scope canvas { position: absolute; inset: 0; width: 780px; height: 760px; }
+  .corner { position: absolute; font-size: 12.5px; font-weight: 600; color: #8d91a3; pointer-events: none; }
+  .corner.tl { left: 24px; top: 20px; }
+  .corner.tl b { display: flex; align-items: center; gap: 8px; color: #f2f2f6; font-size: 14px; font-weight: 650; }
+  .corner.tl b i { width: 7px; height: 7px; border-radius: 50%; background: #8578ff; box-shadow: 0 0 0 4px rgba(133, 120, 255, .22); }
+  .corner.tl span { display: block; margin-top: 2px; }
+  .corner.tr { right: 24px; top: 20px; display: grid; gap: 6px; justify-items: start; }
+  .corner.tr span { display: inline-flex; align-items: center; gap: 8px; }
+  .corner.tr i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .corner.tr i.dash { width: 14px; height: 0; border-radius: 0; border-top: 1.5px dashed #e7e8f0; }
+  .corner.bl { left: 24px; bottom: 20px; max-width: 420px; line-height: 1.4; }
+  .corner.br { right: 24px; bottom: 20px; }
+
+  .callout {
+    position: absolute; z-index: 3; width: 206px; padding: 12px 14px;
+    border-radius: 14px; background: #fff; color: var(--ink);
+    font-size: 13px; line-height: 1.4; font-weight: 550;
+    box-shadow: 0 24px 50px -16px rgba(0, 0, 0, .7);
+    opacity: 0; transform: translateY(6px) scale(.97);
+    transition: opacity .25s var(--ease), transform .35s var(--spring);
+    pointer-events: none;
+  }
+  .callout.on { opacity: 1; transform: none; }
+  .callout b { display: block; font-size: 17px; font-weight: 750; letter-spacing: -.02em; margin-bottom: 2px; }
+  .callout.done b { color: var(--accent); }
+  .callout .n { font-variant-numeric: tabular-nums; }
+
+  .empty {
+    position: absolute; left: 50%; top: 506px; transform: translateX(-50%);
+    width: 400px; text-align: center; color: #f2f2f6;
+  }
+  .empty b { display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+  .empty p { margin-top: 6px; font-size: 14.5px; color: #a3a7b3; }
+  .empty .btn { margin-top: 16px; }
+  .empty { top: 50%; transform: translate(-50%, -50%); }
+
+  /* Your workspace: who touched a thing today, as unnamed squares. */
+  .strip.crowd { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; }
+  .crowd .sq { display: flex; gap: 4px; flex: none; }
+  .crowd .sq i { width: 22px; height: 22px; border-radius: 7px; background: var(--accent); opacity: .9; }
+  .crowd .sq i.more { width: auto; padding: 0 6px; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 750; color: var(--accent); background: var(--accent-soft); opacity: 1; }
+  .strip.crowd > *, .strip.waitline > * { border-left: 0 !important; }
+  .crowd p { font-size: 13.5px; color: var(--ink2); line-height: 1.4; min-width: 0; }
+  .crowd p b { color: var(--ink); }
+  .strip.waitline { --c: var(--sky); display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; }
+  .waitline b.n { font-size: 26px; font-weight: 750; letter-spacing: -.02em; color: var(--sky); font-variant-numeric: tabular-nums; flex: none; }
+  .waitline p { font-size: 13.5px; color: var(--ink2); line-height: 1.4; min-width: 0; }
+  .waitline a { color: var(--accent); font-weight: 650; white-space: nowrap; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn:disabled:active { transform: none; }
+
+  /* The strip board. */
+  .board { height: 760px; padding: 24px 26px 22px; display: flex; flex-direction: column; overflow: hidden; }
+  .bh1 { display: flex; align-items: center; gap: 8px; }
+  .bh1 .tag { height: 22px; font-size: 12px; }
+  .board h2 { font-size: 30px; font-weight: 750; letter-spacing: -.025em; margin-top: 6px; line-height: 1.15; }
+  .bmeta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 13.5px; color: var(--ink2); font-weight: 550; white-space: nowrap; }
+  .bmeta .mk { width: 20px; height: 20px; border-radius: 6px; color: #fff; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
+  .bmeta .sep { width: 1px; height: 12px; background: var(--line2); }
+  .bmeta b { color: var(--ink); font-weight: 700; }
+  .bmeta b.v { color: var(--accent); }
+  .bmeta b.s { color: var(--sky); }
+  .sec { margin-top: 16px; }
+  .sec h4 { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 650; color: var(--ink2); margin-bottom: 8px; }
+  .sec h4 span { margin-left: auto; font-weight: 550; color: var(--ink3); font-size: 12.5px; }
+
+  .strip {
+    position: relative; display: grid; align-items: center;
+    border-radius: 12px; background: var(--paper);
+    box-shadow: inset 0 0 0 1px var(--line2);
+    overflow: hidden;
+  }
+  .strip::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, var(--accent)); }
+  .strip > div { padding: 10px 14px; min-width: 0; }
+  .strip > div + div { border-left: 1px solid var(--line); }
+  .strip small { display: block; font-size: 12px; color: var(--ink2); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip b { font-size: 14px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .holder { grid-template-columns: 1fr 132px 116px; min-height: 64px; }
+  .holder.free { grid-template-columns: 1fr; }
+  .holder .c1 { display: flex; align-items: center; gap: 10px; padding-left: 18px; }
+  .holder .ai { background: var(--accent); }
+  .lease { height: 6px; border-radius: 3px; background: var(--accent-soft); margin: 6px 0 4px; overflow: hidden; }
+  .lease i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 3px; transform-origin: left; }
+  .lsec { font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tok { font-family: var(--mono); font-size: 15px !important; color: var(--accent); letter-spacing: -.02em; }
+  .holder.free { --c: var(--line2); }
+  .holder.free .c1 { color: var(--ink2); font-size: 13.5px; font-weight: 550; }
+  .holder.flash { animation: flash .9s var(--ease); }
+  @keyframes flash { from { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 6px rgba(91, 75, 245, .14); } }
+
+  .queue { list-style: none; display: grid; gap: 5px; }
+  .queue li { --c: var(--sky); grid-template-columns: 30px 1fr 102px; min-height: 44px; }
+  .queue.rq li { grid-template-columns: 30px 1fr 124px; }
+  .queue.rq .qw { white-space: nowrap; }
+  .queue li > div { padding: 7px 12px; }
+  .queue .pos { padding-left: 16px !important; font-size: 13px; font-weight: 700; color: var(--sky); font-variant-numeric: tabular-nums; border-left: 0 !important; }
+  .queue .who { display: flex; align-items: center; gap: 10px; border-left: 0 !important; padding-left: 0 !important; }
+  .queue .ai { width: 26px; height: 26px; font-size: 10.5px; }
+  .queue .qw { font-size: 12.5px; font-weight: 600; color: var(--ink2); font-variant-numeric: tabular-nums; text-align: right; }
+  .queue li.in { animation: rise .45s var(--ease) both; }
+  .more { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink2); padding-left: 2px; }
+  .more b { color: var(--sky); }
+  .nobody { padding: 14px 16px; border-radius: 12px; background: var(--wash); color: var(--ink2); font-size: 13.5px; font-weight: 550; }
+
+  #hoff { width: 100%; height: 44px; display: block; overflow: visible; }
+  .rules { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .rule { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 6px; border-radius: 10px; background: var(--wash); font-size: 13.5px; font-weight: 600; }
+  .rule i { font-style: normal; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 6px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 11.5px; font-weight: 750; }
+  .rule.cap i { background: var(--accent); }
+  .meter { margin-left: auto; color: var(--ink2) !important; font-size: 12.5px; font-weight: 600; color: var(--ink2); display: flex; align-items: center; gap: 8px; }
+  .meter .dots { display: flex; gap: 3px; }
+  .meter .dots s { width: 6px; height: 14px; border-radius: 2px; background: var(--accent-line); }
+  .meter .dots s.on { background: var(--accent); }
+  .acts { margin-top: auto; padding-top: 16px; display: flex; gap: 10px; align-items: center; }
+  .acts .note { margin-left: auto; font-size: 12.5px; color: var(--ink2); font-weight: 550; max-width: 190px; text-align: right; line-height: 1.35; }
+  .acts .note.pop { color: var(--ink); }
+  .btn.held { background: var(--ink); color: #fff; box-shadow: none; }
+  .jl { color: var(--accent); font-weight: 650; }
+  .strip small .jl { display: inline; }
+
+  /* The live numbers. */
+  .bottom { display: grid; grid-template-columns: 1fr 1fr 1fr 1.75fr; gap: 20px; padding: 20px 40px 44px; }
+  .stat { padding: 18px 20px 16px; }
+  .stat .lab { font-size: 13px; font-weight: 600; color: var(--ink2); white-space: nowrap; }
+  .stat .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 4px; }
+  .stat b { font-size: 32px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat svg { width: 96px; height: 34px; overflow: visible; margin-bottom: 6px; flex: none; }
+  .stat .sub { margin-top: 8px; font-size: 12.5px; color: var(--ink2); font-weight: 550; line-height: 1.35; }
+  .fence { padding: 18px 22px 14px; }
+  .fence .lab { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .fence .lab code { font-family: var(--mono); font-size: 11.5px; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+  .fence p { font-size: 14.5px; font-weight: 600; line-height: 1.38; margin-top: 6px; letter-spacing: -.005em; }
+  .fence svg { width: 100%; height: 66px; margin-top: 8px; display: block; overflow: visible; }
+  .fence.quiet svg { opacity: .45; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+
+  <section class="head">
+    <div>
+      <h1 id="h1">&nbsp;</h1>
+      <p>Lumni gives each shared thing one writer at a time, and a queue for everyone else.</p>
+    </div>
+    <div class="right"><span class="live"><i></i><span id="livet">Live</span></span></div>
+  </section>
+
+  <section class="main">
+    <div class="scope" id="scope">
+      <canvas id="cv"></canvas>
+      <div class="corner tl"><b><i></i>Tower</b><span id="tlsub">Every shared thing, live</span></div>
+      <div class="corner tr" id="legend"></div>
+      <div class="corner bl" id="sample"></div>
+      <div class="corner br" id="hint">Click a runway to read its strips</div>
+      <div class="callout" id="callout"></div>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+    <aside class="card board" id="board"></aside>
+  </section>
+
+  <section class="bottom" id="bottom"></section>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// ─── constants ──────────────────────────────────────
+
+const TAU = Math.PI * 2;
+const CW = 780, CH = 760, CX = 390, CY = 392, R = 300;
+const VIOLET = '#8578ff', SKY = '#3b9eff', ORANGE = '#f08a24', WHITE = '#e7e8f0';
+const FONT = "-apple-system, 'SF Pro Display', system-ui, 'Inter', 'Helvetica Neue', sans-serif";
+const SHOT = new URLSearchParams(location.search).get('shot');
+const E = (s) => Shell.esc(s);
+const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const plural = (n, one, many = one + 's') => `${fmtN(n)} ${n === 1 ? one : many}`;
+const CANT = 'Lumni’s API can’t do this yet';
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const cv = $('#cv');
+const ctx = cv.getContext('2d');
+const DPR = Math.min(2, devicePixelRatio || 1);
+cv.width = CW * DPR; cv.height = CH * DPR; ctx.scale(DPR, DPR);
+
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Square avatars for the named AIs.
+const AV = { refund: 'Rf', triage: 'Tt', invoice: 'In', dunning: 'Dn', quote: 'Qw', router: 'Lr', deploy: 'Db', accounts: 'Au', ledger: 'Lb', recon: 'Rc', pricer: 'Ps', misc: '+' };
+// What each AI is doing, or wants to do next.
+const DO = {
+  refund: ['Refund $60 to Omar H.', 'Refund $24 to Dana R.', 'Refund $118 to Kai M.', 'Refund $35 to Ruth K.', 'Refund $72 to Ben A.', 'Refund $41 to Iris T.', 'Refund $90 to Hugo P.'],
+  dunning: ['Retry a failed charge for Zoe L.', 'Retry a card for Hooli', 'Retry a charge for Nina S.'],
+  ledger: ['Book this morning’s refunds', 'Book payouts to the ledger', 'Book Acme’s credit note'],
+  recon: ['Match refunds to payouts', 'Check March totals'],
+  deploy: ['Restart the site on update 2.4', 'Roll out update 2.5', 'Roll back a slow page'],
+  pricer: ['Change the Pro price to $45', 'Update seat prices', 'Move Sam to the yearly plan'],
+  accounts: ['Update the billing email', 'Change the account owner', 'Fix the shipping address'],
+  router: ['Assign the account to Dana Ruiz', 'Route a new lead', 'Merge two contacts'],
+  quote: ['Write a renewal quote', 'Send a 40-seat quote'],
+  invoice: ['Send March invoices, batch 3', 'Re-send an invoice to Umbra', 'Send a corrected invoice'],
+  triage: ['Answer ticket #8812', 'Tag 40 new tickets', 'Close ticket #8790'],
+  misc: ['Update a record'],
+};
+// Who fights over each thing, and the rules there.
+const PROFILES = {
+  'Refunds queue': { ais: ['refund', 'refund', 'refund', 'dunning', 'ledger', 'recon'], cap: 8, raise: 12, unit: 'refunds', rule: 'One writer per refund', token: 2041 },
+  'Checkout site': { ais: ['deploy', 'deploy', 'pricer'], rule: 'One deploy at a time', extra: 'Next goes when the site is healthy', token: 211 },
+  'Acme’s account': { ais: ['accounts', 'router', 'quote', 'triage'], rule: 'One writer at a time', extra: 'A person’s edit wins', token: 1187 },
+  'Sam’s subscription': { ais: ['pricer', 'dunning', 'refund', 'invoice'], rule: 'One writer at a time', token: 342 },
+  'March invoices': { ais: ['invoice', 'invoice', 'dunning', 'ledger'], cap: 4, raise: 6, unit: 'invoice runs', rule: 'One writer per invoice', token: 918 },
+  'Enterprise price list': { ais: ['pricer', 'quote', 'router'], rule: 'One writer at a time', extra: 'Changes go out on the hour', token: 431 },
+  'Initech’s account': { ais: ['router', 'accounts', 'quote'], rule: 'One writer at a time', token: 764 },
+  'Payout schedule': { ais: ['ledger', 'recon'], rule: 'One writer at a time', token: 129 },
+};
+/** Your workspace: the lease check every shared thing has. */
+const REAL_PROFILE = { ais: [], rule: 'One writer at a time' };
+
+// ─── the model: who is cleared, who is holding ──────
+
+let w, M, S, sel = 0, gen = 0, rnd;
+const LEASE = { small: [18, 28], mid: [6, 10], large: [3, 6], real: [1.2, 2.6] };
+
+function buildModel(world) {
+  const real = world.key === 'real';
+  if (real) return buildReal(world);
+  const mr = rng(world.key.length * 131 + 3);
+  const avgLease = (LEASE[world.key][0] + LEASE[world.key][1]) / 2;
+  const things = world.things.slice(0, 8);
+  const runways = things.map((t, i) => {
+    const p = PROFILES[t.name] ?? REAL_PROFILE;
+    const cap = p.cap || 1;
+    const queue = world.key === 'small' ? Math.max(0, t.holders - 2) : Math.round((t.holders - 1) * (world.key === 'large' ? 1.5 : 1));
+    const cleared = cap > 1 ? (world.key === 'small' ? 1 : queue > 0 ? cap : Math.max(1, t.holders)) : 1;
+    return {
+      i, name: t.name, thing: t, p, cap, queue, cleared, app: world.app(t.app),
+      touches: t.touches,
+      // Hand-offs only happen where someone is waiting.
+      handoffs10: !queue ? 0 : Math.round((600 / avgLease) * (0.35 + mr() * 0.2)),
+      heat: Math.pow(0.72, i),
+    };
+  });
+  const visCleared = runways.reduce((s, r) => s + r.cleared, 0);
+  const visHold = runways.reduce((s, r) => s + r.queue, 0);
+  const cleared = Math.max(visCleared, Math.round(world.working * 0.66));
+  const things_ = runways.length + (cleared - visCleared);
+  const holding = world.key === 'small' ? visHold : visHold + Math.round(visHold * 0.6);
+  const sum10 = runways.reduce((s, r) => s + r.handoffs10, 0);
+  const handoffsHour = Math.round(sum10 * 6 * { small: 1, mid: 1.2, large: 2.6 }[world.key]);
+  const clashes = Math.round(world.kinds.stop * 0.18) + Math.round(world.kinds.wait * 0.05);
+  const avgWait = avgLease * (0.55 + 0.09 * Math.sqrt(holding));
+  return { real, runways, cleared, things: things_, holding, visCleared, handoffsHour, clashes, avgWait };
+}
+
+/**
+ * Your workspace: today's things, by how many AIs touched them and how often
+ * one had to wait, with who holds each one right now (its lease), the queue
+ * behind it, and the limits you set on it.
+ */
+function buildReal(world) {
+  const caughtOn = Object.fromEntries((world.facts ?? []).map((f) => [f.id, f.caught]));
+  // "other" is the API's bucket for the long tail, not one thing you can hold.
+  const things = world.things.filter((t) => t.id !== 'other');
+  const live = (t) => (t.lease?.holder ? 2 : t.lease ? 1 : 0);
+  const ranked = things.slice(0, 8).sort((a, b) => live(b) - live(a) || (b.lease?.refused ?? 0) - (a.lease?.refused ?? 0));
+  const maxT = Math.max(1, ...ranked.map((t) => t.touches));
+  const runways = ranked.map((t, i) => {
+    const raw = EXTRA.lease[t.id];
+    const lims = EXTRA.limits[t.id] ?? [];
+    const queue = t.lease?.queued
+      ? t.lease.queue.map((q) => ({ ...who(q.actorId, t), action: q.action ?? null, since: q.since ?? null, position: q.position ?? null }))
+      : (raw?.queue ?? []).map((q) => ({ ...who(q.actor_id, t), action: q.action_id ?? null, since: q.waiting_since ? Date.parse(q.waiting_since) : null, position: q.position ?? null }));
+    return {
+      i, name: t.name, thing: t, p: REAL_PROFILE, cap: t.lease?.limit?.max_in_flight ?? 1, queue: queue.length, cleared: t.lease?.limit?.in_flight ?? (t.lease?.holder ? 1 : 0), app: world.app(t.app),
+      touches: t.touches, handoffs10: 0,
+      heat: Math.sqrt(t.touches / maxT),
+      // The share of its traffic that waited, or was sent back to look again.
+      pWait: Math.min(0.6, t.waits / Math.max(1, t.touches)),
+      pStale: Math.min(0.4, (caughtOn[t.id] ?? 0) / Math.max(1, t.touches)),
+      rechecks: caughtOn[t.id] ?? 0,
+      lease: t.lease, queueList: queue, limits: lims,
+      holdLimit: lims.find((l) => l.hold) ?? null,
+      capLimit: lims.find((l) => l.max_in_flight != null) ?? null,
+    };
+  });
+  const shared = things.filter((t) => t.holders > 1).length;
+  const leased = runways.filter((r) => r.lease?.holder);
+  return {
+    real: true, runways, shared, waits: world.kinds.wait, things: world.scale.things, clashes: world.kinds.wait,
+    handoffsHour: 0, holding: runways.reduce((s, r) => s + r.queue, 0), cleared: leased.length,
+    handoffs: runways.reduce((s, r) => s + (r.lease?.handoffs ?? 0), 0),
+    refused: runways.reduce((s, r) => s + (r.lease?.refused ?? 0), 0),
+  };
+}
+
+/** A name and initials for a raw actor id, from the fleet or the thing's own list. */
+function who(id, t) {
+  const f = w.fleet.find((x) => x.id === id);
+  if (f) return { actor: f.name, initials: f.initials ?? f.name.slice(0, 2), human: false };
+  const a = t?.ais?.find((x) => x.id === id);
+  if (a) return { actor: a.name, initials: a.initials, human: a.human };
+  return { actor: String(id ?? 'An AI'), initials: String(id ?? '?').replace(/^(ai|u)_/, '').slice(0, 2), human: false };
+}
+
+/** A readable limit id from a thing id: "salesforce:pricebook:enterprise" gives "salesforce-pricebook-enterprise". */
+const slug = (id) => String(id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'thing';
+
+/** Real only: each runway's raw lease (for its queue) and your limits on it. */
+let EXTRA = { lease: {}, limits: {} };
+async function readExtra(world) {
+  const out = { lease: {}, limits: {} };
+  if (world.source === 'snapshots') return out;
+  const things = world.things.filter((t) => t.id !== 'other').slice(0, 8);
+  await Promise.all(things.flatMap((t) => [
+    // Only limits scoped to a resource: an AI's own cap isn't a limit on this thing.
+    Shell.api.get(`/v1/config/limits?resource=${encodeURIComponent(t.id)}`).then((r) => { out.limits[t.id] = (r?.items ?? []).filter((l) => l.scope?.resource); }, () => {}),
+    // Newer APIs put the queue in the world; only older ones need a read per thing.
+    t.lease && !t.lease.queued ? Shell.api.get(`/v1/resources/${encodeURIComponent(t.id)}/lease`).then((r) => { out.lease[t.id] = r; }, () => {}) : null,
+  ].filter(Boolean)));
+  return out;
+}
+
+function fleetAI(id) {
+  return w.fleet.find((f) => f.id === id) ?? w.fleet[0];
+}
+
+function newStrip(r, since = 0) {
+  const id = r.p.ais[Math.floor(rnd() * r.p.ais.length)];
+  const ai = fleetAI(id);
+  const list = DO[id] ?? DO.misc;
+  return {
+    id, av: AV[id] ?? '+',
+    name: ai.copies > 1 ? `${ai.name} ${1 + Math.floor(rnd() * ai.copies)}` : ai.name,
+    doing: list[Math.floor(rnd() * list.length)],
+    since,
+  };
+}
+
+// The next strip up from the long queue arrived just after the last one shown.
+function backlog(r) {
+  const lastS = r.strips.at(-1)?.since ?? S.t - 20;
+  return newStrip(r, Math.min(S.t - 1, lastS + 1 + rnd() * 4));
+}
+
+// ─── the simulation ─────────────────────────────────
+
+const lease = () => { const [a, b] = LEASE[w.key]; return a + rnd() * (b - a); };
+const TARGET = { small: { in: 3, tail: 0, tailThings: 0 }, mid: { in: 8, tail: 26, tailThings: 46 }, large: { in: 20, tail: 150, tailThings: 130 }, real: { in: 0, tail: 0, tailThings: 0 } };
+const MAX_DOTS = 300;
+
+function newSim() {
+  const n = M.runways.length;
+  const big = w.key === 'large';
+  const oR = big ? 25 : 22;
+  for (const r of M.runways) {
+    let ang, rad;
+    if (n === 1) { ang = -Math.PI / 2 - 0.55; rad = 0.42 * R; }
+    else if (n >= 8) { ang = -Math.PI / 2 + r.i * TAU / n + 0.16; rad = (r.i % 2 ? 0.74 : 0.45) * R; }
+    else { ang = -Math.PI / 2 + r.i * TAU / n + 0.2; rad = 0.6 * R; }
+    r.ang = ang;
+    r.x = CX + Math.cos(ang) * rad;
+    r.y = CY + Math.sin(ang) * rad;
+    r.oR = oR;
+    r.orbit = rnd() * TAU;
+    r.visMax = Math.min(12, r.queue);
+    r.docked = null;
+    r.holding = [];
+    r.paused = false;
+    if (M.real) {
+      // Today's traffic, replayed; the board reads the real lease and queue.
+      r.paused = !!r.holdLimit;
+      r.token = r.lease?.holder?.token ?? null; r.holder = null; r.strips = []; r.hand = [];
+      r.leaseDur = lease(); r.leaseLeft = 0;
+      continue;
+    }
+    r.token = r.p.token;
+    r.leaseDur = lease();
+    r.leaseLeft = r.leaseDur * (0.35 + rnd() * 0.6);
+    r.holder = newStrip(r, -Math.round(r.leaseDur - r.leaseLeft));
+    r.strips = [];
+    const avg = (LEASE[w.key][0] + LEASE[w.key][1]) / 2, shown = Math.min(4, r.queue);
+    for (let k = 0; k < shown; k++) r.strips.push(newStrip(r, -Math.round(avg * (shown - k + (r.queue > shown ? 1.5 : 0)) * (0.55 + rnd() * 0.25))));
+    r.hand = [];
+    for (let k = 0; k < r.handoffs10; k++) r.hand.push(-rnd() * 600);
+    r.hand.sort((a, b) => a - b);
+  }
+  return { t: 0, sweep: -Math.PI / 2, blips: [], flashes: [], tags: [], conflict: null, nextConflict: 2.5, frozen: false, tail: [], hourAcc: 0, spawnAcc: 0 };
+}
+
+let blipId = 0;
+function mkBlip(kind, x, y, extra = {}) {
+  const b = { id: ++blipId, kind, x, y, color: WHITE, alpha: 1, trail: [], t0: S.t, ...extra };
+  S.blips.push(b);
+  return b;
+}
+
+function edgePoint(ang) { return { x: CX + Math.cos(ang) * (R + 6), y: CY + Math.sin(ang) * (R + 6) }; }
+
+// Aim a blip at a runway along a gentle curve.
+function aim(b, r, dur) {
+  const dx = b.x - r.x, dy = b.y - r.y, d = Math.hypot(dx, dy) || 1;
+  b.p0 = { x: b.x, y: b.y };
+  b.p1 = { x: r.x + (dx / d) * r.oR, y: r.y + (dy / d) * r.oR };
+  const mx = (b.p0.x + b.p1.x) / 2, my = (b.p0.y + b.p1.y) / 2;
+  const bend = (rnd() - 0.5) * 0.5 * d;
+  b.c = { x: mx + (-dy / d) * bend, y: my + (dx / d) * bend };
+  b.t0 = S.t; b.dur = dur; b.rw = r;
+}
+
+function pickRunway() {
+  const rs = M.runways;
+  const ws = rs.map((r) => r.heat * (0.35 + Math.min(r.queue, 12)) + (r.paused ? 0.6 : 0));
+  let x = rnd() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < rs.length; i++) { x -= ws[i]; if (x <= 0) return rs[i]; }
+  return rs[0];
+}
+
+function spawnInbound(r = pickRunway(), opts = {}) {
+  const ang = opts.ang ?? rnd() * TAU;
+  const e = edgePoint(ang);
+  // Real: old info and waits come in at the share today's records show for this thing.
+  const stale = !opts.clean && rnd() < (M.real ? r.pStale : 0.13);
+  const b = mkBlip('in', e.x, e.y, { stale, staleAt: 0.45 + rnd() * 0.2, wait: M.real && !opts.clean && rnd() < r.pWait, ...opts.extra });
+  aim(b, r, opts.dur ?? 3.2 + rnd() * 2.8);
+  return b;
+}
+
+function depart(b, r) {
+  b.kind = 'out';
+  const a = r.ang + (rnd() - 0.5) * 1.2;
+  const e = { x: CX + Math.cos(a) * (R + 10), y: CY + Math.sin(a) * (R + 10) };
+  b.p0 = { x: b.x, y: b.y }; b.p1 = e;
+  b.c = { x: (b.x + e.x) / 2 + (rnd() - 0.5) * 60, y: (b.y + e.y) / 2 + (rnd() - 0.5) * 60 };
+  b.t0 = S.t; b.dur = 2.4 + rnd();
+}
+
+function flash(x, y, color, r1 = 22) { S.flashes.push({ x, y, color, t0: S.t, r1 }); }
+
+function dock(r, b) {
+  b.kind = 'dock'; b.color = VIOLET; b.rw = r;
+  r.docked = b;
+  flash(r.x, r.y, VIOLET);
+}
+
+// The holder finishes. The next in line goes.
+function handoff(r) {
+  if (r.docked) { depart(r.docked, r); r.docked = null; }
+  if (M.real) {
+    r.leaseDur = lease(); r.leaseLeft = r.leaseDur;
+    if (r.paused) return;
+    const next = r.holding.shift();
+    if (next) dock(r, next);
+    return;
+  }
+  r.leaseDur = lease(); r.leaseLeft = r.leaseDur;
+  if (r.paused) { r.holder = null; boardHolder(r); return; }
+  const next = r.holding.shift();
+  if (next) dock(r, next);
+  if (r.strips.length) {
+    r.holder = r.strips.shift();
+    r.token++;
+    r.hand.push(S.t);
+    if (r.queue > r.strips.length) r.strips.push(backlog(r));
+  } else if (next) {
+    r.holder = newStrip(r, S.t); r.token++; r.hand.push(S.t);
+  } else {
+    r.holder = null;
+  }
+  r.holder && (r.holder.since = S.t);
+  boardHolder(r, true);
+}
+
+function arrive(b) {
+  const r = b.rw;
+  if (M.real) {
+    if (r.paused) return hold(r, b);
+    // As often as today's waits say, it holds for its turn; otherwise it goes in.
+    if (b.held || b.wait || r.docked) {
+      if (!b.held && !b.wait && r.docked) { depart(r.docked, r); r.docked = null; }
+      else { if (!r.docked) r.leaseLeft = Math.max(r.leaseLeft, 0.9 + rnd()); return hold(r, b); }
+    }
+    dock(r, b); r.leaseDur = lease(); r.leaseLeft = r.leaseDur;
+    return;
+  }
+  if (b.held || r.paused) return hold(r, b);
+  if (!r.docked && !r.holding.length) {
+    dock(r, b);
+    if (!r.holder) { r.holder = newStrip(r, S.t); r.token++; r.leaseDur = lease(); r.leaseLeft = r.leaseDur; boardHolder(r, true); }
+    return;
+  }
+  hold(r, b);
+}
+
+function hold(r, b) {
+  if (r.holding.length < Math.max(1, r.visMax + (r.paused ? 4 : 1)) || b.held) {
+    b.kind = 'hold'; b.color = SKY; b.rw = r; r.holding.push(b);
+  } else {
+    // At volume, dots are a sample: this one folds into the counter.
+    b.kind = 'merge'; b.color = SKY; b.t0 = S.t;
+  }
+}
+
+function spawnTail() {
+  const th = S.tail[Math.floor(rnd() * S.tail.length)];
+  const e = edgePoint(rnd() * TAU);
+  const b = mkBlip('tail', e.x, e.y, { th, alpha: 0.75 });
+  b.p0 = { x: e.x, y: e.y }; b.p1 = { x: th.x, y: th.y };
+  b.c = { x: (e.x + th.x) / 2 + (rnd() - 0.5) * 50, y: (e.y + th.y) / 2 + (rnd() - 0.5) * 50 };
+  b.t0 = S.t; b.dur = 2.6 + rnd() * 3;
+}
+
+// Two AIs heading for the same thing at the same moment.
+function spawnConflict(r) {
+  const ia = r.ang + 0.9 + rnd() * 0.3, ib = r.ang - 0.9 - rnd() * 0.3;
+  const dur = 6;
+  let sa = { name: '' }, sb = { name: '' };
+  if (!M.real) {
+    sa = newStrip(r); sb = newStrip(r);
+    for (let k = 0; k < 6 && sb.id === sa.id; k++) Object.assign(sb, newStrip(r));
+    if (sb.name === sa.name) sb.name = fleetAI(r.p.ais.at(-1)).name;
+  }
+  const a = spawnInbound(r, { ang: ia, dur, clean: true });
+  const b = spawnInbound(r, { ang: ib, dur, clean: true });
+  S.conflict = { a, b, r, t0: S.t, dur, resolved: false, doneAt: 0, na: sa.name, nb: sb.name };
+  a.conf = b.conf = true;
+}
+
+function bez(p0, c, p1, u) {
+  const v = 1 - u;
+  return { x: v * v * p0.x + 2 * v * u * c.x + u * u * p1.x, y: v * v * p0.y + 2 * v * u * c.y + u * u * p1.y };
+}
+
+function step(dt) {
+  S.t += dt;
+  S.sweep += dt * TAU / 4.2;
+  const T = TARGET[w.key];
+  const k = 1 - Math.exp(-dt * 7);
+
+  for (const r of M.runways) {
+    r.orbit += dt * (0.7 + (r.i % 3) * 0.08);
+    if (r.holder || r.docked || (M.real && r.holding.length)) {
+      r.leaseLeft -= dt;
+      if (r.leaseLeft <= 0) handoff(r);
+    }
+    // Someone is usually lined up as a lease winds down.
+    if (!M.real && !r.paused && !r.queue && r.holder && r.leaseLeft < 3.2 && !r.called) {
+      r.called = true;
+      if (rnd() < 0.75 && !S.blips.some((b) => b.rw === r && (b.kind === 'in' || b.kind === 'loop'))) spawnInbound(r, { dur: r.leaseLeft + 0.4 + rnd() * 1.2, clean: true });
+    }
+    if (r.leaseLeft > 3.2) r.called = false;
+    // A free thing doesn't stay free for long.
+    if (!M.real && !r.paused && !r.holder && !r.docked && !r.holding.length) {
+      r.freeFor = (r.freeFor ?? 0) + dt;
+      if (r.freeFor > 1.6 && !S.blips.some((b) => b.rw === r && (b.kind === 'in' || b.kind === 'loop'))) { spawnInbound(r, { dur: 2.6 + rnd() * 1.4 }); r.freeFor = 0; }
+    } else r.freeFor = 0;
+    if (r.paused && !M.real) {
+      r.pauseAcc = (r.pauseAcc ?? 0) + dt;
+      if (r.pauseAcc > 1.4) { r.pauseAcc = 0; r.queue++; if (r.strips.length < 4) r.strips.push(newStrip(r, S.t)); boardQueue(r); }
+    }
+  }
+
+  for (const b of S.blips) {
+    b.trail.push(b.x, b.y);
+    if (b.trail.length > 16) b.trail.splice(0, 2);
+    const u = Math.min(1, (S.t - b.t0) / (b.dur || 1));
+    if (b.kind === 'in') {
+      if (b.stale && u >= b.staleAt) {
+        // Old info: sent out on a loop to read the latest, then back in.
+        b.kind = 'loop'; b.color = ORANGE; b.stale = false;
+        const p = bez(b.p0, b.c, b.p1, u), q = bez(b.p0, b.c, b.p1, Math.min(1, u + 0.02));
+        const vx = q.x - p.x, vy = q.y - p.y, vd = Math.hypot(vx, vy) || 1;
+        const side = rnd() < 0.5 ? 1 : -1;
+        b.lc = { x: p.x + (-vy / vd) * 20 * side - (vx / vd) * 8, y: p.y + (vx / vd) * 20 * side - (vy / vd) * 8 };
+        b.la0 = Math.atan2(p.y - b.lc.y, p.x - b.lc.x); b.ls = side * -1; b.lt0 = S.t;
+        b.left = (1 - u) * b.dur + 0.6;
+        continue;
+      }
+      const p = bez(b.p0, b.c, b.p1, u);
+      b.x = p.x; b.y = p.y;
+      if (u >= 1) arrive(b);
+    } else if (b.kind === 'loop') {
+      const lu = Math.min(1, (S.t - b.lt0) / 1.5);
+      const a = b.la0 + b.ls * TAU * (lu < 1 ? (1 - Math.pow(1 - lu, 1.6)) : 1);
+      b.x = b.lc.x + Math.cos(a) * 20; b.y = b.lc.y + Math.sin(a) * 20;
+      if (lu >= 1) { b.kind = 'in'; b.color = WHITE; aim(b, b.rw, Math.max(1.2, b.left)); }
+    } else if (b.kind === 'hold') {
+      const r = b.rw, n = r.holding.length, i = r.holding.indexOf(b);
+      const a = r.orbit + (i * TAU) / Math.max(1, n);
+      const rad = r.oR + (i % 2) * (n > 6 ? 7 : 0);
+      b.x += (r.x + Math.cos(a) * rad - b.x) * k;
+      b.y += (r.y + Math.sin(a) * rad - b.y) * k;
+    } else if (b.kind === 'dock') {
+      b.x += (b.rw.x - b.x) * k; b.y += (b.rw.y - b.y) * k;
+    } else if (b.kind === 'merge') {
+      const r = b.rw, mu = Math.min(1, (S.t - b.t0) / 0.7);
+      const a = Math.atan2(b.y - r.y, b.x - r.x);
+      b.x += (r.x + Math.cos(a) * r.oR - b.x) * k; b.y += (r.y + Math.sin(a) * r.oR - b.y) * k;
+      b.alpha = 1 - mu;
+      if (mu >= 1) b.dead = true;
+    } else if (b.kind === 'out') {
+      const p = bez(b.p0, b.c, b.p1, u);
+      b.x = p.x; b.y = p.y; b.alpha = 1 - u;
+      if (u > 0.25) b.color = WHITE;
+      if (u >= 1) b.dead = true;
+    } else if (b.kind === 'tail') {
+      const p = bez(b.p0, b.c, b.p1, u);
+      b.x = p.x; b.y = p.y;
+      if (u >= 1) { b.kind = 'tailDock'; b.color = VIOLET; b.t0 = S.t; b.dur = 3 + rnd() * 6; }
+    } else if (b.kind === 'tailDock') {
+      if (u >= 1) { b.kind = 'out'; b.p0 = { x: b.x, y: b.y }; const e = edgePoint(Math.atan2(b.y - CY, b.x - CX) + (rnd() - 0.5)); b.p1 = e; b.c = { x: (b.x + e.x) / 2, y: (b.y + e.y) / 2 }; b.t0 = S.t; b.dur = 2 + rnd(); }
+    }
+  }
+  S.blips = S.blips.filter((b) => !b.dead);
+
+  // Keep the sky busy, inside the dot budget.
+  const count = (kinds) => S.blips.reduce((s, b) => s + (kinds.includes(b.kind) ? 1 : 0), 0);
+  if (M.real) {
+    // Today's traffic, at a calm pace: busier things draw more.
+    S.spawnAcc += dt * 2.2;
+    if (S.spawnAcc >= 1 && M.runways.length) {
+      S.spawnAcc = 0;
+      if (count(['in', 'loop']) < Math.min(14, 2 + M.runways.length * 1.5)) spawnInbound();
+    }
+    // A wait, replayed, only where today's records show waits.
+    const waited = M.runways.filter((r) => r.thing.waits > 0);
+    if (!S.conflict && waited.length && S.t >= S.nextConflict) {
+      const r = waited.includes(M.runways[sel]) && rnd() < 0.6 ? M.runways[sel] : waited[Math.floor(rnd() * waited.length)];
+      spawnConflict(r);
+      S.nextConflict = S.t + 10 + rnd() * 3;
+    }
+  } else {
+    S.spawnAcc += dt * (w.key === 'large' ? 7 : 3);
+    if (S.spawnAcc >= 1 && S.blips.length < MAX_DOTS) {
+      S.spawnAcc = 0;
+      if (count(['in', 'loop']) < T.in) spawnInbound();
+      if (T.tail && count(['tail', 'tailDock']) < T.tail) { spawnTail(); if (w.key === 'large') spawnTail(); }
+    }
+    // A predicted clash every few seconds, and Lumni resolving it.
+    if (!S.conflict && S.t >= S.nextConflict) {
+      const r = rnd() < 0.5 ? M.runways[sel] : pickRunway();
+      if (!r.paused) spawnConflict(r);
+      S.nextConflict = S.t + (w.key === 'small' ? 15 : 9) + rnd() * 3;
+    }
+  }
+  const c = S.conflict;
+  if (c) {
+    const u = (S.t - c.t0) / c.dur;
+    if (!c.resolved && u >= 0.5) {
+      c.resolved = true; c.doneAt = S.t;
+      const b = c.b;
+      if (b.kind === 'in' || b.kind === 'loop') {
+        b.held = true; b.color = SKY;
+        const left = (1 - u) * c.dur;
+        aim(b, c.r, left * 1.7);
+      }
+      S.tags.push({ b, t0: S.t, text: 'Held one. No clash.' });
+      if (!M.real) { M.clashes++; bumpStat('clash', M.clashes); }
+    }
+    if (c.resolved && S.t - c.doneAt > 2.4) S.conflict = null;
+  }
+  S.tags = S.tags.filter((g) => S.t - g.t0 < 1.8);
+  S.flashes = S.flashes.filter((f) => S.t - f.t0 < 0.9);
+
+  // The hand-off counter ticks at its real rate.
+  S.hourAcc += dt * M.handoffsHour / 3600;
+  if (S.hourAcc >= 1) { const n = Math.floor(S.hourAcc); S.hourAcc -= n; M.handoffsHour += n; bumpStat('hand', M.handoffsHour); }
+}
+
+// ─── drawing ────────────────────────────────────────
+
+let bg;
+function paintBackground() {
+  bg = document.createElement('canvas');
+  bg.width = CW * DPR; bg.height = CH * DPR;
+  const g = bg.getContext('2d');
+  g.scale(DPR, DPR);
+  // A faint grid over the whole card.
+  g.fillStyle = 'rgba(255,255,255,0.035)';
+  for (let x = 12; x < CW; x += 24) for (let y = 12; y < CH; y += 24) g.fillRect(x, y, 1, 1);
+  // The scope face.
+  const face = g.createRadialGradient(CX, CY, 0, CX, CY, R);
+  face.addColorStop(0, '#171831');
+  face.addColorStop(1, '#10111c');
+  g.fillStyle = face;
+  g.beginPath(); g.arc(CX, CY, R, 0, TAU); g.fill();
+  g.save();
+  g.beginPath(); g.arc(CX, CY, R, 0, TAU); g.clip();
+  g.strokeStyle = 'rgba(255,255,255,0.045)'; g.lineWidth = 1;
+  for (let x = CX % 30; x < CW; x += 30) { g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, CH); g.stroke(); }
+  for (let y = CY % 30; y < CH; y += 30) { g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(CW, y + 0.5); g.stroke(); }
+  g.restore();
+  // Range rings and the cross.
+  g.strokeStyle = 'rgba(255,255,255,0.09)';
+  for (const f of [0.25, 0.5, 0.75]) { g.beginPath(); g.arc(CX, CY, R * f, 0, TAU); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(CX, CY, R, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,0.07)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(CX - R, CY); g.lineTo(CX + R, CY); g.moveTo(CX, CY - R); g.lineTo(CX, CY + R); g.stroke();
+  // Bearing ticks.
+  for (let d = 0; d < 360; d += 5) {
+    const a = (d * Math.PI) / 180, l = d % 30 === 0 ? 10 : 4;
+    g.strokeStyle = d % 30 === 0 ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.14)';
+    g.beginPath();
+    g.moveTo(CX + Math.cos(a) * R, CY + Math.sin(a) * R);
+    g.lineTo(CX + Math.cos(a) * (R - l), CY + Math.sin(a) * (R - l));
+    g.stroke();
+  }
+}
+
+function roundRect(x, y, wd, ht, rad) {
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + wd, y, x + wd, y + ht, rad);
+  ctx.arcTo(x + wd, y + ht, x, y + ht, rad);
+  ctx.arcTo(x, y + ht, x, y, rad);
+  ctx.arcTo(x, y, x + wd, y, rad);
+  ctx.closePath();
+}
+
+function sweepBoost(x, y) {
+  const a = Math.atan2(y - CY, x - CX);
+  const behind = (((S.sweep - a) % TAU) + TAU) % TAU;
+  return behind < 1.4 ? 1 - behind / 1.4 : 0;
+}
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.drawImage(bg, 0, 0, CW, CH);
+
+  // The sweep.
+  const W = 1.1;
+  const g = ctx.createConicGradient(S.sweep - W, CX, CY);
+  g.addColorStop(0, 'rgba(133,120,255,0)');
+  g.addColorStop(W / TAU, 'rgba(133,120,255,0.26)');
+  g.addColorStop(W / TAU + 0.0008, 'rgba(133,120,255,0)');
+  g.addColorStop(1, 'rgba(133,120,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(CX, CY, R - 1, 0, TAU); ctx.fill();
+  const lg = ctx.createLinearGradient(CX, CY, CX + Math.cos(S.sweep) * R, CY + Math.sin(S.sweep) * R);
+  lg.addColorStop(0, 'rgba(133,120,255,0.2)'); lg.addColorStop(1, 'rgba(160,150,255,0.95)');
+  ctx.strokeStyle = lg; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(CX + Math.cos(S.sweep) * R, CY + Math.sin(S.sweep) * R); ctx.stroke();
+
+  // The long tail of smaller shared things.
+  for (const th of S.tail) {
+    const bo = sweepBoost(th.x, th.y);
+    ctx.fillStyle = `rgba(255,255,255,${0.13 + bo * 0.3})`;
+    ctx.fillRect(th.x - 1, th.y - 1, 2, 2);
+  }
+
+  // Lumni, in the middle.
+  ctx.fillStyle = 'rgba(133,120,255,0.18)';
+  ctx.beginPath(); ctx.arc(CX, CY, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle = VIOLET;
+  ctx.beginPath(); ctx.arc(CX, CY, 3.5, 0, TAU); ctx.fill();
+
+  // Runways and their holding patterns.
+  for (const r of M.runways) drawRunway(r);
+
+  // A predicted clash: a dashed line and a countdown.
+  const c = S.conflict;
+  if (c && !c.resolved && c.a.kind === 'in' && (c.b.kind === 'in')) {
+    const u = (S.t - c.t0) / c.dur;
+    ctx.save();
+    ctx.setLineDash([5, 5]);
+    ctx.lineDashOffset = -S.t * 18;
+    ctx.strokeStyle = 'rgba(231,232,240,0.75)'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(c.a.x, c.a.y); ctx.lineTo(c.r.x, c.r.y); ctx.lineTo(c.b.x, c.b.y); ctx.stroke();
+    ctx.restore();
+    for (const b of [c.a, c.b]) {
+      ctx.strokeStyle = 'rgba(231,232,240,0.85)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(b.x, b.y, 8 + Math.sin(S.t * 8) * 1.2, 0, TAU); ctx.stroke();
+    }
+    const secs = Math.max(1, Math.ceil((1 - u) * c.dur * 10));
+    // The countdown sits just inside the runway, clear of its label.
+    const ix = CX - c.r.x, iy = CY - c.r.y, idn = Math.hypot(ix, iy) || 1;
+    pill(c.r.x + (ix / idn) * (c.r.oR + 24), c.r.y + (iy / idn) * (c.r.oR + 24), M.real ? 'Two at once' : `Clash in ${secs}s`, '#ffffff', '#0d0e14');
+    callout(c, secs);
+  } else if (c && c.resolved) {
+    callout(c, 0);
+  } else callout(null);
+
+  // The dots.
+  const big = w.key === 'large';
+  for (const b of S.blips) {
+    const bo = sweepBoost(b.x, b.y);
+    const size = b.kind === 'dock' ? 4.6 : b.kind === 'hold' || b.kind === 'merge' ? (big ? 2.6 : 3.1) : b.kind === 'tail' || b.kind === 'tailDock' ? 1.7 : b.kind === 'loop' ? 3 : (big ? 2.2 : 2.6);
+    const base = b.kind === 'tail' ? 0.5 : b.kind === 'tailDock' ? 0.6 : 0.85;
+    const a = Math.min(1, (base + bo * 0.35)) * b.alpha;
+    // Trail.
+    if (b.trail.length > 4 && b.kind !== 'dock' && b.kind !== 'tailDock') {
+      ctx.strokeStyle = hexA(b.color, a * (b.kind === 'hold' ? 0.28 : 0.35));
+      ctx.lineWidth = Math.max(1, size * 0.7);
+      ctx.beginPath(); ctx.moveTo(b.trail[0], b.trail[1]);
+      for (let i = 2; i < b.trail.length; i += 2) ctx.lineTo(b.trail[i], b.trail[i + 1]);
+      ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    if (b.kind === 'dock' || bo > 0.6) {
+      ctx.fillStyle = hexA(b.color, (b.kind === 'dock' ? 0.28 : 0.18) * a);
+      ctx.beginPath(); ctx.arc(b.x, b.y, size * 2.4, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = hexA(b.color, a);
+    ctx.beginPath(); ctx.arc(b.x, b.y, size, 0, TAU); ctx.fill();
+    if (b.kind === 'dock') { ctx.strokeStyle = `rgba(255,255,255,${0.85 * a})`; ctx.lineWidth = 1.3; ctx.stroke(); }
+  }
+
+  // Flashes: a hand-off, or a clearance.
+  for (const f of S.flashes) {
+    const u = (S.t - f.t0) / 0.9;
+    ctx.strokeStyle = hexA(f.color, (1 - u) * 0.9); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(f.x, f.y, 6 + u * f.r1, 0, TAU); ctx.stroke();
+  }
+
+  for (const r of M.runways) drawLabel(r);
+  for (const t of S.tags) pill(t.b.x, t.b.y - 18, t.text, '#5b4bf5', '#ffffff');
+}
+
+function pill(x, y, text, bgc, fg) {
+  ctx.font = `700 11.5px ${FONT}`;
+  const tw = ctx.measureText(text).width;
+  const wd = tw + 16, ht = 22;
+  const px = Math.max(8, Math.min(CW - wd - 8, x - wd / 2));
+  roundRect(px, y - ht / 2, wd, ht, 11);
+  ctx.fillStyle = bgc; ctx.fill();
+  ctx.fillStyle = fg; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, px + 8, y + 0.5);
+}
+
+function drawRunway(r) {
+  const isSel = r.i === sel;
+  if (r.queue > 0 || r.holding.length || (M.real && r.thing.waits)) {
+    ctx.strokeStyle = r.paused ? 'rgba(231,232,240,0.28)' : 'rgba(59,158,255,0.26)';
+    ctx.setLineDash([2, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.oR, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // The runway strip, pointing at Lumni.
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  ctx.rotate(r.ang);
+  const L = 36, Wd = 9;
+  roundRect(-L / 2, -Wd / 2, L, Wd, 2.5);
+  ctx.fillStyle = r.paused ? 'rgba(231,232,240,0.08)' : isSel ? 'rgba(133,120,255,0.3)' : 'rgba(255,255,255,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = r.paused ? 'rgba(231,232,240,0.5)' : isSel ? 'rgba(160,150,255,0.95)' : 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(-L / 2 + 4, 0); ctx.lineTo(L / 2 - 4, 0); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  // Selection brackets.
+  if (isSel && M.runways.length > 1) {
+    const s = r.oR + 10, t = 7;
+    ctx.strokeStyle = 'rgba(160,150,255,0.9)'; ctx.lineWidth = 1.5;
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      ctx.beginPath();
+      ctx.moveTo(r.x + sx * s, r.y + sy * (s - t)); ctx.lineTo(r.x + sx * s, r.y + sy * s); ctx.lineTo(r.x + sx * (s - t), r.y + sy * s);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawLabel(r) {
+  const ox = Math.cos(r.ang), oy = Math.sin(r.ang);
+  const rings = r.holding.length > 6 ? 7 : 0;
+  const d = r.oR + rings + (r.i === sel ? 20 : 12);
+  const x = r.x + ox * d;
+  let y = r.y + oy * d;
+  const align = ox > 0.35 ? 'left' : ox < -0.35 ? 'right' : 'center';
+  if (oy < -0.35) y -= 31; else if (oy > 0.35) y += 2; else y -= 15;
+  ctx.textBaseline = 'top';
+  ctx.font = `650 13px ${FONT}`;
+  const name = r.name;
+  ctx.textAlign = align;
+  ctx.fillStyle = r.i === sel ? '#ffffff' : 'rgba(242,242,246,0.86)';
+  ctx.fillText(name.length > 28 ? name.slice(0, 27) + '…' : name, x, y);
+  // Counters, never names: "8 cleared, 35 holding".
+  ctx.font = `600 11.5px ${FONT}`;
+  const t = r.thing;
+  const parts = M.real
+    ? r.paused
+      ? [['Held by you', 'rgba(242,242,246,0.75)'], ...(r.queue ? [[', ', '#8d91a3'], [`${fmtN(r.queue)} holding`, SKY]] : [])]
+      : r.lease?.holder
+        ? [[`${cut(r.lease.holder.actor, 18)} on it`, '#a69cff'], [', ', '#8d91a3'], r.queue ? [`${fmtN(r.queue)} holding`, SKY] : ['nobody holding', '#8d91a3']]
+        : [[`${plural(t.holders, 'AI')} today`, '#a69cff'], ...(t.waits ? [[', ', '#8d91a3'], [`${plural(t.waits, 'wait')}`, SKY]] : [])]
+    : r.paused
+    ? [['Held by you', 'rgba(242,242,246,0.75)'], [', ', '#8d91a3'], [`${fmtN(r.queue)} holding`, SKY]]
+    : !r.holder && !r.docked
+      ? [['Free right now', '#8d91a3']]
+      : [[`${fmtN(r.cleared)} cleared`, '#a69cff'], [', ', '#8d91a3'], r.queue ? [`${fmtN(r.queue)} holding`, SKY] : ['nobody holding', '#8d91a3']];
+  const total = parts.reduce((s, [t]) => s + ctx.measureText(t).width, 0);
+  let px = align === 'left' ? x : align === 'right' ? x - total : x - total / 2;
+  ctx.textAlign = 'left';
+  for (const [t, col] of parts) { ctx.fillStyle = col; ctx.fillText(t, px, y + 17); px += ctx.measureText(t).width; }
+}
+
+// The words next to a predicted clash.
+const co = $('#callout');
+let coKey = '';
+function callout(c, secs) {
+  if (!c) { if (coKey) { co.classList.remove('on'); coKey = ''; } return; }
+  const r = c.r;
+  const waits = r.thing.waits;
+  const html = M.real
+    ? c.resolved
+      ? `<b>Lumni held one</b>The second waited its turn, then went. That happened ${plural(waits, 'time')} on ${E(r.name)} today.`
+      : `<b>Two at once</b>How the ${plural(waits, 'wait')} on ${E(r.name)} today played out: two writers head for it at once.`
+    : c.resolved
+      ? `<b>Clash avoided</b>${c.nb} is holding. ${c.na} goes first, then the next in line.`
+      : `<b>Clash in <span class="n">${secs}</span>s</b>${c.na} and ${c.nb} are both heading for ${r.name}. Lumni will hold one.`;
+  const key = (c.resolved ? 'r' : 'p') + c.t0;
+  if (key !== coKey) {
+    co.innerHTML = html;
+    co.classList.toggle('done', c.resolved);
+    // In the middle, where Lumni sits: the ring of runways stays clear.
+    co.style.left = CX - 103 + 'px';
+    co.style.top = CY - co.offsetHeight / 2 + 'px';
+    co.classList.add('on');
+    coKey = key;
+  } else if (!c.resolved && !M.real) {
+    const n = co.querySelector('.n');
+    if (n && n.textContent !== String(secs)) n.textContent = secs;
+  }
+}
+
+// ─── the strip board ────────────────────────────────
+
+const board = $('#board');
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+let note = '';
+
+function holderHTML(r) {
+  if (!r.holder) {
+    return `<div class="strip holder free"><div class="c1">${r.paused
+      ? `Held by you. ${r.queue ? `${fmtN(r.queue)} AI${r.queue === 1 ? '' : 's'} wait until you let go.` : 'Nobody goes until you let go.'}`
+      : 'Free right now. The next AI goes straight in.'}</div></div>`;
+  }
+  const h = r.holder;
+  return `<div class="strip holder" id="hstrip">
+    <div class="c1"><span class="ai">${h.av}</span><div style="min-width:0"><b>${h.name}</b><small>${h.doing}</small></div></div>
+    <div class="c2"><small>Lease</small><div class="lease"><i id="lbar"></i></div><span class="lsec" id="lsec"></span></div>
+    <div class="c3"><small>Fencing token</small><b class="tok">#${r.token}</b></div>
+  </div>`;
+}
+
+function queueHTML(r) {
+  if (!r.strips.length) {
+    return '<div class="nobody">Nobody waiting. The next AI goes straight in.</div>';
+  }
+  const more = r.queue - r.strips.length;
+  return `<ol class="queue">${r.strips.map((s, i) => `<li class="strip" data-k="${s.name}${s.doing}">
+      <div class="pos">${i + 1}</div>
+      <div class="who"><span class="ai">${s.av}</span><div style="min-width:0"><b>${s.name}</b><small>${s.doing}</small></div></div>
+      <div class="qw" data-since="${s.since}"></div></li>`).join('')}</ol>
+    ${more > 0 ? `<div class="more">and <b>${fmtN(more)}</b> more holding, in order</div>` : ''}`;
+}
+
+function handoffSVG(r) {
+  const W = 508, base = 26;
+  const ticks = r.hand.filter((t) => S.t - t <= 600);
+  let s = `<line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="#e8e8ee" stroke-width="2" stroke-linecap="round"/>`;
+  for (const t of ticks) {
+    const x = W - ((S.t - t) / 600) * W;
+    const fresh = S.t - t < 2;
+    s += `<rect x="${x - 1}" y="${base - (fresh ? 20 : 14)}" width="2" height="${fresh ? 20 : 14}" rx="1" fill="${fresh ? '#5b4bf5' : '#8578ff'}" opacity="${fresh ? 1 : 0.75}"/>`;
+  }
+  s += `<text x="0" y="${base + 16}" font-size="11.5" font-weight="550" fill="#a3a7b3">10 min ago</text>`;
+  s += `<text x="${W}" y="${base + 16}" text-anchor="end" font-size="11.5" font-weight="650" fill="#6a6f7d">now</text>`;
+  return s;
+}
+
+function rulesHTML(r) {
+  const p = r.p;
+  let html = `<div class="rule"><i>1</i>${p.rule}</div>`;
+  if (r.cap > 1) html += `<div class="rule cap"><i>${r.cap}</i>At most ${r.cap} ${p.unit} in flight</div>`;
+  else if (p.extra) html += `<div class="rule"><i>&#10003;</i>${p.extra}</div>`;
+  return html;
+}
+
+function meterHTML(r) {
+  if (r.cap <= 1) return '';
+  const inflight = Math.min(r.cap, r.cleared);
+  return `<span class="meter"><span class="dots">${Array.from({ length: r.cap }, (_, i) => `<s class="${i < inflight ? 'on' : ''}"></s>`).join('')}</span>${inflight} of ${r.cap} in flight</span>`;
+}
+
+const OLD_API = 'Needs a newer Lumni API';
+let confirmHold = false;
+
+/** Minutes or seconds, for lease time and waits: "4 min", "38 s". */
+const span = (ms) => (ms >= 90e3 ? `${fmtN(Math.round(ms / 60e3))} min` : `${Math.max(1, Math.round(ms / 1000))} s`);
+
+/** Your workspace: who holds the thing right now, with the lease and its fencing token. */
+function holderReal(r) {
+  const h = r.lease?.holder;
+  if (!h) {
+    return `<div class="strip holder free"><div class="c1">${r.paused
+      ? `Held by you. ${r.queue ? `${plural(r.queue, 'action')} ${r.queue === 1 ? 'waits' : 'wait'} until you let go.` : 'Nobody goes in until you let go.'}`
+      : 'Free right now. The next AI goes straight in.'}</div></div>`;
+  }
+  return `<div class="strip holder" id="hstrip">
+    <div class="c1"><span class="ai">${E(h.initials ?? '?')}</span><div style="min-width:0"><b>${E(h.actor)}</b><small>${h.action ? `<a class="jl" href="/journey?id=${encodeURIComponent(h.action)}">Open its action</a>` : 'Writing now'}${h.since ? `, since ${E(clockOf(h.since))}` : ''}</small></div></div>
+    <div class="c2"><small>Lease</small><div class="lease"><i id="lbar"></i></div><span class="lsec" id="lsec"></span></div>
+    <div class="c3"><small>Fencing token</small><b class="tok">${h.token != null ? `#${E(h.token)}` : 'None'}</b></div>
+  </div>`;
+}
+
+/** The wall clock of a time in ms, in the reader's own zone. */
+const clockOf = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+/** Your workspace: the queue behind the holder, in order. */
+function queueReal(r) {
+  if (!r.queueList.length) return `<div class="nobody">${r.lease ? 'Nobody waiting right now. The next AI goes straight in.' : 'Nobody is waiting on it right now.'}</div>`;
+  const shown = r.queueList.slice(0, 4);
+  return `<ol class="queue rq">${shown.map((q, i) => `<li class="strip">
+      <div class="pos">${fmtN(q.position ?? i + 1)}</div>
+      <div class="who"><span class="${q.human ? 'human' : 'ai'}">${E(q.initials)}</span><div style="min-width:0"><b>${E(q.actor)}</b><small>${q.action ? `<a class="jl" href="/journey?id=${encodeURIComponent(q.action)}">Open its action</a>` : 'Waiting its turn'}</small></div></div>
+      <div class="qw" data-at="${q.since ?? ''}"></div></li>`).join('')}</ol>
+    ${r.queueList.length > shown.length ? `<div class="more">and <b>${fmtN(r.queueList.length - shown.length)}</b> more holding, in order</div>` : ''}`;
+}
+
+/** Your workspace: in flight against the limit on this thing. */
+function meterReal(r) {
+  const l = r.lease?.limit;
+  if (!l) return '';
+  const max = l.max_in_flight, n = l.in_flight ?? 0;
+  if (max == null) return `<span class="meter">${fmtN(n)} in flight</span>`;
+  const k = Math.min(12, max);
+  return `<span class="meter"><span class="dots">${Array.from({ length: k }, (_, i) => `<s class="${i < n ? 'on' : ''}"></s>`).join('')}</span>${fmtN(n)} of ${fmtN(max)} in flight</span>`;
+}
+
+/** Your workspace: what today's records say about one thing, and who's on it now. */
+function renderBoardReal(anim) {
+  const r = M.runways[sel];
+  if (!r) {
+    board.innerHTML = `<div class="${anim ? 'rise' : ''}"><div class="bh1"><span class="eyebrow">Strip board</span></div>
+      <h2>Nothing touched yet</h2>
+      <div class="nobody" style="margin-top:14px">No AI has worked on anything today. When one does, each thing it touches gets a runway here, and Lumni gives it to one writer at a time.</div></div>
+      <div class="acts"><a class="btn" href="/today">See today</a></div>`;
+    return;
+  }
+  const t = r.thing, L = r.lease;
+  const top = M.runways.reduce((a, x) => (x.thing.waits > a.thing.waits ? x : a), M.runways[0]);
+  const tag = r.paused ? '' : r.queue ? 'Queue right now' : L?.holder ? 'Cleared now' : r === top && t.waits ? 'Most waits today' : sel === 0 ? 'Busiest today' : '';
+  const pat = (w.patterns?.wait ?? []).find((p) => p.thing?.id === t.id) ?? (w.patterns?.wait ?? []).find((p) => p.app === t.app);
+  const head = `<div class="${anim ? 'rise' : ''}">
+      <div class="bh1"><span class="eyebrow">Strip board</span>${tag ? `<span class="tag accent">${tag}</span>` : ''}${r.paused ? '<span class="tag" style="background:var(--ink);color:#fff">Held by you</span>' : ''}</div>
+      <h2 title="${E(r.name)}">${E(cut(r.name, 34))}</h2>
+      <div class="bmeta"><span class="mk" style="background:${E(r.app.color)}">${E(r.app.mark)}</span>${E(r.app.name)}<span class="sep"></span><span><b class="v">${fmtN(t.holders)}</b> ${t.holders === 1 ? 'AI' : 'AIs'} today</span><span class="sep"></span><span><b class="s">${fmtN(t.waits)}</b> ${t.waits === 1 ? 'wait' : 'waits'}</span><span class="sep"></span><span><b>${fmtN(t.touches)}</b> touches</span></div>
+    </div>`;
+  const ruleChips = (r.capLimit ? '' : `<div class="rule"><i>1</i>${E(r.p.rule)}</div>`)
+    + (r.capLimit ? `<div class="rule cap"><i>${fmtN(r.capLimit.max_in_flight)}</i>At most ${fmtN(r.capLimit.max_in_flight)} in flight, set by you</div>` : '')
+    + (r.rechecks ? `<div class="rule"><i>${fmtN(r.rechecks)}</i>Sent back to read the latest</div>` : '');
+  let body;
+  if (L) {
+    body = `
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.05s"><h4>Cleared now<span>A late write with an older token is refused</span></h4><div id="hwrap">${holderReal(r)}</div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.1s"><h4>Holding, in order<span>${r.queue ? 'Next goes when the holder finishes' : ''}</span></h4><div id="qwrap">${queueReal(r)}</div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.15s"><h4>Hand-offs and late writes</h4><div class="rules">
+      <div class="rule"><i>${fmtN(L.handoffs)}</i>${L.handoffs === 1 ? 'hand-off' : 'hand-offs'} in the last hour</div>
+      <div class="rule ${L.refused ? 'cap' : ''}"><i>${fmtN(L.refused)}</i>late ${L.refused === 1 ? 'write' : 'writes'} refused today</div>
+    </div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.2s"><h4>Rules here${meterReal(r)}</h4><div class="rules" id="rules">${ruleChips}</div></div>`;
+  } else {
+    const sq = Math.min(8, t.holders);
+    body = `
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.05s"><h4>AIs that touched it today<span>Nobody holds it right now</span></h4>
+      <div class="strip crowd"><span class="sq">${Array.from({ length: sq }, () => '<i></i>').join('')}${t.holders > sq ? `<i class="more">+${fmtN(t.holders - sq)}</i>` : ''}</span>
+        <p><b>${plural(t.holders, 'AI')}</b> worked on it today, ${plural(t.touches, 'time')} in all. ${t.holders > 1 || t.waits ? 'Lumni gives it to one writer at a time.' : 'With one AI on it, nobody had to take turns.'}</p></div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.1s"><h4>Waits today<span>Another writer was already changing it</span></h4>
+      ${t.waits
+        ? `<div class="strip waitline"><b class="n">${fmtN(t.waits)}</b><p>${t.waits === 1 ? 'Once today an AI' : `${fmtN(t.waits)} times today an AI`} waited its turn here instead of writing over another writer.${pat?.story ? ` <a href="/journey?id=${encodeURIComponent(pat.story)}">Replay one</a>` : ''}</p></div>`
+        : `<div class="nobody">Nobody had to wait here today.${t.holders > 1 ? ' The AIs on it never tried at the same moment.' : ''}</div>`}</div>
+    ${r.queue ? `<div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.12s"><h4>Holding, in order</h4><div id="qwrap">${queueReal(r)}</div></div>` : ''}
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.15s"><h4>Rules here</h4><div class="rules">${ruleChips}</div></div>`;
+  }
+  // Writes: hold (with an inline confirm), let go, raise the limit, or go back to one at a time.
+  const off = M.newer ? '' : ` disabled title="${OLD_API}"`;
+  const max = r.capLimit?.max_in_flight ?? L?.limit?.max_in_flight ?? 1;
+  const raiseTo = max + 1;
+  const showRaise = !r.paused && (L || t.waits || r.queue);
+  const holdBtn = r.paused
+    ? `<button class="btn held" id="bhold"${off}>Let it go</button>`
+    : confirmHold
+      ? `<button class="btn accent" id="bhold">Confirm: hold everything</button><button class="btn" id="bcancel">Cancel</button>`
+      : `<button class="btn" id="bhold"${off}>Hold everything here</button>`;
+  const raiseBtn = !showRaise || confirmHold ? ''
+    : `<button class="btn ${r.queue ? 'accent' : ''}" id="braise"${off}>Raise the limit to ${fmtN(raiseTo)}</button>${r.capLimit ? `<button class="btn" id="bone"${off}>Back to 1</button>` : ''}`;
+  const why = !M.newer ? 'Holding a thing and changing its limit need a newer Lumni API.'
+    : confirmHold ? `Nobody new goes in on ${E(cut(r.name, 30))} until you let go. The holder finishes first.`
+    : note || (r.paused ? 'Nobody new goes in until you let go.' : '');
+  board.innerHTML = `${head}${body}
+    <div class="acts" style="flex-wrap:wrap">
+      ${holdBtn}${raiseBtn}
+      <span class="note ${note || confirmHold ? 'pop' : ''}" id="note" style="max-width:none;flex-basis:100%;text-align:left;margin-left:0">${why}</span>
+    </div>`;
+  $('#bhold')?.addEventListener('click', () => holdReal(r));
+  $('#bcancel')?.addEventListener('click', () => { confirmHold = false; renderBoard(false); });
+  $('#braise')?.addEventListener('click', () => raiseReal(r, raiseTo));
+  $('#bone')?.addEventListener('click', () => backToOne(r));
+  tickBoard(true);
+}
+
+/** Hold everything on a thing (second click confirms), or let it go. */
+async function holdReal(r) {
+  const btn = $('#bhold');
+  if (!btn || btn.disabled) return;
+  const g = gen;
+  if (r.paused) {
+    btn.disabled = true; btn.textContent = 'Letting go…';
+    const id = r.holdLimit?.id ?? `hold-${slug(r.thing.id)}`;
+    const out = await Shell.write('DELETE', `/v1/config/limits/${encodeURIComponent(id)}`, undefined, { ok: `${r.name} is free again. The next in line goes.`, reload: false });
+    if (g !== gen) return;
+    if (!out) { btn.disabled = false; btn.textContent = 'Let it go'; return; }
+    // The held dots go in, one by one.
+    r.paused = false; r.holdLimit = null; note = 'Let go. The next in line goes now.';
+    if (!r.docked) handoff(r);
+    renderBoard(false);
+    setTimeout(() => Shell.refresh(), 1400);
+    return;
+  }
+  if (!confirmHold) { confirmHold = true; renderBoard(false); return; }
+  btn.disabled = true; btn.textContent = 'Holding…';
+  const out = await Shell.write('PUT', `/v1/config/limits/hold-${encodeURIComponent(slug(r.thing.id))}`,
+    { scope: { resource: r.thing.id }, hold: true, mode: 'ENFORCE' },
+    { ok: `${r.name} is held. Nobody new goes in until you let go.`, reload: false });
+  if (g !== gen) return;
+  confirmHold = false;
+  if (!out) { renderBoard(false); return; }
+  // The radar: the runway dims and arrivals circle, waiting on you.
+  r.paused = true; r.holdLimit = out; note = `Held. Nobody new goes in on ${r.name} until you let go.`;
+  flash(r.x, r.y, WHITE, 30);
+  renderBoard(false);
+  setTimeout(() => Shell.refresh(), 1400);
+}
+
+/** Let one more writer in at a time. */
+async function raiseReal(r, to) {
+  const btn = $('#braise');
+  if (!btn || btn.disabled) return;
+  const g = gen;
+  btn.disabled = true; btn.textContent = 'Raising…';
+  const out = await Shell.write('PUT', `/v1/config/limits/cap-${encodeURIComponent(slug(r.thing.id))}`,
+    { scope: { resource: r.thing.id }, max_in_flight: to, mode: 'ENFORCE' },
+    { ok: `${r.name} now takes ${to} writers at a time.`, reload: false });
+  if (g !== gen) return;
+  if (!out) { btn.disabled = false; btn.textContent = `Raise the limit to ${fmtN(to)}`; return; }
+  r.capLimit = out; r.cap = to;
+  const go = Math.max(1, Math.min(to - (r.lease?.limit?.in_flight ?? 1), r.holding.length));
+  note = r.holding.length ? `Raised to ${to}. The next in line goes now.` : `Raised to ${to}. Up to ${to} writers can be on it at once.`;
+  renderBoard(false);
+  releaseHeld(r, go, g);
+  setTimeout(() => Shell.refresh(), 1600);
+}
+
+/** Back to one writer at a time: remove the cap you set. */
+async function backToOne(r) {
+  const btn = $('#bone');
+  if (!btn || btn.disabled || !r.capLimit) return;
+  const g = gen;
+  btn.disabled = true; btn.textContent = 'Removing…';
+  const out = await Shell.write('DELETE', `/v1/config/limits/${encodeURIComponent(r.capLimit.id)}`, undefined, { ok: `${r.name} is back to one writer at a time.`, reload: false });
+  if (g !== gen) return;
+  if (!out) { btn.disabled = false; btn.textContent = 'Back to 1'; return; }
+  r.capLimit = null; note = 'Back to one writer at a time.';
+  renderBoard(false);
+  setTimeout(() => Shell.refresh(), 1200);
+}
+
+/** The motion: held dots leave the holding pattern, one by one, with a flash. */
+function releaseHeld(r, n, g) {
+  for (let k = 0; k < n; k++) {
+    setTimeout(() => {
+      if (g !== gen) return;
+      const b = r.holding.shift();
+      if (!b) return;
+      flash(r.x, r.y, VIOLET, 28);
+      b.color = VIOLET; depart(b, r);
+    }, 120 + k * 160);
+  }
+}
+
+function renderBoard(anim = true) {
+  if (M.real) return renderBoardReal(anim);
+  const r = M.runways[sel];
+  const hottest = sel === 0;
+  const atCap = r.cap > 1 && r.cleared >= r.cap && r.queue > 0 && !r.raised && !r.paused;
+  const n10 = r.hand.filter((t) => S.t - t <= 600).length;
+  board.innerHTML = `
+    <div class="${anim ? 'rise' : ''}">
+      <div class="bh1"><span class="eyebrow">Strip board</span>${!M.real && hottest ? '<span class="tag accent">Hottest right now</span>' : ''}${r.paused ? '<span class="tag" style="background:var(--ink);color:#fff">Held by you</span>' : ''}</div>
+      <h2>${E(r.name)}</h2>
+      <div class="bmeta"><span class="mk" style="background:${r.app.color}">${r.app.mark}</span>${E(r.app.name)}<span class="sep"></span><span><b class="v">${fmtN(r.cleared)}</b> cleared</span><span class="sep"></span><span id="bq"><b class="s">${fmtN(r.queue)}</b> holding</span><span class="sep"></span><span><b>${fmtN(r.touches)}</b> touches today</span></div>
+    </div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.05s"><h4>Cleared now<span>A late write with an older token is refused</span></h4><div id="hwrap">${holderHTML(r)}</div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.1s"><h4>Holding, in order<span>Next goes when the holder finishes</span></h4><div id="qwrap">${queueHTML(r)}</div></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.15s"><h4>Hand-offs, last 10 minutes<span id="hn">${n10 ? `${n10}, one every ${Math.round(600 / n10)}s` : 'None yet'}</span></h4><svg id="hoff" viewBox="0 0 508 44">${handoffSVG(r)}</svg></div>
+    <div class="sec ${anim ? 'rise' : ''}" style="animation-delay:.2s"><h4>Rules here${meterHTML(r)}</h4><div class="rules" id="rules">${rulesHTML(r)}</div></div>
+    <div class="acts">
+      <button class="btn ${r.paused ? 'held' : ''}" id="bhold">${r.paused ? 'Let it go' : 'Hold everything here'}</button>
+      ${atCap ? `<button class="btn accent" id="braise">Raise the limit to ${r.p.raise}</button>` : '<a class="btn" href="/journey?story=sam">Replay a wait</a>'}
+      <span class="note ${note ? 'pop' : ''}" id="note">${note}</span>
+    </div>`;
+  $('#bhold').onclick = () => toggleHold(r);
+  $('#braise')?.addEventListener('click', () => raise(r));
+  tickBoard(true);
+}
+
+function boardHolder(r, flashIt) {
+  if (M.real || r.i !== sel || !$('#hwrap')) return;
+  $('#hwrap').innerHTML = holderHTML(r);
+  if (flashIt) $('#hstrip')?.classList.add('flash');
+  boardQueue(r, true);
+  const n10 = r.hand.filter((t) => S.t - t <= 600).length;
+  $('#hn').textContent = n10 ? `${n10}, one every ${Math.round(600 / n10)}s` : 'None yet';
+  $('#hoff').innerHTML = handoffSVG(r);
+  tickBoard(true);
+}
+
+function boardQueue(r, shifted) {
+  if (M.real || r.i !== sel || !$('#qwrap')) return;
+  $('#qwrap').innerHTML = queueHTML(r);
+  if (shifted) $$('#qwrap li').at(-1)?.classList.add('in');
+  $('#bq').innerHTML = `<b class="s">${fmtN(r.queue)}</b> holding`;
+  if (!r.holder) $('#hwrap').innerHTML = holderHTML(r);
+  tickBoard(true);
+}
+
+let lastTick = 0;
+function tickBoard(force) {
+  if (!force && S.t - lastTick < 0.1) return;
+  lastTick = S.t;
+  const r = M.runways[sel];
+  if (!r) return;
+  if (M.real) return tickReal(r);
+  const bar = $('#lbar');
+  if (bar) {
+    const f = Math.max(0, r.leaseLeft / r.leaseDur);
+    bar.style.transform = `scaleX(${f})`;
+    $('#lsec').textContent = r.paused ? `${Math.ceil(Math.max(0, r.leaseLeft))}s, then held` : `${Math.ceil(Math.max(0, r.leaseLeft))}s left`;
+  }
+  for (const el of $$('#qwrap .qw')) {
+    const s = Math.max(1, Math.round(S.t - Number(el.dataset.since)));
+    el.textContent = `waiting ${s}s`;
+  }
+}
+
+/** Your workspace: the real lease clock and how long each in the queue has waited. */
+function tickReal(r) {
+  const h = r.lease?.holder;
+  const bar = $('#lbar');
+  if (bar && h) {
+    const now = Date.now();
+    if (h.expires) {
+      const left = h.expires - now, all = Math.max(1, h.expires - (h.since ?? now - 60e3));
+      bar.style.transform = `scaleX(${Math.max(0, Math.min(1, left / all))})`;
+      $('#lsec').textContent = left > 0 ? `${span(left)} left` : 'Ran out, next goes';
+    } else {
+      bar.style.transform = 'scaleX(1)';
+      $('#lsec').textContent = 'No end set';
+    }
+  }
+  for (const el of $$('#qwrap .qw')) {
+    const at = Number(el.dataset.at);
+    el.textContent = at ? `waiting ${span(Date.now() - at)}` : 'waiting';
+  }
+}
+
+function select(i) {
+  if (i === sel) return;
+  sel = i; note = ''; confirmHold = false;
+  renderBoard(true);
+}
+
+function toggleHold(r) {
+  r.paused = !r.paused;
+  note = r.paused ? `Nobody new is cleared on ${r.name} until you let go.` : '';
+  if (!r.paused) { r.pauseAcc = 0; if (!r.holder) handoff(r); }
+  renderBoard(false);
+}
+
+function raise(r) {
+  const g = gen;
+  const extra = r.p.raise - r.cap;
+  const go = Math.min(extra, r.queue);
+  r.cap = r.p.raise; r.raised = true;
+  r.cleared = Math.min(r.cap, r.cleared + go);
+  r.queue = Math.max(0, r.queue - go);
+  r.visMax = Math.min(12, r.queue);
+  note = `Raised to ${r.cap}. ${go} more ${r.p.unit} went out right away.`;
+  renderBoard(false);
+  // The extra ones leave the holding pattern, one by one.
+  for (let k = 0; k < Math.min(go, r.holding.length); k++) {
+    setTimeout(() => {
+      if (g !== gen) return;
+      const b = r.holding.shift();
+      if (!b) return;
+      flash(r.x, r.y, VIOLET, 28);
+      b.color = VIOLET; depart(b, r);
+      if (r.strips.length) { r.strips.shift(); if (r.queue > r.strips.length) r.strips.push(backlog(r)); }
+      r.hand.push(S.t);
+      boardQueue(r);
+      $('#hoff').innerHTML = handoffSVG(r);
+    }, 120 + k * 160);
+  }
+}
+
+// Clicking a runway on the scope switches the board.
+function hitRunway(e) {
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  let best = null, bd = 44;
+  for (const r of M.runways) { const d = Math.hypot(r.x - x, r.y - y); if (d < bd) { bd = d; best = r; } }
+  return best;
+}
+cv.addEventListener('click', (e) => { const r = hitRunway(e); if (r) select(r.i); });
+cv.addEventListener('mousemove', (e) => { cv.style.cursor = hitRunway(e) ? 'pointer' : 'default'; });
+
+// ─── the live numbers ───────────────────────────────
+
+function spark(vals, color, { area = true } = {}) {
+  const W = 96, H = 34, max = Math.max(...vals, 1), min = Math.min(...vals, 0);
+  const pts = vals.map((v, i) => [(i / (vals.length - 1)) * W, H - 3 - ((v - min) / (max - min || 1)) * (H - 8)]);
+  const d = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const [lx, ly] = pts.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}">${area ? `<path d="${d} L${W} ${H} L0 ${H} Z" fill="${color}" opacity=".1"/>` : ''}<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx}" cy="${ly}" r="3" fill="${color}"/></svg>`;
+}
+
+function countTo(el, to, fmt, ms = 1200) {
+  const t0 = performance.now();
+  const g = gen;
+  const stepF = (t) => {
+    if (g !== gen) return;
+    const p = Math.min(1, (t - t0) / ms);
+    el.textContent = fmt(to * (1 - Math.pow(1 - p, 4)));
+    if (p < 1) requestAnimationFrame(stepF);
+  };
+  requestAnimationFrame(stepF);
+}
+
+const STAT = {};
+function bumpStat(k, v) {
+  if (!STAT[k] || STAT[k].busy) return;
+  STAT[k].el.textContent = fmtN(v);
+}
+
+/** Your workspace: today's real counts, with a mini chart of each thing on the scope. */
+function renderBottomReal() {
+  const rs = M.runways;
+  const per = (f) => (rs.length ? rs.map(f) : [0, 0]);
+  const shared = M.shared;
+  const caught = (w.facts ?? []).reduce((s, f) => s + f.caught, 0);
+  const leased = rs.some((r) => r.lease);
+  const cards = [
+    ['Clashes prevented today', fmtN(w.kinds.wait), w.kinds.wait ? 'Another writer was already changing the thing, so Lumni held the second until it was free.' : 'No two AIs tried to change the same thing at once.', per((r) => r.thing.waits), '#3b9eff'],
+    leased
+      ? ['Hand-offs in the last hour', fmtN(M.handoffs), M.handoffs ? `On the things on the scope: the next in line went the moment the holder finished.` : 'Nobody had to hand a thing over in the last hour.', per((r) => r.lease?.handoffs ?? 0), '#8578ff']
+      : ['Things touched today', fmtN(w.scale.things), shared ? `${plural(shared, 'had', 'had')} more than one AI on ${shared === 1 ? 'it' : 'them'}; the scope shows the top ${fmtN(rs.length)}.` : w.scale.things ? 'Each was touched by one AI only, so nobody had to take turns.' : 'Nothing yet. Each thing your AIs change will count here.', per((r) => r.thing.holders), '#8578ff'],
+    ['Sent back to read the latest', fmtN(caught), caught ? 'On the things your AIs share, before they acted on an old copy.' : 'No AI acted on an old copy of a shared thing.', per((r) => r.rechecks), '#f08a24'],
+  ];
+  // The fencing-token card: a real refused late write, when there was one.
+  const fr = rs.filter((r) => r.lease?.refused).sort((a, b) => b.lease.refused - a.lease.refused)[0];
+  const fence = fr
+    ? `<article class="card fence rise" style="animation-delay:.24s">
+        <div class="lab">Saved by a fencing token, today${fr.lease.holder?.token != null ? `<code>#${E(fr.lease.holder.token)}</code>` : ''}</div>
+        <p>${fr.lease.refused === 1 ? 'A late write' : `${fmtN(fr.lease.refused)} late writes`} to ${E(cut(fr.name, 30))} came with an older token and ${fr.lease.refused === 1 ? 'was' : 'were'} refused, so the newer work stayed.${M.refused > fr.lease.refused ? ` ${fmtN(M.refused)} today in all.` : ''}</p>
+        ${fenceReal(fr)}</article>`
+    : `<article class="card fence quiet rise" style="animation-delay:.24s">
+        <div class="lab">Fencing tokens</div>
+        <p>If an AI’s turn runs out mid-write, its late write is refused, so the newer work stays. ${leased || M.newer ? 'No late write has been refused today.' : 'Refused writes need a newer Lumni API.'}</p>
+        ${fenceSVG(true)}</article>`;
+  $('#bottom').innerHTML = cards.map(([lab, val, sub, vals, color], i) => `
+    <article class="card stat rise" style="animation-delay:${0.06 + i * 0.06}s">
+      <div class="lab">${lab}</div>
+      <div class="row"><b>${val}</b>${bars(vals, color)}</div>
+      <div class="sub">${sub}</div>
+    </article>`).join('') + fence;
+}
+
+/** The real save: an older turn's late write, refused, while the holder's token stands. */
+function fenceReal(r) {
+  const W = 435, h = r.lease.holder, n = r.lease.refused;
+  const who = h ? `${cut(h.actor, 18)}${h.token != null ? `, #${h.token}` : ''}` : 'The newer turn';
+  return `<svg viewBox="0 0 ${W} 66">
+    <rect x="0" y="9" width="150" height="22" rx="7" fill="#f0eeff" stroke="#dcd7ff"/>
+    <text x="9" y="24" font-size="11.5" font-weight="650" fill="#5b4bf5">An older turn</text>
+    <line x1="150" x2="150" y1="0" y2="66" stroke="#a3a7b3" stroke-dasharray="3 3"/>
+    <text x="156" y="6" font-size="10.5" font-weight="600" fill="#6a6f7d">lease ran out</text>
+    <rect x="160" y="43" width="${W - 160}" height="22" rx="7" fill="#5b4bf5" stroke="#5b4bf5"/>
+    <text x="169" y="58" font-size="11.5" font-weight="650" fill="#ffffff">${E(who)}, holds it now</text>
+    <line x1="150" x2="250" y1="20" y2="20" stroke="#c9c2ff" stroke-width="2" stroke-dasharray="2 4"/>
+    <circle cx="259" cy="20" r="8.5" fill="#ffffff" stroke="#5b4bf5" stroke-width="2"/>
+    <path d="M255.5 16.5l7 7M262.5 16.5l-7 7" stroke="#5b4bf5" stroke-width="2" stroke-linecap="round"/>
+    <text x="274" y="24" font-size="11.5" font-weight="650" fill="#0d0e14">${n === 1 ? 'Late write, refused' : `${fmtN(n)} late writes, refused`}</text>
+  </svg>`;
+}
+
+/** One bar per thing on the scope, in the same order. */
+function bars(vals, color) {
+  const W = 96, H = 34, max = Math.max(1, ...vals), bw = W / Math.max(4, vals.length);
+  return `<svg viewBox="0 0 ${W} ${H}">${vals.map((v, i) => {
+    const h = v ? 4 + (v / max) * (H - 6) : 2;
+    return `<rect x="${(i * bw + 1.5).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${color}" opacity="${v ? 0.8 : 0.25}"/>`;
+  }).join('')}</svg>`;
+}
+
+function renderBottom() {
+  if (M.real) return renderBottomReal();
+  const sr = rng(w.key.length * 31 + 5);
+  const hourBins = Array.from({ length: 12 }, (_, i) => M.handoffsHour / 12 * (0.75 + sr() * 0.5 + i * 0.012));
+  const clashBins = w.stepHourly.slice(0, 15).map((v) => v * (0.8 + sr() * 0.3));
+  const waitBins = Array.from({ length: 12 }, (_, i) => M.avgWait * (0.8 + sr() * 0.35 + (i > 8 ? 0.08 : 0)));
+  const longest = Math.round(Math.max(...M.runways.map((r) => (r.strips[0] ? S.t - r.strips[0].since : 0))));
+  const lr = M.runways.reduce((a, r) => ((r.strips[0] ? S.t - r.strips[0].since : 0) > (a.strips[0] ? S.t - a.strips[0].since : 0) ? r : a), M.runways[0]);
+  const cards = [
+    ['Hand-offs in the last hour', fmtN(M.handoffsHour), 'The next in line went the moment the holder finished.', hourBins, '#8578ff', 'hand', M.handoffsHour],
+    ['Clashes prevented today', fmtN(M.clashes), 'Two AIs were heading for the same thing. Lumni held one.', clashBins, '#5b4bf5', 'clash', M.clashes],
+    ['Average wait', M.avgWait.toFixed(1) + 's', `Longest right now: ${longest}s on ${lr.name}.`, waitBins, '#3b9eff', 'wait', M.avgWait],
+  ];
+  const fence = `<article class="card fence rise" style="animation-delay:.24s">
+      <div class="lab">A save by fencing token, a few minutes ago<code>#207</code><code>#208</code></div>
+      <p>Deploy bot lost its lease mid-restart. Its late write was refused, so the site kept update 2.4.</p>
+      ${fenceSVG(false)}</article>`;
+  $('#bottom').innerHTML = cards.map(([lab, val, sub, vals, color, key], i) => `
+    <article class="card stat rise" style="animation-delay:${0.06 + i * 0.06}s">
+      <div class="lab">${lab}</div>
+      <div class="row"><b data-k="${key || ''}">${val}</b>${spark(vals, color)}</div>
+      <div class="sub">${sub}</div>
+    </article>`).join('') + fence;
+  for (const k in STAT) delete STAT[k];
+  for (const [, , , , , key, to] of cards) {
+    if (!key) continue;
+    const el = $(`#bottom b[data-k="${key}"]`);
+    STAT[key] = { el, busy: true };
+    const fmt = key === 'wait' ? (v) => v.toFixed(1) + 's' : (v) => fmtN(v);
+    countTo(el, to, fmt);
+    setTimeout(() => { if (STAT[key]) STAT[key].busy = false; }, 1300);
+  }
+}
+
+// A mini timeline: the old lease, the new lease, the refused late write.
+function fenceSVG(quiet) {
+  const W = 435;
+  const lane = (y, x0, x1, label, fill, stroke, txt) =>
+    `<rect x="${x0}" y="${y - 11}" width="${x1 - x0}" height="22" rx="7" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+     <text x="${x0 + 9}" y="${y + 4}" font-size="11.5" font-weight="650" fill="${txt}">${label}</text>`;
+  if (quiet) {
+    // How it works, with no numbers: none are reported.
+    return `<svg viewBox="0 0 ${W} 66">
+      ${lane(20, 0, 196, 'One AI’s turn', '#f0eeff', '#dcd7ff', '#5b4bf5')}
+      <line x1="196" x2="196" y1="0" y2="66" stroke="#a3a7b3" stroke-dasharray="3 3"/>
+      <rect x="206" y="43" width="${W - 206}" height="22" rx="7" fill="none" stroke="#d9dae2" stroke-dasharray="4 4"/>
+      <text x="215" y="58" font-size="11.5" font-weight="600" fill="#a3a7b3">The next AI’s turn, with a newer token</text>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 ${W} 66">
+    ${lane(20, 0, 150, 'Deploy bot 1, #207', '#f0eeff', '#dcd7ff', '#5b4bf5')}
+    <line x1="150" x2="150" y1="0" y2="66" stroke="#a3a7b3" stroke-dasharray="3 3"/>
+    <text x="156" y="6" font-size="10.5" font-weight="600" fill="#6a6f7d">lease ran out</text>
+    ${lane(54, 160, W, 'Deploy bot 2, #208, wrote update 2.4', '#5b4bf5', '#5b4bf5', '#ffffff')}
+    <line x1="150" x2="250" y1="20" y2="20" stroke="#c9c2ff" stroke-width="2" stroke-dasharray="2 4"/>
+    <circle cx="259" cy="20" r="8.5" fill="#ffffff" stroke="#5b4bf5" stroke-width="2"/>
+    <path d="M255.5 16.5l7 7M262.5 16.5l-7 7" stroke="#5b4bf5" stroke-width="2" stroke-linecap="round"/>
+    <text x="274" y="24" font-size="11.5" font-weight="650" fill="#0d0e14">Late write from #207, refused</text>
+  </svg>`;
+}
+
+// ─── boot ───────────────────────────────────────────
+
+function header() {
+  if (M.real && M.cleared) {
+    // Someone holds a thing right now: say so, like the demo does.
+    const n = M.cleared, h = M.holding;
+    $('#h1').innerHTML = `<span class="c num" id="hc">${fmtN(n)}</span> AI${n === 1 ? ' is' : 's are'} cleared on ${n === 1 ? 'a shared thing' : `${fmtN(n)} shared things`} right now. `
+      + (h ? `<span class="h num" id="hh">${fmtN(h)}</span> ${h === 1 ? 'is' : 'are'} holding.` : 'Nobody is holding.');
+    countTo($('#hc'), n, fmtN, 1100);
+    if (h) countTo($('#hh'), h, fmtN, 1300);
+    return;
+  }
+  if (M.real) {
+    const sh = M.shared, wt = w.kinds.wait;
+    $('#h1').innerHTML = !w.things.length
+      ? 'Nothing has been touched today yet.'
+      : !sh
+        ? `Your AIs touched <span class="c num">${fmtN(w.scale.things)}</span> ${w.scale.things === 1 ? 'thing' : 'things'} today, each on its own. Nobody had to wait.`
+        : `<span class="c num" id="hc">${fmtN(sh)}</span> thing${sh === 1 ? ' had' : 's had'} more than one AI on ${sh === 1 ? 'it' : 'them'} today. `
+        + (wt ? `<span class="h num" id="hh">${fmtN(wt)}</span> ${wt === 1 ? 'time' : 'times'}, an AI waited its turn.` : 'Nobody had to wait.');
+    if (sh) countTo($('#hc'), sh, fmtN, 1100);
+    if (wt) countTo($('#hh'), wt, fmtN, 1300);
+    return;
+  }
+  const n = M.cleared, t = M.things, h = M.holding;
+  $('#h1').innerHTML = `<span class="c num" id="hc">${fmtN(n)}</span> AI${n === 1 ? ' is' : 's are'} cleared on ${fmtN(t)} thing${t === 1 ? '' : 's'} right now. `
+    + (h ? `<span class="h num" id="hh">${fmtN(h)}</span> ${h === 1 ? 'is' : 'are'} holding.` : 'Nobody is holding.');
+  countTo($('#hc'), n, fmtN, 1100);
+  if (h) countTo($('#hh'), h, fmtN, 1300);
+}
+
+function legend() {
+  const items = M.real
+    ? [['#8578ff', 'Went straight in'], ['var(--sky)', 'Waited its turn'], ...(M.runways.some((r) => r.rechecks) ? [['var(--orange)', 'Old info, sent to look again']] : [])]
+    : [['#8578ff', 'Cleared, writing now'], ['var(--sky)', 'Holding, waits its turn'], ['var(--orange)', 'Old info, sent to look again'], [null, 'Clash predicted']];
+  $('#legend').innerHTML = items.map(([c, t]) => `<span><i ${c ? `style="background:${c}"` : 'class="dash"'}></i>${t}</span>`).join('');
+}
+
+function load(world) {
+  gen++;
+  w = world;
+  rnd = rng(w.key.length * 7919 + 17);
+  M = buildModel(w);
+  if (M.real) M.newer = w.source !== 'snapshots';
+  // A re-read keeps the thing you were looking at.
+  const keep = M.real && keepId ? M.runways.findIndex((r) => r.thing.id === keepId) : -1;
+  sel = keep >= 0 ? keep : 0; note = ''; blipId = 0; confirmHold = false;
+  S = newSim();
+  paintBackground();
+  // The long tail: thousands of smaller shared things, as faint points.
+  const T = TARGET[w.key];
+  for (let k = 0; k < T.tailThings; k++) {
+    for (let tries = 0; tries < 20; tries++) {
+      const a = rnd() * TAU, d = Math.sqrt(rnd()) * (R - 22);
+      const x = CX + Math.cos(a) * d, y = CY + Math.sin(a) * d;
+      if (d < 26 || M.runways.some((r) => Math.hypot(r.x - x, r.y - y) < r.oR + 30)) continue;
+      S.tail.push({ x, y }); break;
+    }
+  }
+  // Start mid-flight: holders docked, holding patterns full.
+  for (const r of M.runways) {
+    const b = mkBlip('dock', r.x, r.y, { rw: r, color: VIOLET });
+    r.docked = b;
+    if (M.real) r.leaseLeft = 0.4 + rnd() * 2.2;
+    for (let k = 0; k < r.visMax; k++) {
+      const a = r.orbit + (k * TAU) / r.visMax;
+      r.holding.push(mkBlip('hold', r.x + Math.cos(a) * r.oR, r.y + Math.sin(a) * r.oR, { rw: r, color: SKY }));
+    }
+  }
+  // Let the sky fill up before the first frame.
+  for (let k = 0; k < (M.real ? 300 : 540); k++) step(1 / 60);
+  S.nextConflict = S.t + 1.2;
+
+  header();
+  legend();
+  $('#livet').textContent = M.real ? `Today so far, ${w.timeLabel}` : `Live, ${w.timeLabel}`;
+  $('#tlsub').textContent = M.real
+    ? (M.runways.length ? `Top ${fmtN(M.runways.length)} of ${plural(w.scale.things, 'thing')} touched today` : 'Nothing touched today yet')
+    : `Top ${M.runways.length} of ${fmtN(w.scale.things)} shared things`;
+  $('#sample').textContent = M.real
+    ? 'Dots replay today’s traffic at a calm pace, not who is on each thing right now. Counters are exact.'
+    : w.key === 'large'
+      ? `Dots are a sample of ${fmtN(M.cleared + M.holding)} AIs in the air. Counters are exact.`
+      : 'Each dot is one AI. Counters are exact.';
+  if (M.real && M.cleared) $('#sample').textContent = 'Dots replay today’s traffic at a calm pace. Who holds each thing, and the queue, are read live on the board.';
+  const empty = $('#empty');
+  empty.hidden = M.runways.length > 0;
+  $('#hint').hidden = M.runways.length < 2;
+  if (!M.runways.length) {
+    empty.innerHTML = '<b>Nothing touched yet today</b><p>When your AIs start working, each thing they change gets a runway here, one writer at a time.</p><a class="btn accent" href="/today">See today</a>';
+  }
+  renderBoard(true);
+  renderBottom();
+
+  if (SHOT === 'conflict') {
+    const r = M.real ? M.runways.find((x) => x.thing.waits) : M.runways[sel];
+    if (r) {
+      if (r.i !== sel) { sel = r.i; renderBoard(false); }
+      S.conflict = null;
+      spawnConflict(r);
+      while ((S.t - S.conflict.t0) / S.conflict.dur < 1 - 4 / 6) step(1 / 60);
+      S.frozen = true;
+    }
+  }
+  if (SHOT === 'resolved' && M.real) {
+    const r = M.runways.find((x) => x.thing.waits);
+    if (r) {
+      if (r.i !== sel) { sel = r.i; renderBoard(false); }
+      S.conflict = null;
+      spawnConflict(r);
+      while ((S.t - S.conflict.t0) / S.conflict.dur < 0.62) step(1 / 60);
+      S.frozen = true;
+    }
+  }
+  if (SHOT === 'held' && !M.real) { toggleHold(M.runways[0]); for (let k = 0; k < 300; k++) step(1 / 60); S.frozen = true; renderBoard(false); }
+  if (SHOT === 'raised' && !M.real) raise(M.runways[0]);
+  if (SHOT === 'select' && M.runways.length > 1) select(1);
+  // Real writes, clicked once per page load: hold (twice, to confirm), let go, raise.
+  if (M.real && SHOT && !shotDone) {
+    shotDone = true;
+    const press = (id, ms) => setTimeout(() => $(id)?.click(), ms);
+    if (SHOT === 'hold-confirm') press('#bhold', 500);
+    if (SHOT === 'hold') { press('#bhold', 500); press('#bhold', 900); }
+    if (SHOT === 'letgo') { press('#bhold', 500); press('#bhold', 900); setTimeout(() => press('#bhold', 0), 4200); }
+    if (SHOT === 'raise') press('#braise', 500);
+    if (SHOT === 'queue' && M.runways.length > 1) { const k = M.runways.findIndex((r, i) => i !== sel && r.lease); if (k >= 0) select(k); }
+  }
+  draw();
+}
+let shotDone = false;
+let keepId = null;
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (M && S) {
+    if (!S.frozen && !REDUCED) step(dt);
+    draw();
+    tickBoard();
+  }
+  requestAnimationFrame(frame);
+}
+
+Shell.boot({
+  nav: 'Tower',
+  onWorld: async (world) => {
+    if (world.key === 'real') {
+      keepId = M?.real ? M.runways[sel]?.thing.id ?? null : null;
+      EXTRA = await readExtra(world);
+    }
+    load(world);
+  },
+});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

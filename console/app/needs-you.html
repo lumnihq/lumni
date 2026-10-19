@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Needs you</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  .wrap { padding: 30px 40px 40px; }
+
+  /* Header. */
+  .head { display: flex; align-items: flex-end; gap: 24px; }
+  .head h1 { font-size: 32px; font-weight: 700; letter-spacing: -.025em; line-height: 1.15; }
+  .head h1 .num { display: inline-block; min-width: .6em; }
+  .head p { color: var(--ink2); margin-top: 6px; font-size: 15px; }
+  .keys { margin-left: auto; display: flex; gap: 8px; padding-bottom: 2px; }
+  .kc { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border-radius: 9px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  kbd { font-family: var(--sans); display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; background: var(--wash); box-shadow: inset 0 -1px 0 var(--line2), inset 0 0 0 1px var(--line2); font-size: 11.5px; font-weight: 700; color: var(--ink); }
+  .kc kbd + kbd { margin-left: -3px; }
+
+  .grid { display: grid; grid-template-columns: 420px 1fr; gap: 28px; margin-top: 26px; align-items: start; }
+
+  /* Queue. */
+  .eyebrow.sec { display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; }
+  .eyebrow.sec .r { margin-left: auto; color: var(--ink3); font-weight: 500; }
+  .queue { display: flex; flex-direction: column; gap: 10px; }
+  .gcard {
+    display: block; width: 100%; text-align: left;
+    padding: 16px 18px 14px;
+    border-radius: 18px; background: var(--paper);
+    box-shadow: var(--shadow), 0 0 0 1px rgba(13,14,20,.05);
+    transition: box-shadow .25s, transform .2s var(--ease);
+  }
+  .gcard:hover { transform: translateY(-1px); }
+  .gcard.sel { box-shadow: 0 0 0 2px var(--accent), 0 14px 30px -14px rgba(91,75,245,.45); }
+  .g1 { display: flex; align-items: center; gap: 10px; }
+  .mark { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); letter-spacing: -.02em; }
+  .gt { flex: 1; font-weight: 650; font-size: 15px; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cnt { flex: none; min-width: 30px; height: 24px; padding: 0 9px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12.5px; font-weight: 700; display: grid; place-items: center; }
+  .gcard.sel .cnt { background: var(--accent); }
+  .g2 { display: flex; align-items: center; gap: 7px; margin: 7px 0 0 34px; font-size: 13px; color: var(--ink2); }
+  .ai.xs, .human.xs { width: 18px; height: 18px; font-size: 7.5px; border-radius: 5px; }
+  .human.xs { border-radius: 50%; }
+  .g3 { margin: 10px 0 0 34px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .g3 .vs { color: var(--ink3); font-weight: 500; }
+
+  .strip { position: relative; height: 34px; margin: 10px 0 0 34px; }
+  .strip .base { position: absolute; left: 0; right: 0; top: 13px; height: 1px; background: var(--line2); }
+  .strip .d { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ink); opacity: .55; }
+  .strip .d.odd { opacity: 1; background: #fff; box-shadow: 0 0 0 2px var(--red); width: 8px; height: 8px; margin: -4px 0 0 -4px; }
+  .strip .lo, .strip .hi { position: absolute; bottom: -2px; font-size: 11px; color: var(--ink3); font-weight: 600; }
+  .strip .lo { left: 0; } .strip .hi { right: 0; }
+  .oddn { display: flex; align-items: center; gap: 7px; margin: 6px 0 0 34px; font-size: 12.5px; font-weight: 600; color: var(--red); }
+  .oddn i { width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--red); }
+  .held { margin: 6px 0 0 34px; font-size: 12.5px; color: var(--ink2); }
+
+  .gcard.gone { animation: gone .55s var(--ease) forwards; overflow: hidden; }
+  @keyframes gone { 0% { max-height: 200px; } 40% { opacity: 0; transform: translateX(-30px); } 100% { opacity: 0; transform: translateX(-30px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-bottom: -10px; } }
+  .gcard.fresh { animation: gin .6s var(--ease) both; }
+  @keyframes gin { from { opacity: 0; transform: translateY(-10px) scale(.98); } }
+
+  .clear { padding: 18px; border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--ink2); display: flex; align-items: center; gap: 10px; }
+  .clear i { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; }
+  .handled { margin: 12px 2px 0; font-size: 13px; color: var(--ink3); }
+  .handled b { color: var(--ink2); font-weight: 600; }
+
+  .done { margin-top: 26px; }
+  .dlist { background: var(--paper); border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+  .drow { display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .drow:first-child { border-top: 0; }
+  .drow .tx { flex: 1; font-weight: 600; min-width: 0; }
+  .drow .tx small { display: block; font-weight: 500; font-size: 12px; color: var(--ink2); }
+  .drow .ai, .drow .human { width: 24px; height: 24px; font-size: 9.5px; }
+  .drow .ai { border-radius: 7px; }
+  .drow .lum { background: var(--accent); }
+  .drow.fresh { animation: fresh 1.8s var(--ease) both; }
+  @keyframes fresh { 0% { opacity: 0; transform: translateY(-10px); background: var(--accent-soft); } 25% { opacity: 1; transform: none; background: var(--accent-soft); } 100% { background: transparent; } }
+  .drow.deny .tx { color: var(--ink); }
+
+  /* The decision panel. */
+  .side { position: relative; }
+  .stack { position: relative; margin-top: 18px; }
+  .sheet { position: absolute; left: 0; right: 0; top: 0; height: 120px; border-radius: 22px; background: var(--paper); box-shadow: 0 0 0 1px rgba(13,14,20,.06), 0 6px 18px -10px rgba(40,30,120,.18); }
+  .sheet.s2 { transform: translateY(-10px) scaleX(.97); background: #fbfbfd; }
+  .sheet.s3 { transform: translateY(-20px) scaleX(.94); background: #f7f7fa; }
+  .panel { position: relative; border-radius: 22px; background: var(--paper); box-shadow: 0 0 0 1px rgba(13,14,20,.06), 0 30px 70px -34px rgba(30,20,90,.32); }
+  .phead { position: relative; padding: 24px 28px 20px; border-bottom: 1px solid var(--line); }
+  .ptop { display: flex; align-items: center; gap: 10px; }
+  .ptop .r { margin-left: auto; font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 10px; }
+  .phead h2 { font-size: 26px; font-weight: 700; letter-spacing: -.022em; margin-top: 12px; }
+  .shape { margin-top: 14px; display: grid; gap: 0; }
+  .shape > div { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; border-top: 1px dashed var(--line); }
+  .shape > div:first-child { border-top: 0; }
+  .shape span { color: var(--ink2); }
+  .shape b { font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .shape b .muted { color: var(--ink2); font-weight: 500; }
+  .pbody { padding: 18px 28px 22px; transition: opacity .4s, filter .4s; }
+  .printing .pbody { opacity: .25; filter: blur(1.5px); }
+
+  .odd-call { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px var(--line2); }
+  .odd-call .ring { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 2.5px var(--red); }
+  .odd-call .tx { flex: 1; font-size: 14px; }
+  .odd-call .tx b { font-weight: 650; }
+  .odd-call .tx small { display: block; color: var(--ink2); font-size: 12.5px; margin-top: 1px; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+  .deny { color: var(--red); }
+  .odd-call.gone { animation: gone .5s var(--ease) forwards; overflow: hidden; }
+
+  .tbl { margin-top: 14px; }
+  .th, .tr { display: grid; grid-template-columns: 28px 1fr 90px 110px; align-items: center; gap: 12px; padding: 0 10px; }
+  .tbl.em .th, .tbl.em .tr { grid-template-columns: 28px 150px 1fr 70px; }
+  .th { height: 28px; font-size: 12px; font-weight: 600; color: var(--ink3); }
+  .th .a, .tr .a { text-align: right; }
+  .rows { position: relative; }
+  .rows.fade { -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .tr { height: 38px; border-top: 1px solid var(--line); font-size: 14px; border-radius: 8px; position: relative; }
+  .tr .human { width: 24px; height: 24px; font-size: 9px; }
+  .tr .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tr .w { color: var(--ink2); font-size: 13px; }
+  .tr .a { font-weight: 600; }
+  .tr .vsum { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .tr .vsum b { color: var(--ink); font-weight: 600; }
+  .tr.focus { background: var(--wash); border-top-color: transparent; }
+  .tr.focus + .tr { border-top-color: transparent; }
+  .tr.focus::before { content: ''; position: absolute; left: -2px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--ink); }
+  .tr.gone { animation: rgone .45s var(--ease) forwards; }
+  @keyframes rgone { to { opacity: 0; transform: translateX(24px); height: 0; } }
+  .more { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding: 0 10px; font-size: 13px; color: var(--ink2); font-weight: 600; }
+  .more span:last-child { color: var(--ink3); font-weight: 500; }
+
+  .actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .actions .go { margin-left: auto; }
+  .actions .hint { font-size: 12.5px; color: var(--ink3); }
+  .btn.primary kbd { background: rgba(255,255,255,.14); box-shadow: none; color: #fff; margin-left: 4px; }
+
+  /* The single decision. */
+  .single .pbody { padding-top: 20px; }
+  .lead { color: var(--ink2); margin-top: 8px; font-size: 14.5px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .opt { position: relative; text-align: left; padding: 16px 16px 14px; border-radius: 16px; background: var(--wash); box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .25s, background .25s, transform .2s var(--ease); }
+  .opt:hover { transform: translateY(-1px); }
+  .opt[aria-pressed='true'] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .opt.no[aria-pressed='true'] { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); }
+  .opt .k { font-size: 12.5px; color: var(--ink2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .opt .v { font-size: 20px; font-weight: 700; letter-spacing: -.015em; margin-top: 4px; }
+  .opt .tag { margin-top: 10px; height: 22px; font-size: 12px; background: rgba(255,255,255,.7); }
+  .opt .radio { position: absolute; right: 14px; top: 14px; width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line2); background: #fff; transition: all .25s; }
+  .opt[aria-pressed='true'] .radio { box-shadow: inset 0 0 0 6px var(--accent); }
+  .opt.no[aria-pressed='true'] .radio { box-shadow: inset 0 0 0 6px var(--ink); }
+  .rowsi { margin-top: 14px; }
+  .rowi { display: flex; justify-content: space-between; gap: 20px; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .rowi span { color: var(--ink2); }
+  .rowi b { font-weight: 600; text-align: right; }
+  .rowi b .swap { display: inline-block; animation: swapIn .35s var(--ease) both; }
+  @keyframes swapIn { from { opacity: 0; transform: translateY(6px); } }
+  .count { font-variant-numeric: tabular-nums; color: var(--accent); }
+  .note { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--wash); font-size: 13px; color: var(--ink2); }
+  .linkish { font-size: 13px; font-weight: 600; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; }
+
+  /* Empty. */
+  .empty { padding: 90px 40px 96px; text-align: center; }
+  .bigcheck { width: 88px; height: 88px; margin: 0 auto; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(240,238,255,.5); animation: pop .7s var(--spring) both; }
+  .bigcheck svg { width: 40px; height: 40px; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .empty h2 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-top: 28px; }
+  .empty p { color: var(--ink2); margin: 8px auto 0; max-width: 440px; }
+  .empty code { font-family: var(--mono); font-size: 12.5px; background: var(--wash); padding: 2px 6px; border-radius: 5px; color: var(--ink); }
+  .empty .facts { display: inline-flex; gap: 28px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
+  .empty .facts b { display: block; font-size: 22px; color: var(--ink); font-weight: 700; letter-spacing: -.02em; }
+
+  /* The stamp. */
+  .stamp {
+    position: absolute; left: 76%; top: 58%;
+    padding: 4px 14px;
+    border: 3px solid var(--accent); border-radius: 12px;
+    color: var(--accent); background: rgba(255,255,255,.9);
+    box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4.5px var(--accent-line), 0 14px 30px -10px rgba(91,75,245,.45);
+    font-size: 24px; font-weight: 800; letter-spacing: .01em; white-space: nowrap;
+    transform: translate(-50%, -50%) rotate(-8deg);
+    animation: stamp .45s cubic-bezier(.2,1.6,.4,1) both;
+    z-index: 4; pointer-events: none;
+  }
+  .stamp.big { font-size: 30px; padding: 6px 18px; left: 80%; top: 52%; }
+  .stamp.red { border-color: var(--red); color: var(--red); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4.5px #ffd2cf, 0 14px 30px -10px rgba(255,59,48,.4); }
+  @keyframes stamp { from { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(2.8); } 55% { opacity: 1; } }
+  .thud { animation: thud .32s ease .2s; }
+  @keyframes thud { 30% { transform: translateY(3px) scale(.996); } }
+  .stack.thud .sheet.s2 { animation: sh2 .4s ease .2s; }
+  @keyframes sh2 { 30% { transform: translateY(-4px) scaleX(.965); } }
+
+  /* The receipt that prints after. */
+  .receipt {
+    position: absolute; left: 0; top: 0; width: 520px;
+    padding: 18px 24px 20px;
+    border-radius: 0 0 18px 18px; background: #fff;
+    box-shadow: 0 30px 60px -24px rgba(30,20,90,.35), 0 0 0 1px rgba(13,14,20,.05);
+    clip-path: inset(0 0 100% 0);
+    z-index: 25; visibility: hidden;
+  }
+  .receipt.on { visibility: visible; }
+  .receipt::after { content: ''; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: radial-gradient(circle at 6px -2px, transparent 6px, #fff 6.5px) 0 0 / 12px 8px repeat-x; }
+  .receipt.out { clip-path: inset(-80px -80px -80px -80px); transition: clip-path .9s var(--ease); }
+  .receipt.away { transition: transform .7s var(--ease), opacity .6s .1s; opacity: 0; }
+  .receipt .rk { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink2); }
+  .receipt .rk b { color: var(--accent); font-weight: 650; font-family: var(--mono); font-size: 12.5px; }
+  .receipt h3 { font-size: 18px; font-weight: 700; margin-top: 6px; letter-spacing: -.01em; }
+  .receipt .rowi { padding: 8px 0; font-size: 13.5px; }
+  .receipt .rowi:last-child { border-bottom: 0; }
+
+  .btn[disabled] { opacity: .55; pointer-events: none; }
+  .btn.deny.armed { background: var(--red); color: #fff; box-shadow: none; }
+  .rl { margin-left: 8px; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+  .btn.go[disabled] { opacity: 1; }
+  .drow .linkish { font-size: 12px; font-weight: 600; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+  <div class="receipt" id="receipt"></div>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const PEOPLE = ['Jess', 'Marco', 'Lena', 'Tom'];
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const safe = (s) => Shell.esc(s);
+
+// What the demo's people decided earlier today. Real mode reads the day's
+// decisions from Lumni's audit history, and merges in the ones made here.
+const SEEDS = {
+  small: [
+    { who: 'AK', human: true, t: 'You retried Nina’s $30 refund, and it went through', s: '8:55 AM' },
+    { who: 'Op', t: 'Lumni kept Jess’s version after nobody answered in 30 minutes', s: '7:12 AM' },
+  ],
+  mid: [
+    { who: 'AK', human: true, t: 'You retried Nina’s $30 refund, and it went through', s: '8:55 AM' },
+    { who: 'Fi', t: 'Finance AI booked 12 invoices after you said yes', s: '8:31 AM' },
+    { who: 'Op', t: 'Lumni kept Jess’s version after nobody answered in 30 minutes', s: '7:12 AM' },
+  ],
+  large: [
+    { who: 'AK', human: true, t: 'You approved 31 refunds over $500, $27.9k', s: '11:40 AM, receipt r_41c2' },
+    { who: 'Fi', t: 'Finance AI booked 212 invoices after you said yes', s: '10:02 AM' },
+    { who: 'Op', t: 'Lumni kept the person’s version on 6 billing emails nobody answered', s: '9:15 AM' },
+  ],
+};
+
+let W, S, gen = 0, cdTimer;
+/** Today's approval.decided audit entries (real), or null when they can't be read. */
+let AUDIT = null, auditState = 'none';
+/** Older APIs (snapshots) have no bulk decide and no audit history. */
+const modern = () => Shell.isReal && W?.source !== 'snapshots';
+
+// ─── what you decided here, in real mode ───────────
+const MINE = 'lumni.console.needs.decided';
+function mine() {
+  try { return JSON.parse(sessionStorage.getItem(MINE) || '[]'); } catch { return []; }
+}
+function remember(row) {
+  const l = [{ at: Date.now(), ...row }, ...mine()].slice(0, 40);
+  try { sessionStorage.setItem(MINE, JSON.stringify(l)); } catch {}
+}
+/** Approval ids you answered here. The world can lag a moment behind a decision. */
+const answered = () => new Set(mine().flatMap((x) => x.ids ?? []));
+
+// ─── data ──────────────────────────────────────────
+const slug = (s) => s.toLowerCase().replace(/[^a-z]+/g, '');
+const money = (n) => (n >= 10000 ? fmtMoney(n) : '$' + Math.round(n).toLocaleString('en-US'));
+const initials = (s) => String(s ?? '').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
+const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const plural = (n, one, many) => (n === 1 ? one : many);
+const median = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const clock = (ms) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+/** A time today, or the day and time when it isn't today. */
+function when(ms) {
+  const d = new Date(ms), n = new Date();
+  if (d.toDateString() === n.toDateString()) return `at ${clock(ms)}`;
+  const tmrw = new Date(n); tmrw.setDate(n.getDate() + 1);
+  return `${d.toDateString() === tmrw.toDateString() ? 'tomorrow' : d.toLocaleDateString('en-US', { weekday: 'long' })} at ${clock(ms)}`;
+}
+const nowLabel = () => (Shell.isReal ? clock(Date.now()) : W.timeLabel);
+const me = () => (Shell.isReal ? Shell.session?.user?.initials ?? 'You' : 'AK');
+function rid(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return 'r_' + h.toString(16).slice(-4); }
+const SHORT = { refund: 'Refunds over $500', downgrade: 'Enterprise plan downgrades', email: 'Billing email changes' };
+const kindOf = (id) => (id.includes('refund') ? 'refund' : id.includes('downgrade') ? 'downgrade' : 'email');
+
+function buildQueue(w) {
+  let groups;
+  if (Shell.isReal) {
+    const done = answered();
+    groups = w.groups
+      .map((g) => ({ id: g.id, kind: 'real', t: g.t, rule: g.rule, ruleId: g.ruleId ?? null, team: g.team, app: g.app, members: g.members.filter((m) => !done.has(m.id)).map((m) => ({ ...m })) }))
+      .filter((g) => g.members.length);
+  } else {
+    groups = w.groups.map((g) => ({ id: g.id, kind: kindOf(g.id), t: g.t, rule: g.rule, team: g.team, app: g.app, members: g.members.map((m) => ({ ...m })) }));
+    if (w.key === 'small') {
+      // A small team sees each ask whole: the billing email clash, and the big refund.
+      const email = { id: 'g-email', kind: 'email', t: 'Billing email changes after a person edited it', rule: 'A person’s edit wins until you choose', team: 'sales', app: 'salesforce', members: [{ id: 'g-email-0', who: 'Acme', mins: 2 }] };
+      groups = [email, ...groups.filter((g) => g.kind === 'refund')].slice(0, w.kinds.ask);
+    }
+  }
+  for (const g of groups) {
+    g.members.sort((a, b) => b.mins - a.mins);
+    if (g.kind === 'email') g.members.forEach((m, i) => { m.person = W.key === 'small' ? 'Jess' : PEOPLE[i % PEOPLE.length]; m.mine = `billing@${slug(m.who)}.com`; m.theirs = `ap@${slug(m.who)}.com`; });
+  }
+  return groups;
+}
+
+/** One amount far above the rest: more than 3 times the median of the others, in groups with at least 4 amounts. */
+function outlierOf(g) {
+  if (g.kind === 'email') return null;
+  const xs = g.members.filter((m) => m.amount != null);
+  if (xs.length < 4) return null;
+  const top = xs.reduce((a, b) => (b.amount > a.amount ? b : a));
+  const mid = median(xs.filter((m) => m !== top).map((m) => m.amount));
+  return top.amount > 3 * mid ? top : null;
+}
+const restOf = (g) => { const o = outlierOf(g); return g.members.filter((m) => m !== o); };
+const sumOf = (ms) => ms.reduce((s, m) => s + (m.amount || 0), 0);
+const byMoney = (g) => g.kind !== 'email' && g.members.length > 0 && g.members.every((m) => m.amount > 0);
+const totalWaiting = () => S.groups.reduce((s, g) => s + g.members.length, 0);
+const oldest = () => Math.max(0, ...S.groups.flatMap((g) => g.members.map((m) => m.mins)));
+
+/** The AI that asked. Real groups carry a team and an app; name the AI only when exactly one fits. */
+function aiOf(g) {
+  const t = W.team(g.team);
+  if (!Shell.isReal) return { name: t.name + ' AI', ai: t.ai };
+  // Each waiting decision carries the AI that asked.
+  const actors = [...new Set(g.members.map((m) => m.actor).filter(Boolean))];
+  if (actors.length) {
+    const f = W.fleet.find((x) => x.id === actors[0]);
+    const name = f?.name ?? String(actors[0]);
+    const ai = f?.initials ?? initials(name);
+    return actors.length === 1 ? { name, ai } : { name: `${name} and ${actors.length - 1} more ${plural(actors.length - 1, 'AI', 'AIs')}`, ai };
+  }
+  const fits = W.fleet.filter((f) => f.team === g.team && f.app === g.app);
+  if (fits.length === 1) return { name: fits[0].name, ai: fits[0].initials ?? initials(fits[0].name) };
+  if (t.id === 'ai:unknown' || t.id === 'other') return { name: 'An AI', ai: '?' };
+  return { name: String(t.id).startsWith('team:') ? `${t.name} AI` : t.name, ai: t.ai };
+}
+const aiName = (g) => aiOf(g).name;
+
+function oneTitle(g, m) {
+  if (g.kind === 'real') return m.did;
+  if (g.kind === 'refund') return `${m.who}’s ${money(m.amount)} refund`;
+  if (g.kind === 'downgrade') return `${m.who} downgrade, ${money(m.amount)} a year`;
+  return `${m.who}’s billing email`;
+}
+const noun = (g, n) => ({ refund: n === 1 ? 'refund over $500' : 'refunds over $500', downgrade: n === 1 ? 'enterprise plan downgrade' : 'enterprise plan downgrades', email: n === 1 ? 'billing email' : 'billing emails', real: n === 1 ? 'decision' : 'decisions' })[g.kind];
+
+/** Real groups know the policy rule that asked; link to it so it can be changed. */
+const ruleLink = (g) => (g.ruleId ? ` <a class="linkish rl" href="/fixes?rule=${encodeURIComponent(g.ruleId)}" title="Rule ${safe(g.ruleId)}">Change this rule</a>` : '');
+
+// ─── header ────────────────────────────────────────
+function headText(n, groups) {
+  if (!n) return { h: 'Nothing waits on you', p: 'When a rule asks a person before an AI acts, it shows up here.' };
+  const big = groups > 1 && n > groups;
+  const old = oldest();
+  return {
+    h: `<span class="num" id="hn">${fmtN(n)}</span> ${n === 1 ? 'decision waits' : 'decisions wait'} on you${big ? `, in <span class="num" id="hg">${groups}</span> groups` : ''}`,
+    p: `Oldest has waited ${old} ${plural(old, 'minute', 'minutes')}. ${big ? 'Lumni groups them by the rule that asked.' : 'Each one is small enough to read in full.'}`,
+  };
+}
+function renderHead(from) {
+  const n = totalWaiting();
+  const t = headText(n, S.groups.length);
+  $('#hh').innerHTML = t.h;
+  $('#hp').textContent = t.p;
+  if (from && $('#hn')) countUp($('#hn'), n, { from: from.n, ms: 900 });
+}
+
+// ─── queue ─────────────────────────────────────────
+function strip(g) {
+  const out = outlierOf(g);
+  const cash = byMoney(g);
+  const val = (m) => (cash ? m.amount : m.mins);
+  const vals = g.members.map(val);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const x = cash ? (v) => Math.log(v / lo) / (Math.log(hi / lo) || 1) : (v) => (v - lo) / (hi - lo || 1);
+  const lanes = [0, -5, 5, -10, 10];
+  const placed = [];
+  const dots = [...g.members].sort((a, b) => val(a) - val(b)).map((m) => {
+    const px = x(val(m)) * 340;
+    let lane = 0;
+    while (lane < lanes.length - 1 && placed.some((p) => p.lane === lane && Math.abs(p.px - px) < 7)) lane++;
+    placed.push({ px, lane });
+    return `<span class="d ${m === out ? 'odd' : ''}" style="left:${(x(val(m)) * 100).toFixed(2)}%;top:${13 + lanes[lane]}px"></span>`;
+  });
+  const lab = cash ? [fmtMoney(lo), fmtMoney(hi)] : [`waited ${lo} min`, `${hi} min`];
+  return `<div class="strip"><span class="base"></span>${dots.join('')}<span class="lo">${lab[0]}</span><span class="hi">${lab[1]}</span></div>`;
+}
+
+function groupCard(g, i, fresh) {
+  const ai = aiOf(g), ap = W.app(g.app), n = g.members.length, out = outlierOf(g);
+  const m = g.members[0];
+  const old = Math.max(...g.members.map((x) => x.mins));
+  const preview = g.kind === 'email'
+    ? `<span class="human xs">${safe(m.person[0])}</span>${safe(m.person)}’s version <span class="vs">vs</span> <span class="ai xs">${safe(ai.ai)}</span>${safe(ai.name)}’s`
+    : g.kind === 'refund' ? `${money(m.amount)} back to ${safe(m.who)}`
+    : g.kind === 'downgrade' ? `${safe(m.who)} moves off Enterprise`
+    : `<span class="vs">${safe(g.rule)}</span>`;
+  return `<button class="gcard ${i === S.sel ? 'sel' : ''} ${fresh ? 'fresh' : ''}" data-i="${i}">
+    <div class="g1"><span class="mark">${safe(ap.mark)}</span><span class="gt" title="${safe(n === 1 ? oneTitle(g, m) : g.t)}">${safe(n === 1 ? oneTitle(g, m) : g.kind === 'real' ? g.t : SHORT[g.kind])}</span><span class="cnt num">${fmtN(n)}</span></div>
+    <div class="g2"><span class="ai xs">${safe(ai.ai)}</span>${safe(ai.name)} in ${safe(ap.name)}, ${n === 1 ? 'waiting' : 'oldest'} ${old} min</div>
+    ${n > 1 ? strip(g) : `<div class="g3">${preview}</div>`}
+    ${out ? '<div class="oddn"><i></i>1 looks unusual</div>' : ''}
+    ${g.heldFrom ? `<div class="held">Held back from ${safe(g.heldFrom)}</div>` : ''}
+  </button>`;
+}
+
+function renderQueue(freshId) {
+  const q = $('#queue');
+  if (!S.groups.length) {
+    q.innerHTML = `<div class="clear"><i>✓</i>${Shell.isReal ? 'No rule is waiting on a person right now.' : 'You’re clear. Lumni handles the rest.'}</div>`;
+  } else {
+    q.innerHTML = S.groups.map((g, i) => groupCard(g, i, g.id === freshId)).join('');
+  }
+  $('#qn').textContent = !S.groups.length ? '' : S.groups.every((g) => g.members.length === 1) ? 'Each on its own' : `${S.groups.length} ${S.groups.length === 1 ? 'group' : 'groups'}`;
+  $$('.gcard', q).forEach((b) => (b.onclick = () => select(+b.dataset.i)));
+}
+
+/**
+ * Today's decisions in your workspace: the audit history, one row per batch
+ * (same person, same answer, same note, within a minute), merged with what
+ * you decided on this page. A decision made here keeps its readable title.
+ */
+function decidedRows() {
+  const here = mine();
+  const today = here.filter((x) => (x.at ?? 0) >= W.dayStart);
+  if (!AUDIT) return today.map((x) => ({ ...x, mineRow: true }));
+  const byId = new Map();
+  today.forEach((x) => (x.ids ?? []).forEach((id) => byId.set(id, x)));
+  const rows = [];
+  for (const e of AUDIT) {
+    const at = Date.parse(e.at) || 0;
+    const status = String(e.after?.status ?? '').toUpperCase();
+    const deny = status === 'DENIED' || status === 'REJECTED';
+    const note = e.after?.metadata?.note ?? null;
+    const id = e.target?.id ?? e.after?.id;
+    const action = e.target?.action_id ?? e.after?.action_id ?? null;
+    const own = byId.get(id);
+    if (own) continue;
+    const last = rows.at(-1);
+    if (last && !last.mineRow && last.by === e.by && last.deny === deny && last.note === note && Math.abs(last.at - at) < 60e3) {
+      last.n++; if (action) last.actions.push(action);
+      continue;
+    }
+    rows.push({ at, by: e.by ?? 'Someone', deny, note, n: 1, actions: action ? [action] : [] });
+  }
+  const audited = rows.map((r) => {
+    const who = r.by === 'system' ? 'Lumni' : r.by;
+    const verb = r.deny ? 'denied' : 'approved';
+    return {
+      at: r.at, deny: r.deny, who: initials(who), lum: r.by === 'system',
+      t: r.n === 1 ? `${who} ${verb} a decision` : `${who} ${verb} ${fmtN(r.n)} decisions`,
+      s: `${clock(r.at)}${r.note ? `, “${trunc(r.note, 60)}”` : ''}`,
+      links: r.actions.map((a, i) => [a, r.n === 1 ? 'See its journey' : `${i + 1}`]),
+    };
+  });
+  // Ones decided here, newest first; the audit may not have caught up with all of them yet.
+  const ours = today.map((x) => ({ ...x, mineRow: true }));
+  return [...ours, ...audited].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+}
+const trunc = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const decidedCount = (rows) => rows.reduce((n, x) => n + (x.ids?.length ?? x.links?.length ?? 1), 0);
+
+function renderDone() {
+  if (Shell.isReal) {
+    const l = decidedRows();
+    $('#dlist').innerHTML = l.length
+      ? l.slice(0, 6).map((x, i) => `
+        <div class="drow ${i === 0 && S.freshDone ? 'fresh' : ''} ${x.deny ? 'deny' : ''}"><span class="human ${x.lum ? 'lum' : ''}">${safe(x.who)}</span><span class="tx">${safe(x.t)}<small>${safe(x.s)}${x.links?.length ? ', ' : ''}${(x.links ?? []).slice(0, 4).map(([id, name]) => `<a class="linkish" href="/journey?id=${encodeURIComponent(id)}">${safe(name)}</a>`).join(', ')}${(x.links?.length ?? 0) > 4 ? `, and ${x.links.length - 4} more` : ''}</small></span></div>`).join('')
+      : auditState === 'loading'
+        ? `<div class="drow"><span class="tx">Reading today’s decisions…<small>From Lumni’s audit history.</small></span></div>`
+      : AUDIT
+        ? `<div class="drow"><span class="tx">Nobody has decided anything yet today<small>Each answer, from here or from the API, shows up with who gave it and a link to its journey.</small></span></div>`
+        : `<div class="drow"><span class="tx">Nothing decided on this page yet<small>This Lumni API can’t list past decisions, so only the ones you make here show up, each with a link to its journey.</small></span></div>`;
+    S.freshDone = false;
+    const n = decidedCount(l);
+    $('#dn').textContent = n ? (AUDIT ? `${fmtN(n)} today` : `${fmtN(n)} this visit`) : '';
+    return;
+  }
+  $('#dlist').innerHTML = S.decided.slice(0, 6).map((x) => `
+    <div class="drow ${x.fresh ? 'fresh' : ''}"><span class="${x.human ? 'human' : 'ai'} ${x.lum ? 'lum' : ''}">${safe(x.who)}</span><span class="tx">${safe(x.t)}<small>${safe(x.s)}</small></span></div>`).join('');
+  S.decided.forEach((x) => (x.fresh = false));
+  $('#dn').textContent = `${S.decided.length} so far`;
+}
+
+// ─── panel ─────────────────────────────────────────
+function renderPanel() {
+  clearInterval(cdTimer);
+  const side = $('#side');
+  side.className = 'side';
+  const g = S.groups[S.sel];
+  if (!g) { side.innerHTML = emptyPanel(); return; }
+  if (g.members.length === 1 || S.one) { renderSingle(g); return; }
+  side.innerHTML = groupPanel(g);
+  $('#go').onclick = () => decideGroup('yes');
+  // Denying a whole group is destructive: the first click asks, the second does it.
+  const deny = $('#denyall');
+  deny.onclick = () => {
+    if (deny.dataset.armed) return decideGroup('no');
+    deny.dataset.armed = '1';
+    deny.classList.add('armed');
+    deny.textContent = `Confirm, deny all ${fmtN(g.members.length)}`;
+    $('#hint').textContent = 'Click again to deny every one. Nothing in this group will run.';
+    const my = gen;
+    setTimeout(() => { if (my === gen && deny.isConnected && !S.busy) { delete deny.dataset.armed; deny.classList.remove('armed'); deny.textContent = 'Deny all'; $('#hint').textContent = hintText(g); } }, 5000);
+  };
+  $('#onebyone').onclick = () => { S.one = true; renderPanel(); };
+  $('#oa')?.addEventListener('click', () => decideOne(outlierOf(g), 'yes'));
+  $('#od')?.addEventListener('click', () => decideOne(outlierOf(g), 'no'));
+  $$('.tr').forEach((r) => (r.onclick = () => { S.row = +r.dataset.r; markRow(); }));
+  markRow();
+}
+
+function emptyPanel() {
+  const real = Shell.isReal;
+  const decided = real ? decidedCount(decidedRows()) : S.decided.length;
+  return `<div class="panel empty rise">
+    <div class="bigcheck">${CHECK}</div>
+    <h2>Nothing waits on you</h2>
+    <p>${real ? 'When a rule asks a person before an AI acts, the decision lands here, grouped by the rule that asked.' : 'Every ask today has an answer. Lumni handles the rest on its own and brings the next one here.'}</p>
+    <div class="facts">
+      <span><b class="num">${fmtN(W.total)}</b>actions today</span>
+      <span><b class="num">${fmtN(W.steps)}</b>times Lumni stepped in</span>
+      <span><b class="num">${fmtN(decided)}</b>${real && !AUDIT ? 'decided on this page' : 'decided today'}</span>
+    </div>
+    ${real ? '<div style="margin-top:26px"><a class="btn" href="/fixes">Add a rule that asks you first</a></div>' : ''}
+  </div>`;
+}
+
+function groupPanel(g) {
+  const ai = aiOf(g), ap = W.app(g.app), n = g.members.length;
+  const out = outlierOf(g), rest = restOf(g), total = sumOf(rest);
+  const cash = byMoney(g);
+  const real = g.kind === 'real';
+  const q = g.kind === 'email' ? `Keep the person’s version for ${n} billing emails?` : real ? `Approve ${rest.length} waiting ${noun(g, rest.length)}?` : `Approve ${rest.length} ${noun(g, rest.length)}?`;
+  const shape = [
+    ['Asked by', `<span class="ai xs">${safe(ai.ai)}</span>${safe(ai.name)} <span class="muted">in</span> <span class="mark" style="width:20px;height:20px;font-size:9.5px;border-radius:6px">${safe(ap.mark)}</span>${safe(ap.name)}`],
+    ['Rule', `${safe(g.rule)}${ruleLink(g)}`],
+    g.kind === 'email'
+      ? ['In common', `${n} accounts, each changed by a person first`]
+      : cash
+        ? ['Together', `${fmtMoney(total)} <span class="muted">across ${rest.length}${out ? ', with 1 held back' : ''}</span>`]
+        : ['Together', `${n} ${noun(g, n)} <span class="muted">from the same rule</span>`],
+  ];
+  const shown = rest.slice(0, 8), more = rest.length - shown.length;
+  S.row = Math.max(0, Math.min(S.row, shown.length - 1));
+  const row = (m, i) => g.kind === 'email'
+    ? `<div class="tr" data-r="${i}"><span class="human">${initials(m.who)}</span><span class="nm">${safe(m.who)}</span><span class="vsum"><b>${safe(m.person)}’s version</b> vs ${safe(ai.name)}’s</span><span class="w a">${m.mins} min</span></div>`
+    : real
+      ? `<div class="tr" data-r="${i}"><span class="human">${initials(m.who)}</span><span class="nm" title="${safe(m.did)}">${safe(m.did)}</span><span class="w">${m.mins} min</span><span class="a num">${m.amount != null ? money(m.amount) : ''}</span></div>`
+      : `<div class="tr" data-r="${i}"><span class="human">${initials(m.who)}</span><span class="nm">${safe(m.who)}</span><span class="w">${m.mins} min</span><span class="a num">${money(m.amount)}${g.kind === 'downgrade' ? '<span class="w"> /yr</span>' : ''}</span></div>`;
+  const head = g.kind === 'email'
+    ? '<div class="th"><span></span><span>Customer</span><span>Which version</span><span class="a">Waited</span></div>'
+    : real
+      ? `<div class="th"><span></span><span>What it wants to do</span><span>Waited</span><span class="a">${g.members.some((m) => m.amount != null) ? 'Amount' : ''}</span></div>`
+      : `<div class="th"><span></span><span>${g.kind === 'refund' ? 'Customer' : 'Account'}</span><span>Waited</span><span class="a">${g.kind === 'refund' ? 'Refund' : 'Revenue'}</span></div>`;
+  const primary = g.kind === 'email' ? `Keep the person’s version for all ${n}` : out ? `Approve ${rest.length}` : `Approve all ${rest.length}`;
+  const mid = out ? median(rest.filter((m) => m.amount != null).map((m) => m.amount)) : 0;
+  return `
+    <div class="stack" id="stack">
+      <div class="sheet s3"></div><div class="sheet s2"></div>
+      <section class="panel" id="panel">
+        <div class="phead" id="phead">
+          <div class="ptop"><span class="tag accent"><span class="ai xs">${safe(ai.ai)}</span>${safe(ai.name)} is paused on ${fmtN(n)}</span><span class="r">Oldest waited ${Math.max(...g.members.map((m) => m.mins))} min</span></div>
+          <h2>${q}</h2>
+          <div class="shape">${shape.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+        </div>
+        <div class="pbody">
+          ${out ? `<div class="odd-call" id="oddcall"><span class="ring"></span>
+            <span class="tx"><b>${safe(out.who)}, ${money(out.amount)}, ${Math.round(out.amount / Math.max(1, mid))}× the middle of the rest.</b> Review on its own.<small>Not part of “${primary}”. Waiting ${out.mins} min.</small></span>
+            <button class="btn sm deny" id="od">Deny</button><button class="btn sm" id="oa">Approve</button></div>` : ''}
+          <div class="tbl ${g.kind === 'email' ? 'em' : ''}">
+            ${head}
+            <div class="rows ${more > 0 ? 'fade' : ''}">${shown.map(row).join('')}</div>
+            ${more > 0 ? `<div class="more"><span>and ${fmtN(more)} more</span><span>${cash ? `${fmtMoney(sumOf(rest.slice(8)))} between them` : g.kind === 'email' ? 'All the same shape' : 'All from the same rule'}</span></div>` : ''}
+          </div>
+          <div class="actions">
+            <button class="btn" id="onebyone">Open one by one</button>
+            <button class="btn deny" id="denyall">Deny all</button>
+            <span class="hint" id="hint">${hintText(g)}</span>
+            <button class="btn primary go" id="go">${primary}<kbd>⇧A</kbd></button>
+          </div>
+        </div>
+      </section>
+    </div>`;
+}
+
+const hintText = (g) => (g.kind !== 'real' ? 'Logged to receipts with your name.' : modern() ? 'One call to Lumni; each one is decided on its own.' : 'Each one goes to Lumni as its own decision.');
+
+function markRow() { $$('.tr').forEach((r) => r.classList.toggle('focus', +r.dataset.r === S.row)); }
+
+// The full single decision. The demo's billing email shows two versions side by side;
+// everything real gets the plain view: who, what, how much, where, which rule, how long.
+function singleData(g, m) {
+  const ai = aiOf(g);
+  const ap = W.app(g.app);
+  if (g.kind === 'real') {
+    const rows = [
+      ['What it wants to do', safe(m.did)],
+      ['For', safe(m.who)],
+      ...(m.amount != null ? [['Amount', money(m.amount)]] : []),
+      ['In', `${safe(ap.name)}${ap.blind ? ', which Lumni can’t check yet' : ''}`],
+      ['Why it asked', `${safe(g.rule)}${ruleLink(g)}`],
+      ['Waiting', `${m.mins} ${plural(m.mins, 'minute', 'minutes')}`],
+      ...(m.expires ? [['The ask', m.expires > Date.now() ? `Expires ${when(m.expires)} if nobody answers` : `Ran out ${when(m.expires)}`]] : []),
+    ];
+    return {
+      tag: `${ai.name} is waiting`, title: `${m.did}?`,
+      lead: `${ai.name} wants to ${lowerFirst(m.did)} in ${ap.name}. A rule asks a person first, so it waited for you.`,
+      opts: [
+        { id: 'yes', k: `${ai.name}, ${m.mins} min ago`, who: ai.ai, v: 'Approve', tag: 'It goes ahead', btn: 'Approve', stamp: 'Approved' },
+        { id: 'no', k: 'You', who: me(), human: true, v: 'Deny', tag: 'It doesn’t run', btn: 'Deny', stamp: 'Denied', deny: true },
+      ],
+      rows: () => rows,
+      receipt: (o) => ({
+        t: `You ${o.deny ? 'denied' : 'approved'}: ${m.did}`,
+        rows: [['Decided by', `You, ${nowLabel()}`], ['Sent to', ai.name], ['Lumni checks', o.deny ? 'Nothing goes out' : ap.blind ? `${ap.name} can’t be checked yet` : `${ap.name}, once it runs`]],
+      }),
+      journey: `/journey?id=${encodeURIComponent(m.action)}`,
+    };
+  }
+  if (g.kind === 'email') {
+    const co = m.who;
+    return {
+      tag: `${ai.name} is paused`, title: `Which billing email should ${co} keep?`,
+      lead: `${m.person} changed ${co}’s billing email ${m.mins + 1} minutes ago. A minute later ${ai.name} tried to change it to a different one, so Lumni paused it.`,
+      opts: [
+        { id: 'yes', k: `${m.person}, ${m.mins + 1} min ago`, who: m.person[0], human: true, v: m.mine, tag: 'Live now', btn: `Keep ${m.person}’s version`, stamp: 'Kept' },
+        { id: 'alt', k: `${ai.name}, ${m.mins} min ago`, who: ai.ai, v: m.theirs, tag: 'From the signed contract', btn: `Use ${ai.name}’s version`, stamp: 'Approved' },
+      ],
+      rows: (o) => [
+        ['Invoices go to', o.v],
+        ['Who hears about it', o.id === 'yes' ? `${ai.name}, so it doesn’t try again` : `${m.person}, with a note from you`],
+        [ai.name, `Carries on with ${co}’s renewal`],
+        ['If nobody answers', `Lumni keeps ${m.person}’s version in <span class="count" id="cd">28:41</span>`],
+      ],
+      receipt: (o) => ({ t: `You chose ${o.id === 'yes' ? m.person + '’s' : ai.name + '’s'} version: ${o.v}`, rows: [['Decided by', `AK, ${W.timeLabel}`], [ap.name + ' shows', o.v], [ai.name, 'Going again']] }),
+      toast: `Decided. ${ai.name} is going again.`,
+      journey: '/journey?story=sam',
+    };
+  }
+  const refund = g.kind === 'refund';
+  return {
+    tag: `${ai.name} is waiting`, title: refund ? `Refund ${money(m.amount)} to ${m.who}?` : `Let ${m.who} move off Enterprise?`,
+    lead: refund ? `${ai.name} wants to refund ${m.who} ${money(m.amount)} in ${ap.name}. ${g.rule}, so it waited for you.` : `${ai.name} wants to move ${m.who} to the Team plan, ${money(m.amount)} a year less. ${g.rule}.`,
+    opts: [
+      { id: 'yes', k: `${ai.name}, ${m.mins} min ago`, who: ai.ai, v: refund ? `Refund ${money(m.amount)}` : 'Move to Team', tag: refund ? `To ${m.who}` : `${money(m.amount)} a year less`, btn: refund ? 'Approve refund' : 'Approve downgrade', stamp: 'Approved' },
+      { id: 'no', k: 'You', who: 'AK', human: true, v: refund ? 'Don’t refund' : 'Keep Enterprise', tag: 'Nothing changes', btn: refund ? 'Deny refund' : 'Deny downgrade', stamp: 'Denied', deny: true },
+    ],
+    rows: (o) => [
+      ['What happens', o.id === 'yes' ? `${ai.name} calls ${ap.name} once` : `${ai.name} is told no, with your reason`],
+      ['Proof', o.id === 'yes' ? `Lumni reads ${ap.name} back after` : 'Nothing to check'],
+      ['Why it asked', g.rule],
+      ['If nobody answers', 'It stays paused. Lumni reminds you in <span class="count" id="cd">14:59</span>'],
+    ],
+    receipt: (o) => ({ t: o.id === 'yes' ? `You approved ${m.who}’s ${money(m.amount)} ${refund ? 'refund' : 'downgrade'}` : `You denied ${m.who}’s ${money(m.amount)} ${refund ? 'refund' : 'downgrade'}`, rows: [['Decided by', `AK, ${W.timeLabel}`], ['Sent to', ai.name], ['Lumni checks', o.id === 'yes' ? ap.name + ', once it lands' : 'Nothing goes out']] }),
+    toast: null,
+    journey: '/journey?story=omar',
+  };
+}
+
+function renderSingle(g) {
+  const m = g.members[0];
+  const d = singleData(g, m);
+  if (!S.pick || !d.opts.some((o) => o.id === S.pick)) S.pick = d.opts[0].id;
+  const o = d.opts.find((x) => x.id === S.pick);
+  const many = g.members.length > 1;
+  const real = g.kind === 'real';
+  // Demo copy is written as HTML; real copy is escaped where it's built.
+  const t = (s) => (real ? safe(s) : s);
+  const side = $('#side');
+  side.className = 'side single';
+  side.innerHTML = `
+    <div class="stack" id="stack">
+      ${many ? '<div class="sheet s3"></div><div class="sheet s2"></div>' : ''}
+      <section class="panel" id="panel">
+        <div class="phead" id="phead" style="border-bottom:0;padding-bottom:4px">
+          <div class="ptop"><span class="tag accent"><span class="ai xs">${safe(aiOf(g).ai)}</span>${t(d.tag)}</span>
+            <span class="r">${many ? `1 of ${fmtN(g.members.length)} <button class="linkish" id="back">Back to the group</button>` : `Asked ${m.mins} ${plural(m.mins, 'minute', 'minutes')} ago`}</span></div>
+          <h2>${t(d.title)}</h2>
+          <p class="lead">${t(d.lead)}</p>
+        </div>
+        <div class="pbody">
+          <div class="opts">${d.opts.map((x) => `
+            <button class="opt ${x.deny ? 'no' : ''}" data-id="${x.id}" aria-pressed="${x.id === S.pick}">
+              <span class="radio"></span>
+              <span class="k"><span class="${x.human ? 'human' : 'ai'} xs">${safe(x.who)}</span>${t(x.k)}</span>
+              <div class="v">${t(x.v)}</div>
+              <span class="tag">${t(x.tag)}</span>
+            </button>`).join('')}</div>
+          <div class="rowsi">${d.rows(o).map(([k, v]) => `<div class="rowi"><span>${k}</span><b><span class="swap">${v}</span></b></div>`).join('')}</div>
+          <div class="note">${real ? 'Your answer goes to Lumni’s API, and the AI hears it the next time it checks.' : 'Logged to receipts with your name, why you chose it, and what happened next.'}</div>
+          <div class="actions" style="border-top:0;padding-top:0">
+            <button class="btn" id="later">Ask me later</button>
+            <a class="btn" href="${d.journey}">See how it got here</a>
+            <button class="btn primary go" id="go">${t(o.btn)}<kbd>A</kbd></button>
+          </div>
+        </div>
+      </section>
+    </div>`;
+  $$('.opt').forEach((b) => (b.onclick = () => { S.pick = b.dataset.id; renderSingle(g); }));
+  $('#go').onclick = () => decideSingle();
+  $('#later').onclick = () => (many && S.one ? nextInGroup(g) : select(S.sel + 1));
+  $('#back')?.addEventListener('click', () => { S.one = false; renderPanel(); });
+  tick();
+}
+
+function nextInGroup(g) {
+  g.members.push(g.members.shift());
+  S.pick = null;
+  renderSingle(g);
+}
+
+// ─── deciding ──────────────────────────────────────
+function stampOn(el, text, red, big) {
+  const s = document.createElement('div');
+  s.className = `stamp ${red ? 'red' : ''} ${big ? 'big' : ''}`;
+  s.textContent = text;
+  el.appendChild(s);
+  $('#stack').classList.add('thud');
+}
+
+function stageRect(el) {
+  const a = el.getBoundingClientRect(), b = $('#stage').getBoundingClientRect();
+  return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
+}
+
+function printReceipt(r) {
+  const rc = $('#receipt');
+  rc.innerHTML = `<div class="rk"><span>${r.id ? `Receipt <b>${r.id}</b>` : 'Sent to Lumni'}</span><span>Just now</span></div><h3>${safe(r.t)}</h3>
+    ${r.rows.map(([k, v]) => `<div class="rowi"><span>${safe(k)}</span><b>${safe(v)}</b></div>`).join('')}`;
+  const p = stageRect($('#panel')), h = stageRect($('#phead'));
+  rc.style.left = p.x + (p.w - 520) / 2 + 'px';
+  rc.style.top = h.y + h.h - 2 + 'px';
+  rc.className = 'receipt on';
+  rc.offsetWidth;
+  rc.classList.add('out');
+  $('#side').classList.add('printing');
+}
+
+async function fileReceipt(my) {
+  const rc = $('#receipt');
+  const a = stageRect(rc), t = stageRect($('#dlist'));
+  rc.classList.add('away');
+  rc.style.transformOrigin = '0 0';
+  rc.style.transform = `translate(${t.x - a.x}px, ${t.y - a.y}px) scale(.6)`;
+  await sleep(650);
+  if (my !== gen) return;
+  rc.className = 'receipt';
+  rc.removeAttribute('style');
+}
+
+/** Removes members from a group; keeps whoever is left as its own group. */
+function take(g, gone) {
+  g.members = g.members.filter((m) => !gone.includes(m));
+  if (!g.members.length) { S.groups.splice(S.groups.indexOf(g), 1); return null; }
+  return g;
+}
+
+const path = (m, yes) => `/v1/approvals/${encodeURIComponent(m.id)}/${yes ? 'approve' : 'deny'}`;
+const lock = (on) => $$('#side button, #side a.btn').forEach((b) => (b.disabled = on));
+
+/** Real mode: one POST per decision, in order, with progress on the button. Stops at the first failure. */
+async function sendAll(list, yes, my) {
+  const ok = [];
+  const go = $('#go');
+  const verb = yes ? 'Approving' : 'Denying';
+  for (let i = 0; i < list.length; i++) {
+    if (go) go.innerHTML = `${verb} ${fmtN(i + 1)} of ${fmtN(list.length)}…`;
+    const r = await Shell.write('POST', path(list[i], yes), {}, { reload: false });
+    if (my !== gen) return ok;
+    if (!r) break;
+    ok.push(list[i]);
+    $(`.tr[data-r="${restOf(S.groups[S.sel]).indexOf(list[i])}"]`)?.classList.add('gone');
+  }
+  return ok;
+}
+
+const REASON = { REQUEST_FAILED: 'already decided', NOT_FOUND: 'no longer waiting', CONFLICT: 'already decided', FORBIDDEN: 'not yours to decide', EXPIRED: 'ran out' };
+const reasonOf = (err) => REASON[err?.code] ?? (err?.message ? lowerFirst(String(err.message)).replace(/\.$/, '') : 'Lumni said no');
+
+/**
+ * Real mode, newer APIs: the whole group in one call per 200, each decided on
+ * its own. Returns the members that went through and why the others didn't.
+ */
+async function sendBulk(list, yes, my) {
+  const ok = [], bad = [];
+  const go = $('#go'), deny = $('#denyall');
+  const btn = yes ? go : deny;
+  const note = yes ? 'Approved from Needs you as a group' : 'Denied from Needs you as a group';
+  for (let i = 0; i < list.length; i += 200) {
+    const part = list.slice(i, i + 200);
+    if (btn) btn.innerHTML = `${yes ? 'Approving' : 'Denying'} ${fmtN(list.length)}…`;
+    const r = await Shell.write('POST', '/v1/approvals/decide', { ids: part.map((m) => m.id), decision: yes ? 'approve' : 'deny', note }, { reload: false });
+    if (my !== gen) return { ok, bad };
+    if (!r) { part.forEach((m) => bad.push([m, 'didn’t reach Lumni'])); continue; }
+    const res = new Map((r.results ?? []).map((x) => [x.id, x]));
+    for (const m of part) {
+      const x = res.get(m.id);
+      if (x && !x.error && x.status) ok.push(m);
+      else bad.push([m, x ? reasonOf(x.error) : 'no answer from Lumni']);
+    }
+  }
+  return { ok, bad };
+}
+
+/** "23 approved, 1 couldn’t be: already decided". */
+function bulkWords(nOk, bad, yes) {
+  const verb = yes ? 'approved' : 'denied';
+  const head = `${fmtN(nOk)} ${verb}`;
+  if (!bad.length) return head;
+  const why = [...new Set(bad.map(([, w]) => w))];
+  return `${head}, ${fmtN(bad.length)} couldn’t be: ${why.slice(0, 2).join(', ')}`;
+}
+
+function record(g, list, yes, title) {
+  remember({
+    who: me(), t: title, deny: !yes,
+    s: `Here, at ${nowLabel()}`,
+    ids: list.map((m) => m.id),
+    links: list.map((m) => [m.action, m.who || m.did]),
+  });
+  S.freshDone = true;
+}
+
+async function decideGroup(how) {
+  if (S.busy) return;
+  S.busy = true;
+  const my = gen;
+  const g = S.groups[S.sel];
+  const real = g.kind === 'real';
+  const out = outlierOf(g), rest = restOf(g);
+  const yes = how === 'yes';
+  let gone = yes ? rest : g.members;
+  const asked = gone.length;
+  const before = { n: totalWaiting() };
+  lock(true);
+  let bad = [];
+  if (real && modern()) {
+    ({ ok: gone, bad } = await sendBulk(gone, yes, my));
+    if (my !== gen) return;
+    if (!gone.length) {
+      if (bad.length) Shell.toast(`None ${yes ? 'approved' : 'denied'}: ${bulkWords(0, bad, yes).split(': ')[1] ?? 'Lumni said no'}.`, 'bad');
+      S.busy = false; lock(false); renderPanel();
+      await sleep(600); if (my === gen) await Shell.refresh();
+      return;
+    }
+  } else if (real) {
+    gone = await sendAll(gone, yes, my);
+    if (my !== gen) return;
+    if (!gone.length) { S.busy = false; lock(false); renderPanel(); return; }
+  }
+  const n = gone.length;
+  const ap = W.app(g.app);
+  const ai = aiName(g);
+  const amt = sumOf(gone);
+  const some = n < asked ? ` of ${fmtN(asked)}` : '';
+  stampOn($('#phead'), g.kind === 'email' ? `Kept ×${fmtN(n)}` : yes ? `Approved ×${fmtN(n)}` : `Denied ×${fmtN(n)}`, !yes, true);
+  const r = {
+    id: real ? null : rid(g.id + how + n),
+    t: g.kind === 'email' ? `You kept the person’s version on ${n} billing emails`
+      : `You ${yes ? 'approved' : 'denied'} ${fmtN(n)}${some} ${noun(g, some ? asked : n)}${byMoney(g) ? `, ${fmtMoney(amt)}` : ''}`,
+    rows: g.kind === 'email'
+      ? [['Decided by', `AK, ${W.timeLabel}`], [ap.name + ' keeps', `The person’s version on ${n} accounts`], [ai, 'Told, so it doesn’t try again']]
+      : [['Decided by', `${real ? 'You' : 'AK'}, ${nowLabel()}`],
+        [yes ? 'Lumni checks' : ai, yes ? (ap.blind ? `${ap.name} can’t be checked yet` : `Each one in ${ap.name}, once it ${real ? 'runs' : 'lands'}`) : `Told no on ${n === asked ? 'all ' : ''}${fmtN(n)}`],
+        ...(out && yes ? [['Held back', `${out.who}, ${money(out.amount)}, waits on its own`]] : []),
+        ...(bad.length ? [['Couldn’t be', `${fmtN(bad.length)}, ${[...new Set(bad.map(([, w]) => w))].slice(0, 2).join(', ')}`]] : [])],
+  };
+  if (real) record(g, gone, yes, r.t);
+  await sleep(800); if (my !== gen) return;
+  printReceipt(r);
+  await sleep(200); if (my !== gen) return;
+  const card = $(`.gcard[data-i="${S.sel}"]`);
+  // Ones someone else already answered aren't waiting any more either.
+  const settled = bad.filter(([, why]) => why === REASON.REQUEST_FAILED || why === REASON.NOT_FOUND).map(([m]) => m);
+  const left = take(g, [...gone, ...settled]);
+  if (!left) card?.classList.add('gone');
+  if (left && !real) { left.heldFrom = noun(g, 2); left.id = g.id + '-held'; }
+  renderHead(before);
+  await sleep(200); if (my !== gen) return;
+  Shell.toast(g.kind === 'email' ? `Kept. ${ai} won’t try those ${n} again.`
+    : real && modern() ? `${bulkWords(n, bad, yes)}.${bad.length ? '' : yes ? ` ${ai} can go ahead.` : ` ${ai} was told no.`}`
+    : yes ? `Approved ${fmtN(n)}${some}. ${ai} can go ahead.` : `Denied ${fmtN(n)}${some}. ${ai} was told no.`);
+  await sleep(300); if (my !== gen) return;
+  S.sel = left ? S.groups.indexOf(left) : Math.min(S.sel, S.groups.length - 1);
+  renderQueue(left?.id);
+  await sleep(1200); if (my !== gen) return;
+  await fileReceipt(my); if (my !== gen) return;
+  if (!real) S.decided.unshift({ who: 'AK', human: true, t: r.t, s: `Just now, receipt ${r.id}`, fresh: true });
+  renderDone();
+  S.one = false; S.row = 0; S.pick = null;
+  renderPanel();
+  S.busy = false;
+  // Read the workspace again, so the queue is what Lumni says it is.
+  if (real) { await sleep(600); if (my === gen) await Shell.refresh(); }
+}
+
+async function decideSingle() {
+  if (S.busy) return;
+  S.busy = true;
+  const my = gen;
+  const g = S.groups[S.sel], m = g.members[0];
+  const real = g.kind === 'real';
+  const d = singleData(g, m);
+  const o = d.opts.find((x) => x.id === S.pick);
+  const before = { n: totalWaiting() };
+  lock(true);
+  if (real) {
+    $('#go').textContent = o.deny ? 'Denying…' : 'Approving…';
+    const res = await Shell.write('POST', path(m, !o.deny), {}, { ok: o.deny ? `Denied. ${aiName(g)} has your answer.` : `Approved. ${aiName(g)} can go ahead.`, reload: false });
+    if (my !== gen) return;
+    if (!res) { S.busy = false; renderSingle(g); return; }
+  }
+  stampOn($(`.opt[data-id="${o.id}"]`), o.stamp, o.deny);
+  const r = { id: real ? null : rid(m.id + o.id), ...d.receipt(o) };
+  if (real) record(g, [m], !o.deny, r.t);
+  await sleep(800); if (my !== gen) return;
+  printReceipt(r);
+  await sleep(200); if (my !== gen) return;
+  const wasLast = g.members.length === 1;
+  if (wasLast) $(`.gcard[data-i="${S.sel}"]`)?.classList.add('gone');
+  const left = take(g, [m]);
+  renderHead(before);
+  await sleep(200); if (my !== gen) return;
+  if (!real) Shell.toast(d.toast && !o.deny ? d.toast : o.deny ? `Denied. ${aiName(g)} has your answer.` : `Approved. ${aiName(g)} is going ahead.`);
+  await sleep(wasLast ? 300 : 0); if (my !== gen) return;
+  S.sel = left ? S.groups.indexOf(left) : Math.min(S.sel, S.groups.length - 1);
+  renderQueue();
+  await sleep(1200); if (my !== gen) return;
+  await fileReceipt(my); if (my !== gen) return;
+  if (!real) S.decided.unshift({ who: 'AK', human: true, t: r.t, s: `Just now, receipt ${r.id}`, fresh: true });
+  renderDone();
+  S.pick = null;
+  if (!left || left.members.length < 2) S.one = false;
+  renderPanel();
+  S.busy = false;
+}
+
+// One member, quickly, from the table or the outlier callout. No stamp.
+async function decideOne(m, how) {
+  if (S.busy || !m) return;
+  S.busy = true;
+  const my = gen;
+  const g = S.groups[S.sel];
+  const real = g.kind === 'real';
+  const yes = how === 'yes';
+  const before = { n: totalWaiting() };
+  const el = m === outlierOf(g) ? $('#oddcall') : $(`.tr[data-r="${restOf(g).indexOf(m)}"]`);
+  const said = yes ? `Approved. ${aiName(g)} can go ahead.` : `Denied. ${aiName(g)} has your answer.`;
+  if (real) {
+    lock(true);
+    const res = await Shell.write('POST', path(m, yes), {}, { ok: said, reload: false });
+    if (my !== gen) return;
+    if (!res) { S.busy = false; lock(false); return; }
+  } else Shell.toast(said);
+  el?.classList.add('gone');
+  const t = real
+    ? `You ${yes ? 'approved' : 'denied'}: ${m.did}`
+    : `You ${yes ? 'approved' : 'denied'} ${m.who}’s ${m.amount ? money(m.amount) + ' ' : ''}${g.kind === 'email' ? 'billing email change' : g.kind === 'refund' ? 'refund' : 'downgrade'}`;
+  if (real) record(g, [m], yes, t);
+  await sleep(450); if (my !== gen) return;
+  const left = take(g, [m]);
+  S.sel = left ? S.groups.indexOf(left) : Math.min(S.sel, S.groups.length - 1);
+  if (!real) S.decided.unshift({ who: 'AK', human: true, t, s: `Just now, receipt ${rid(m.id + how)}`, fresh: true });
+  renderHead(before); renderQueue(); renderDone(); renderPanel(); markRow();
+  S.busy = false;
+}
+
+function select(i) {
+  if (S.busy || !S.groups.length) return;
+  S.sel = (i + S.groups.length) % S.groups.length;
+  S.one = false; S.row = 0; S.pick = null;
+  $$('.gcard').forEach((b) => b.classList.toggle('sel', +b.dataset.i === S.sel));
+  renderPanel();
+}
+
+function tick() {
+  clearInterval(cdTimer);
+  cdTimer = setInterval(() => {
+    const e = $('#cd');
+    if (!e) return;
+    const [m, s] = e.textContent.split(':').map(Number);
+    const t = Math.max(0, m * 60 + s - 1);
+    e.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  }, 1000);
+}
+
+// ─── keys ──────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || !S || S.busy || !S.groups.length) return;
+  if (e.target.closest?.('input, textarea, select')) return;
+  const k = e.key.toLowerCase();
+  const g = S.groups[S.sel];
+  const single = g.members.length === 1 || S.one;
+  if (k === 'j') select(S.sel + 1);
+  else if (k === 'k') select(S.sel - 1);
+  else if (k === 'a' && e.shiftKey) single ? decideSingle() : decideGroup('yes');
+  else if (k === 'a') single ? decideSingle() : decideOne(restOf(g)[S.row], 'yes');
+  else if (k === 'd' && single) { S.pick = singleData(g, g.members[0]).opts.at(-1).id; decideSingle(); }
+  else if (k === 'd') decideOne(restOf(g)[S.row], 'no');
+  else if ((k === 'arrowdown' || k === 'arrowup') && !single) { S.row = Math.max(0, Math.min(Math.min(7, restOf(g).length - 1), S.row + (k === 'arrowdown' ? 1 : -1))); markRow(); e.preventDefault(); }
+  else return;
+});
+
+// ─── boot ──────────────────────────────────────────
+function boot(w, first) {
+  gen++;
+  clearInterval(cdTimer);
+  W = w;
+  const keep = S?.groups?.[S.sel]?.id;
+  S = { groups: buildQueue(w), sel: 0, row: 0, one: false, pick: null, busy: false, freshDone: S?.freshDone ?? false, decided: Shell.isReal ? [] : SEEDS[w.key].map((x) => ({ ...x })) };
+  // A fresh read keeps you on the group you were looking at.
+  if (keep && !first) S.sel = Math.max(0, S.groups.findIndex((g) => g.id === keep));
+  $('#receipt').className = 'receipt';
+  $('#receipt').removeAttribute('style');
+  const multi = S.groups.some((g) => g.members.length > 1);
+  $('#main').innerHTML = `
+    <div class="head">
+      <div><h1 id="hh"></h1><p id="hp"></p></div>
+      ${S.groups.length ? `<div class="keys">
+        <span class="kc"><kbd>J</kbd><kbd>K</kbd>to move</span>
+        <span class="kc"><kbd>A</kbd>approve</span>
+        <span class="kc"><kbd>D</kbd>deny</span>
+        ${multi ? '<span class="kc"><kbd>⇧</kbd><kbd>A</kbd>approve the group</span>' : ''}
+      </div>` : ''}
+    </div>
+    <div class="grid">
+      <aside>
+        <div class="eyebrow sec">Waiting<span class="r" id="qn"></span></div>
+        <div class="queue" id="queue"></div>
+        <p class="handled">Everything else, <b class="num">${fmtN(Math.max(0, w.total - totalWaiting()))}</b> ${plural(w.total - totalWaiting(), 'action', 'actions')} today, Lumni handled on its own.</p>
+        <div class="done">
+          <div class="eyebrow sec">${Shell.isReal && !modern() ? 'Decided here' : 'Decided today'}<span class="r" id="dn"></span></div>
+          <div class="dlist" id="dlist"></div>
+        </div>
+      </aside>
+      <div class="side" id="side"></div>
+    </div>`;
+  if (modern()) loadAudit(gen);
+  else { AUDIT = null; auditState = 'none'; }
+  renderHead();
+  renderQueue();
+  renderDone();
+  renderPanel();
+  markRow();
+  if (first) shot();
+}
+
+/** Today's decisions, from Lumni's audit history. Keeps the last good read while it re-reads. */
+async function loadAudit(my) {
+  if (!AUDIT) auditState = 'loading';
+  try {
+    const from = new Date(W.dayStart).toISOString();
+    const r = await Shell.api.get(`/v1/audit?type=approval.decided&from=${encodeURIComponent(from)}&limit=200`);
+    AUDIT = r?.items ?? [];
+    auditState = 'ok';
+  } catch {
+    AUDIT = null;
+    auditState = 'none';
+  }
+  if (my !== gen || S.busy) return;
+  renderDone();
+  if (!S.groups.length) renderPanel();
+}
+
+// ─── screenshot states ─────────────────────────────
+// ?shot=stamped        approve the open group (demo or real)
+// ?shot=approve-group  open the biggest group and approve it
+// ?shot=approve-raced  real: someone else answers one first, then approve the group
+// ?shot=deny-confirm   open the biggest group and arm "Deny all"
+// ?shot=deny-group     ...and confirm it
+// ?shot=approve-one    approve the unusual one on its own
+// ?shot=single         open the biggest group one by one
+// ?shot=decide-single  ...and approve the first one
+// ?shot=clear          approve everything, outliers too, until nothing waits
+async function shot() {
+  const s = new URLSearchParams(location.search).get('shot');
+  if (!s) return;
+  const biggest = () => S.groups.reduce((b, g, i) => (g.members.length > (S.groups[b]?.members.length ?? 0) ? i : b), 0);
+  await sleep(700);
+  if (s === 'stamped') $('#go')?.click();
+  if (s === 'approve-group') { select(biggest()); await sleep(300); $('#go')?.click(); }
+  if (s === 'approve-raced' && Shell.isReal) { select(biggest()); await sleep(200); const m = restOf(S.groups[S.sel])[0]; try { await Shell.api.post(path(m, true), {}); } catch {} await sleep(200); $('#go')?.click(); }
+  if (s === 'deny-confirm' || s === 'deny-group') { select(biggest()); await sleep(300); $('#denyall')?.click(); if (s === 'deny-group') { await sleep(400); $('#denyall')?.click(); } }
+  if (s === 'approve-one') { const i = S.groups.findIndex((g) => outlierOf(g)); select(i < 0 ? 0 : i); await sleep(300); ($('#oa') ?? $('#go'))?.click(); }
+  if (s === 'single' || s === 'decide-single') { select(biggest()); await sleep(200); $('#onebyone')?.click(); if (s === 'decide-single') { await sleep(500); $('#go')?.click(); } }
+  if (s === 'clear') {
+    for (let k = 0; k < 12 && S.groups.length; k++) {
+      while (S.busy) await sleep(100);
+      select(0);
+      const g = S.groups[0];
+      if (outlierOf(g)) await decideOne(outlierOf(g), 'yes');
+      else if (g.members.length === 1) await decideSingle();
+      else await decideGroup('yes');
+      await sleep(400);
+    }
+  }
+}
+
+Shell.boot({ nav: 'Needs you', onWorld: boot });
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "@lumni/console",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Lumni console: fifteen outcome screens on a demo world or your workspace's real data.",
+  "type": "module",
+  "scripts": {
+    "seed": "node scripts/seed-node-modules.mjs",
+    "dev": "bun --hot serve.ts",
+    "build": "bun scripts/build.ts",
+    "start": "bun serve.ts --prod",
+    "fake-api": "bun test/real/serve-fake.ts",
+    "shots": "node scripts/capture.mjs",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "license": "FSL-1.1-ALv2"
+}

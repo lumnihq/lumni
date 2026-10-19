@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Settings</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; }
+  .wrap { padding: 36px 40px 64px; }
+
+  .head { display: flex; align-items: flex-end; gap: 40px; }
+  .head h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; }
+  .head h1 .soft { color: var(--ink3); }
+  .head p { margin-top: 10px; font-size: 16px; color: var(--ink2); max-width: 820px; }
+  .head .demo-note { margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 13.5px; font-weight: 650; }
+
+  .layout { display: grid; grid-template-columns: 236px 1fr; gap: 28px; margin-top: 30px; align-items: start; }
+
+  /* The index on the left. */
+  .index { position: sticky; top: 20px; display: grid; gap: 2px; }
+  .index a { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 12px; transition: background .2s; }
+  .index a:hover { background: rgba(13,14,20,.04); }
+  .index a.on { background: var(--paper); box-shadow: var(--shadow); }
+  .index b { font-size: 14px; font-weight: 650; }
+  .index small { font-size: 12.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .index small.old { color: var(--ink3); }
+
+  .cards { display: grid; gap: 22px; min-width: 0; }
+  .sec { padding: 26px 30px 28px; scroll-margin-top: 20px; position: relative; }
+  .sec-h { display: flex; align-items: flex-start; gap: 16px; }
+  .sec-h h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.015em; display: flex; align-items: center; gap: 10px; }
+  .sec-h p { font-size: 14px; color: var(--ink2); margin-top: 3px; max-width: 720px; }
+  .sec-h .right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .sec-b { margin-top: 20px; }
+  .sec.old .sec-b { display: none; }
+  .sec .oldnote { display: none; margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: var(--wash); font-size: 14px; color: var(--ink2); }
+  .sec.old .oldnote { display: block; }
+  .sec.old .sec-h .right { display: none; }
+  .sec.old h2 { color: var(--ink2); }
+
+  /* The saved tick: the page's one motion. */
+  .tick { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; transform: scale(0); opacity: 0; }
+  .tick svg { width: 13px; height: 13px; }
+  .tick path { stroke-dasharray: 20; stroke-dashoffset: 20; }
+  .sec.saved .tick { animation: tick-in 2.4s var(--spring) both; }
+  .sec.saved .tick path { animation: tick-draw .5s .18s var(--ease) forwards; }
+  .sec.saved::after { content: ''; position: absolute; inset: -1px; border-radius: 20px; pointer-events: none; box-shadow: 0 0 0 2px var(--accent); animation: ring 1.4s var(--ease) both; }
+  @keyframes tick-in { 0% { transform: scale(0); opacity: 0; } 14% { transform: scale(1); opacity: 1; } 82% { transform: scale(1); opacity: 1; } 100% { transform: scale(.6); opacity: 0; } }
+  @keyframes tick-draw { to { stroke-dashoffset: 0; } }
+  @keyframes ring { 0% { opacity: .9; } 100% { opacity: 0; } }
+
+  .btn { height: 36px; font-size: 13.5px; }
+  .btn.sm { height: 30px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.arm { background: var(--ink); color: #fff; box-shadow: 0 6px 14px -6px rgba(13,14,20,.5); }
+  .btn.ghost { box-shadow: none; color: var(--ink2); }
+  .btn.ghost:hover { background: var(--wash); }
+  .linkish { color: var(--accent); font-weight: 650; font-size: 13.5px; }
+
+  .loading { height: 64px; border-radius: 12px; background: linear-gradient(90deg, var(--wash), #f7f7fa, var(--wash)); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .empty { padding: 18px 20px; border-radius: 14px; background: var(--wash); font-size: 14px; color: var(--ink2); display: flex; align-items: center; gap: 14px; }
+  .empty b { color: var(--ink); font-weight: 650; }
+  .empty .btn { margin-left: auto; flex: none; }
+  .err { margin-top: 12px; padding: 11px 14px; border-radius: 12px; background: #fff7ef; box-shadow: inset 3px 0 0 var(--orange); font-size: 13.5px; color: var(--ink); }
+  .err small { display: block; font-size: 12px; color: var(--ink2); margin-bottom: 2px; font-weight: 600; }
+  .err code { font-family: var(--mono); font-size: 12.5px; }
+
+  /* Workspace */
+  .ws { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+  .lab { font-size: 13px; font-weight: 650; color: var(--ink2); margin-bottom: 10px; }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mode { text-align: left; padding: 14px 16px 15px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); transition: box-shadow .2s, background .2s, transform .15s var(--ease); }
+  .mode:hover { box-shadow: inset 0 0 0 1px var(--ink3); }
+  .mode:active { transform: scale(.98); }
+  .mode b { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+  .mode b i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line2); }
+  .mode small { display: block; margin-top: 5px; font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+  .mode[aria-pressed='true'] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .mode[aria-pressed='true'] b i { box-shadow: inset 0 0 0 3px var(--accent); background: #fff; }
+  .mode:disabled { cursor: default; }
+  .hint { margin-top: 10px; font-size: 12.5px; color: var(--ink3); }
+  .pausebox { padding: 16px 18px; border-radius: 14px; background: var(--wash); display: flex; flex-direction: column; gap: 10px; }
+  .pausebox .st { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+  .pausebox .st i { width: 9px; height: 9px; border-radius: 50%; background: var(--allow); box-shadow: 0 0 0 3px rgba(22,163,74,.16); }
+  .pausebox.paused { background: var(--ink); color: #fff; }
+  .pausebox.paused .st i { background: var(--pop); box-shadow: 0 0 0 3px rgba(212,245,106,.2); }
+  .pausebox p { font-size: 13px; color: var(--ink2); line-height: 1.4; }
+  .pausebox.paused p { color: #c9ccd8; }
+  .pausebox .row { display: flex; gap: 8px; align-items: center; }
+  .pausebox.paused .btn:not(.arm):not(.ghost) { background: #fff; color: var(--ink); }
+  .pausebox.paused .btn.arm { background: var(--pop); color: var(--ink); }
+  .pausebox.paused .btn.ghost { color: #c9ccd8; }
+
+  /* Tables */
+  .tbl { width: 100%; border-collapse: collapse; }
+  .person { display: inline-flex; align-items: center; gap: 10px; }
+  .person .ai { width: 30px; height: 30px; border-radius: 9px; font-size: 11px; }
+  .person .sub { display: block; }
+  .you { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
+  select.role, .invite select { height: 32px; border-radius: 9px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); background: #fff; font: 600 13px var(--sans); padding: 0 8px; }
+  .invite { display: flex; gap: 8px; margin-top: 16px; }
+  .invite input { flex: 1; height: 36px; border-radius: 10px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); padding: 0 12px; font: 550 13.5px var(--sans); }
+  .invite input:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--accent); }
+  .linkbox { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); font-size: 13px; color: var(--ink2); }
+  .linkbox code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12.5px var(--mono); color: var(--ink); }
+  .pending { margin-top: 14px; }
+  .pending .inv { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .pending .inv small { margin-left: auto; color: var(--ink3); }
+  .tbl th { text-align: left; font-size: 12.5px; font-weight: 650; color: var(--ink3); padding: 0 12px 10px 0; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 13px 12px 13px 0; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl td:last-child, .tbl th:last-child { text-align: right; padding-right: 0; }
+  .tbl .nm { font-weight: 650; }
+  .tbl .sub { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 500; margin-top: 1px; }
+  .tbl tr.gone td { color: var(--ink3); }
+  .tbl tr.gone .nm { color: var(--ink2); }
+  .mono { font-family: var(--mono); font-size: 12.5px; padding: 2px 7px; border-radius: 6px; background: var(--wash); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { height: 22px; padding: 0 8px; border-radius: 999px; background: var(--wash); font-size: 12px; font-weight: 650; color: var(--ink2); display: inline-flex; align-items: center; }
+  .chip.accent { background: var(--accent-soft); color: var(--accent); }
+  .act { display: inline-flex; gap: 6px; justify-content: flex-end; align-items: center; }
+  .more-row { margin-top: 10px; font-size: 13px; color: var(--ink2); }
+
+  /* Spend */
+  .spend { display: grid; grid-template-columns: 1fr 330px; gap: 24px; }
+  .limit-now { display: flex; align-items: baseline; gap: 10px; }
+  .limit-now b { font-size: 34px; font-weight: 750; letter-spacing: -0.03em; }
+  .limit-now span { font-size: 15px; font-weight: 600; color: var(--ink2); }
+  .limit-now.none b { color: var(--ink3); font-size: 26px; }
+  .pace { margin-top: 6px; font-size: 13.5px; color: var(--ink2); }
+  .bar { position: relative; height: 10px; border-radius: 999px; background: var(--wash); margin-top: 14px; overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); }
+  .bar i.pace-i { background: var(--accent-line); }
+  .form { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .money-in { display: flex; align-items: center; height: 36px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line2); padding: 0 12px; gap: 4px; background: #fff; }
+  .money-in span { color: var(--ink2); font-weight: 650; font-size: 14px; }
+  .money-in input { width: 90px; border: 0; outline: 0; font: inherit; font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--wash); }
+  .seg button { height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .seg button[aria-pressed='true'] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(13,14,20,.08); }
+  .bill { padding: 16px 18px; border-radius: 14px; background: var(--wash); }
+  .bill .k { font-size: 12.5px; font-weight: 650; color: var(--ink2); }
+  .bill .plan { font-size: 20px; font-weight: 750; letter-spacing: -.02em; margin-top: 2px; }
+  .bill dl { display: grid; grid-template-columns: 1fr auto; gap: 7px 10px; margin-top: 12px; font-size: 13.5px; }
+  .bill dt { color: var(--ink2); }
+  .bill dd { font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+  .bill .oldtxt { margin-top: 8px; font-size: 13px; color: var(--ink2); }
+
+  /* Notifications */
+  .nt { display: grid; grid-template-columns: 1fr; gap: 22px; }
+  .chs { display: grid; gap: 8px; }
+  .ch { display: grid; grid-template-columns: 32px 1fr 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--wash); }
+  .ch.email { grid-template-columns: 32px 2fr auto; }
+  .ch .ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: #fff; box-shadow: inset 0 0 0 1px var(--line2); font-size: 14px; font-weight: 800; color: var(--ink); }
+  .ch input { height: 34px; border-radius: 9px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); padding: 0 11px; font: inherit; font-size: 13.5px; background: #fff; outline: 0; min-width: 0; }
+  .ch input:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .ch input.mono-in { font-family: var(--mono); font-size: 12.5px; }
+  .ch .r { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .ch .q { font-size: 12.5px; color: var(--accent); font-weight: 650; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .ch .q code { font-family: var(--mono); font-size: 12px; }
+  .x { width: 30px; height: 30px; border-radius: 8px; color: var(--ink3); display: grid; place-items: center; font-size: 18px; line-height: 1; }
+  .x:hover { background: #fff; color: var(--ink); }
+  .addrow { display: flex; gap: 8px; margin-top: 4px; }
+  .routes { display: grid; gap: 8px; }
+  .route { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: center; padding: 12px 14px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+  .route b { font-size: 14px; font-weight: 650; display: block; }
+  .route small { font-size: 12.5px; color: var(--ink2); }
+  .route .to { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tog { height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 650; color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line2); display: inline-flex; align-items: center; gap: 6px; max-width: 220px; }
+  .tog span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tog[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .tog:disabled { opacity: .5; cursor: default; }
+  .sched { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding-left: 12px; border-left: 1px solid var(--line); font-size: 12.5px; color: var(--ink2); }
+  .sched select, .sched input { height: 28px; border-radius: 8px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); padding: 0 8px; font: inherit; font-size: 12.5px; background: #fff; }
+  .none-to { font-size: 12.5px; color: var(--ink3); }
+  .explain { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .explain div { padding: 12px 14px; border-radius: 12px; background: var(--wash); font-size: 13px; color: var(--ink2); line-height: 1.45; }
+  .explain b { color: var(--ink); font-weight: 650; }
+  .explain code { font-family: var(--mono); font-size: 12px; }
+  .savebar { display: flex; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .savebar .state { font-size: 13px; color: var(--ink2); }
+  .savebar .state.dirty { color: var(--accent); font-weight: 650; }
+
+  /* Activity log */
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters button { height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 650; color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line2); }
+  .filters button[aria-pressed='true'] { background: var(--ink); color: #fff; box-shadow: none; }
+  .log { margin-top: 14px; display: grid; }
+  .ev { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; animation: rise .5s var(--ease) both; }
+  .ev:last-child { border-bottom: 0; }
+  .ev .who { width: 28px; height: 28px; border-radius: 50%; background: #e8e3da; display: grid; place-items: center; font-size: 10.5px; font-weight: 750; }
+  .ev .who.sys { border-radius: 8px; background: var(--accent); color: #fff; }
+  .ev .t { min-width: 0; }
+  .ev .t em { font-style: normal; color: var(--ink3); }
+  .ev a { color: var(--accent); font-weight: 650; font-size: 13px; }
+  .ev .k { font-size: 11.5px; font-weight: 650; color: var(--ink3); }
+  .log-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 13px; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <div class="wrap">
+    <section class="head">
+      <div>
+        <h1 id="h1">Settings</h1>
+        <p id="sub">How Lumni steps in, who can reach it, what it may spend and who it tells.</p>
+      </div>
+      <div class="demo-note mock-only">In the demo, nothing is saved</div>
+    </section>
+
+    <div class="layout">
+      <nav class="index" id="index"></nav>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const E = (s) => Shell.esc(s);
+const Q = new URLSearchParams(location.search);
+let shotPending = Q.get('shot');
+const real = () => Shell.isReal;
+const DEMO_SAVE = 'In the demo, nothing is saved.';
+const ZONE = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { return 'UTC'; } })();
+
+// ─── words ──────────────────────────────────────────
+
+const MODES = [
+  ['SHADOW', 'Watch', 'Lumni records what it would have done, and lets every action through.'],
+  ['WARN', 'Warn', 'Lumni flags a clash or an old read, and the AI decides.'],
+  ['ENFORCE', 'Protect', 'Lumni stops repeats, makes AIs wait their turn and asks you.'],
+];
+const modeName = (m) => (MODES.find((x) => x[0] === m) ?? [m, m ? String(m).toLowerCase() : 'the default'])[1];
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+const opWords = (op) => {
+  if (!op || op === '*') return 'every operation';
+  const [app, ...rest] = String(op).split('.');
+  return `${cap(app)} ${rest.join(' ').replace(/_/g, ' ')}`.trim();
+};
+const plural = (n, one, many = one + 's') => `${fmtN(n)} ${n === 1 ? one : many}`;
+const usd = (d) => {
+  if (d == null) return '';
+  const a = Math.abs(d);
+  if (a === 0) return '$0';
+  if (a < 100) return '$' + d.toFixed(a < 1 ? (a < 0.1 ? 3 : 2) : 2).replace(/\.00$/, '').replace(/(\.\d*[1-9])0$/, '$1');
+  if (a < 10000) return '$' + Math.round(d).toLocaleString('en-US');
+  return fmtMoney(d);
+};
+const micro = (m) => (m == null ? null : m / 1e6);
+const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+const DAYNAME = { MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday', SAT: 'Saturday', SUN: 'Sunday' };
+
+function when(at) {
+  const t = typeof at === 'number' ? at : Date.parse(at);
+  if (!Number.isFinite(t)) return '';
+  const d = new Date(t);
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const age = Date.now() - t;
+  if (age < 6 * 86400e3 && age > -86400e3) return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${time}`;
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
+}
+const dayOf = (at) => { const t = Date.parse(at); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : ''; };
+const clock = (at) => { const t = Date.parse(at); return Number.isFinite(t) ? new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''; };
+
+// ─── state ──────────────────────────────────────────
+
+let W = null;
+const S = {};
+/** Each section: id, title, what it reads. */
+let SECTIONS = [
+  ['workspace', 'Workspace'],
+  ['keys', 'Agents and keys'],
+  ['spend', 'Spend'],
+  ['notify', 'Notifications'],
+  ['limits', 'Limits and holds'],
+  ['pilot', 'Autopilot'],
+  ['log', 'Activity log'],
+];
+
+const aiName = (id) => W?.fleet.find((a) => a.id === id)?.name ?? (id ? String(id).replace(/^ai_/, '').replace(/_/g, ' ') : 'An AI');
+const aiOf = (id) => W?.fleet.find((a) => a.id === id);
+const thingName = (id) => W?.things?.find((t) => t.id === id)?.name ?? id;
+const ruleName = (id) => S.rules?.find((r) => r.id === id)?.name ?? null;
+const whoName = (by) => (!by || by === 'system' ? 'Lumni' : by);
+const initialsOf = (s) => { const p = String(s).trim().split(/\s+/); return (p.length > 1 ? p[0][0] + p[p.length - 1][0] : String(s).slice(0, 2)).toUpperCase(); };
+
+/** A real read, or a section that this API doesn't have. */
+async function read(path) {
+  try {
+    return { ok: true, data: await Shell.api.get(path) };
+  } catch (e) {
+    if (e.status === 404 || e.status === 405 || e.status === 501) return { ok: false, old: true };
+    return { ok: false, error: e.message };
+  }
+}
+
+/** A real write, or the demo's note. Resolves with the answer, or null. */
+async function save(method, path, body, ok) {
+  if (!real()) { Shell.toast(DEMO_SAVE); return null; }
+  return Shell.write(method, path, body, { ok, reload: false });
+}
+
+/** The success motion: a tick on the card. */
+function saved(id) {
+  const c = $(`#sec-${id}`);
+  if (!c) return;
+  c.classList.remove('saved');
+  void c.offsetWidth;
+  c.classList.add('saved');
+  clearTimeout(c._t);
+  c._t = setTimeout(() => c.classList.remove('saved'), 2500);
+  // The write is in the history now.
+  if (real() && id !== 'log') loadLog(false).then(() => { renderLog(); renderIndex(); });
+}
+/** Re-read the world a moment after a write, so every screen agrees. */
+let refreshTimer = 0, ownRefresh = false;
+function rereadSoon() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => { ownRefresh = true; Shell.refresh(); }, 600);
+}
+
+/** A destructive button asks once more, inline. */
+function confirmable(btn, label, fn, { cancel = true } = {}) {
+  const idle = btn.innerHTML;
+  let armed = false, t = 0, no = null;
+  const disarm = () => { armed = false; clearTimeout(t); btn.innerHTML = idle; btn.classList.remove('arm'); no?.remove(); no = null; };
+  btn.onclick = async () => {
+    if (!armed) {
+      armed = true;
+      btn.textContent = label;
+      btn.classList.add('arm');
+      if (cancel) {
+        no = document.createElement('button');
+        no.className = 'btn sm ghost';
+        no.textContent = 'Cancel';
+        no.onclick = disarm;
+        btn.before(no);
+      }
+      t = setTimeout(disarm, 6000);
+      return;
+    }
+    clearTimeout(t);
+    btn.disabled = true;
+    const done = await fn();
+    if (btn.isConnected) { btn.disabled = false; disarm(); }
+    return done;
+  };
+}
+
+// ─── the demo's settings ────────────────────────────
+
+function demoData(w) {
+  const day = 86400e3, now = w.now;
+  const iso = (t) => new Date(t).toISOString();
+  const pilot = w.fleet.filter((a) => a.level === 3).slice(0, 3).map((a, i) => ({
+    actor_id: a.id, operation: a.op ?? 'salesforce.assign_owner', active: true, since: iso(now - (9 + i * 5) * day),
+    skip_rules: ['rule_demo'], below: { pointer: '/amount', value: 500 }, revert_after: { slips: 2, per: 1000 }, slips: 0,
+  }));
+  const f = (id) => w.fleet.find((a) => a.id === id) ?? w.fleet[0];
+  const limit = w.money.limit;
+  return {
+    keys: { items: [
+      { id: 'k_console', name: 'Console admin', prefix: 'lumni_7f3a', scopes: ['admin', 'query'], created_at: iso(now - 41 * day) },
+      { id: 'k_refund', name: `Agent key for ${f('refund').name}`, prefix: 'lumni_c19e', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 30 * day) },
+      { id: 'k_triage', name: `Agent key for ${f('triage').name}`, prefix: 'lumni_80d2', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 12 * day) },
+      { id: 'k_old', name: 'Laptop test key', prefix: 'lumni_2b41', scopes: ['ingest', 'query', 'runtime', 'admission'], created_at: iso(now - 60 * day), revoked_at: iso(now - 20 * day) },
+    ] },
+    spend: limit ? { daily_micros_usd: limit * 1e6, when_reached: 'SLOW', spent_today_micros_usd: Math.round(w.spend * 1e6), pace_micros_usd: Math.round(w.pace * 1e6), slow_at: null } : null,
+    billing: { plan: w.money.plan ?? 'team', price_per_action_micros_usd: Math.round((w.money.pricePerAction ?? 0.02) * 1e6), checked_actions: w.total, cost_micros_usd: Math.round((w.money.lumniCost ?? w.total * 0.02) * 1e6) },
+    notify: {
+      channels: [
+        { id: 'slack-1', kind: 'slack', target: '#ai-ops', connection_id: 'ca_slack_acme' },
+        { id: 'email-1', kind: 'email', target: 'ops@acme.com' },
+      ],
+      routes: [
+        { event: 'approval.requested', channels: ['slack-1'] },
+        { event: 'incident.opened', channels: ['slack-1', 'email-1'] },
+        { event: 'digest.weekly', channels: ['email-1'], schedule: 'MON 09:00 UTC' },
+      ],
+    },
+    limits: { items: [
+      { id: 'cap-deploy', scope: { operation: 'vercel.deploy' }, max_in_flight: 1, per_minute: null, hold: false, mode: 'ENFORCE', in_flight_now: 1, waiting_now: 2 },
+      { id: 'rate-refund', scope: { actor_id: 'refund', operation: 'stripe.refund' }, max_in_flight: null, per_minute: 30, hold: false, mode: 'ENFORCE', in_flight_now: 3, waiting_now: 0 },
+    ] },
+    pilot: { items: pilot },
+    rules: [{ id: 'rule_demo', name: 'Owner changes need a person' }],
+    log: { items: [
+      { id: 'd1', at: iso(w.now - 34 * 60e3), by: 'AK', type: 'enforcement.set', target: { operation: 'stripe.refund', rule: '*' }, before: { mode: 'WARN' }, after: { mode: 'ENFORCE' } },
+      { id: 'd2', at: iso(w.now - 2.2 * 3600e3), by: 'Jess Park', type: 'approval.decided', target: { id: 'ap1', action_id: 'omar' }, before: { status: 'PENDING' }, after: { status: 'APPROVED' } },
+      { id: 'd3', at: iso(w.now - 5.1 * 3600e3), by: 'system', type: 'autopilot.reverted', target: { actor_id: 'accounts', operation: 'salesforce.update' }, before: {}, after: { active: false } },
+      { id: 'd4', at: iso(w.now - 26 * 3600e3), by: 'AK', type: 'limit.set', target: { id: 'cap-deploy' }, before: null, after: { scope: { operation: 'vercel.deploy' }, max_in_flight: 1 } },
+      { id: 'd5', at: iso(w.now - 50 * 3600e3), by: 'Jess Park', type: 'policy_rule.updated', target: { id: 'r1' }, before: { name: 'Refunds over $500 need a person', numeric_threshold: 250 }, after: { name: 'Refunds over $500 need a person', numeric_threshold: 500 } },
+      { id: 'd6', at: iso(w.now - 3.2 * day), by: 'AK', type: 'spend_limit.set', target: { id: 'workspace' }, before: null, after: { daily_micros_usd: (limit ?? 500) * 1e6, when_reached: 'SLOW' } },
+    ], next_cursor: null },
+  };
+}
+
+// ─── loading ────────────────────────────────────────
+
+const PATHS = {
+  keys: () => '/v1/api-keys',
+  spend: () => '/v1/config/spend-limit',
+  billing: () => `/v1/billing/usage?tz=${encodeURIComponent(W?.zone || ZONE)}`,
+  notify: () => '/v1/config/notifications',
+  limits: () => '/v1/config/limits?limit=200',
+  pilot: () => '/v1/config/autopilot',
+  rules: () => '/v1/config/policy-rules',
+  people: () => '/v1/console/members',
+};
+/** People sign in as themselves (accounts), so there's a team to manage. */
+const accounts = () => real() && Shell.config.auth === 'accounts';
+const LOG_TYPES = [
+  ['All', ''],
+  ['Modes', 'enforcement.set,enforcement.cleared'],
+  ['Rules', 'policy_rule.created,policy_rule.updated,policy_rule.deleted'],
+  ['Decisions', 'approval.decided'],
+  ['Limits', 'limit.set,spend_limit.set'],
+  ['Pauses', 'actor.paused,actor.resumed,workspace.paused'],
+  ['Autopilot', 'autopilot.granted,autopilot.reverted'],
+  ['Proofs', 'proof.created'],
+  ['Checkers', 'verifier.changed'],
+  ['Alerts', 'notifications.updated'],
+];
+S.logFilter = '';
+
+async function load(key) {
+  if (!real()) {
+    const d = demoData(W);
+    if (key === 'rules') S.rules = d.rules;
+    else if (key === 'log') { S.log = { status: 'ok', items: filterDemoLog(d.log.items), cursor: null }; }
+    else S[key] = { status: 'ok', data: d[key] };
+    return;
+  }
+  if (key === 'log') return loadLog(false);
+  const r = await read(PATHS[key]());
+  if (key === 'rules') { S.rules = r.ok ? r.data?.items ?? [] : []; return; }
+  S[key] = r.ok ? { status: 'ok', data: r.data } : r.old ? { status: 'old' } : { status: 'error', error: r.error };
+}
+
+function filterDemoLog(items) {
+  const types = S.logFilter ? S.logFilter.split(',') : null;
+  return types ? items.filter((e) => types.includes(e.type)) : items;
+}
+
+async function loadLog(more) {
+  if (!real()) { S.log = { status: 'ok', items: filterDemoLog(demoData(W).log.items), cursor: null }; return; }
+  const q = new URLSearchParams({ limit: '50' });
+  if (S.logFilter) q.set('type', S.logFilter);
+  if (more && S.log?.cursor) q.set('cursor', S.log.cursor);
+  const r = await read(`/v1/audit?${q}`);
+  if (!r.ok) { if (!more) S.log = r.old ? { status: 'old' } : { status: 'error', error: r.error }; else Shell.toast(r.error ?? 'More history couldn’t be read.', 'bad'); return; }
+  const items = r.data?.items ?? [];
+  S.log = { status: 'ok', items: more ? [...(S.log.items ?? []), ...items] : items, cursor: r.data?.next_cursor ?? null };
+}
+
+async function loadAll() {
+  await Promise.all(['keys', 'spend', 'billing', 'notify', 'limits', 'pilot', 'rules', 'log', ...(accounts() ? ['people'] : [])].map(load));
+}
+
+// ─── layout ─────────────────────────────────────────
+
+function shell() {
+  $('#cards').innerHTML = SECTIONS.map(([id, t]) => `
+    <section class="card sec" id="sec-${id}">
+      <div class="sec-h"><div><h2>${t}<span class="tick" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M3 7.4l2.6 2.6L11 4.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></h2><p class="d"></p></div><div class="right"></div></div>
+      <div class="oldnote">This needs a newer Lumni API. Update the Lumni server to manage it here.</div>
+      <div class="sec-b"><div class="loading"></div></div>
+    </section>`).join('');
+}
+
+function part(id) {
+  const c = $(`#sec-${id}`);
+  return { c, d: c.querySelector('.d'), right: c.querySelector('.right'), b: c.querySelector('.sec-b') };
+}
+function setOld(id, old) { $(`#sec-${id}`).classList.toggle('old', !!old); }
+function errorBox(msg) { return `<div class="err"><small>Lumni’s API said</small>${E(msg)}</div>`; }
+
+function renderIndex() {
+  const st = {
+    workspace: W.paused ? 'Every AI is paused' : `Default: ${modeName(W.mode)}`,
+    keys: S.keys?.status === 'ok' ? plural((S.keys.data?.items ?? []).filter((k) => !k.revoked_at).length, 'active key') : null,
+    spend: S.spend?.status === 'ok' ? (S.spend.data ? `${usd(micro(S.spend.data.daily_micros_usd))} a day` : 'No daily limit') : null,
+    notify: S.notify?.status === 'ok' ? ((S.notify.data?.channels ?? []).length ? plural(S.notify.data.channels.length, 'channel') : 'Nothing is sent yet') : null,
+    limits: S.limits?.status === 'ok' ? ((S.limits.data?.items ?? []).length ? plural(S.limits.data.items.length, 'limit') : 'None set') : null,
+    pilot: S.pilot?.status === 'ok' ? ((S.pilot.data?.items ?? []).filter((g) => g.active).length ? plural(S.pilot.data.items.filter((g) => g.active).length, 'AI') + ' on Autopilot' : 'No AI on Autopilot') : null,
+    people: S.people?.status === 'ok' ? plural(S.people.data.members.length, 'person', 'people') + (S.people.data.invites.length ? `, ${plural(S.people.data.invites.length, 'invite')} open` : '') : null,
+    log: S.log?.status === 'ok' ? (S.log.items.length ? `Last change ${when(S.log.items[0].at)}` : 'Nothing changed yet') : null,
+  };
+  const old = (id) => S[id]?.status === 'old' || (id === 'workspace' && false);
+  $('#index').innerHTML = SECTIONS.map(([id, t]) => `<a href="#sec-${id}" data-id="${id}"><b>${t}</b><small class="${old(id) ? 'old' : ''}">${old(id) ? 'Needs a newer Lumni API' : E(st[id] ?? (S[id]?.status === 'error' ? 'Couldn’t be read' : 'Reading…'))}</small></a>`).join('');
+}
+
+// ─── 1. workspace ───────────────────────────────────
+
+function renderWorkspace() {
+  const { d, b } = part('workspace');
+  const name = real() ? (Shell.session?.tenant?.name ?? Shell.config.workspace ?? 'Your workspace') : 'Acme, the demo';
+  d.innerHTML = `How <b>${E(name)}</b> treats an action when a rule doesn’t say otherwise.`;
+  const old = real() && W.source === 'snapshots';
+  const paused = !!W.paused;
+  b.innerHTML = `<div class="ws">
+      <div>
+        <div class="lab">Default mode</div>
+        <div class="modes" id="modes">${MODES.map(([m, n, t]) => `<button class="mode" data-m="${m}" aria-pressed="${W.mode === m}"><b><i></i>${n}</b><small>${t}</small></button>`).join('')}</div>
+        <div class="hint">Operations with their own setting in Autonomy keep it. This is what everything else starts on.</div>
+      </div>
+      <div>
+        <div class="lab">Every AI</div>
+        <div class="pausebox ${paused ? 'paused' : ''}">
+          <div class="st"><i></i>${paused ? 'Paused' : 'Running'}</div>
+          <p>${paused ? 'No AI can start a new action. Anything already running finishes. Checks answer that the workspace is paused.' : 'Pausing stops every AI from starting a new action until you resume. Anything already running finishes.'}</p>
+          <div class="row"><button class="btn sm" id="pause" ${old ? 'disabled title="This needs a newer Lumni API"' : ''}>${paused ? 'Resume every AI' : 'Pause every AI'}</button></div>
+        </div>
+      </div>
+    </div>`;
+  $$('#modes .mode').forEach((btn) => (btn.onclick = async () => {
+    const m = btn.dataset.m;
+    if (m === W.mode) return;
+    const out = await save('PUT', '/v1/config/mode', { mode: m }, `Your workspace now defaults to ${modeName(m)}.`);
+    if (!out) return;
+    W.mode = out.enforcement_mode ?? m;
+    renderWorkspace();
+    renderIndex();
+    saved('workspace');
+    rereadSoon();
+  }));
+  confirmable($('#pause'), paused ? 'Confirm, let every AI act' : 'Confirm, pause every AI', async () => {
+    const out = await save('POST', '/v1/config/pause', { paused: !paused }, paused ? 'Every AI can act again.' : 'Every AI is paused. New actions wait.');
+    if (!out) return;
+    W.paused = out.paused ?? !paused;
+    Shell.paintPaused();
+    renderWorkspace();
+    renderIndex();
+    saved('workspace');
+    rereadSoon();
+  });
+}
+
+// ─── 2. agents and keys ─────────────────────────────
+
+let keysAll = false;
+/** Keys the API made from an onboarding code are named "onboarding: <project> @ <host>". */
+function keyName(k) {
+  const m = /^onboarding: (.*?) @ (.*)$/.exec(k.name ?? '');
+  if (m) return [m[1].trim() || 'An agent', m[2].trim() ? `set up on ${m[2].trim()}` : 'set up with a code'].join(', ');
+  // Each person's own key, made when they sign in (accounts).
+  const c = /^Console: (.*?) <.*>$/.exec(k.name ?? '');
+  if (c) return `Console sign-in for ${c[1]}`;
+  return k.name || 'Unnamed key';
+}
+
+function renderKeys() {
+  const { d, right, b } = part('keys');
+  d.textContent = 'Each agent connects with its own key. Revoking one stops every agent using it at its next call.';
+  right.innerHTML = '<a class="btn sm accent" href="/start">Connect an agent</a>';
+  const s = S.keys;
+  setOld('keys', s?.status === 'old');
+  if (!s || s.status === 'old') return;
+  if (s.status === 'error') { b.innerHTML = errorBox(s.error); return; }
+  const items = [...(s.data?.items ?? [])].sort((a, b2) => (!!a.revoked_at - !!b2.revoked_at) || String(b2.created_at).localeCompare(String(a.created_at)));
+  if (!items.length) { b.innerHTML = `<div class="empty"><span><b>No keys yet.</b> Connect an agent and Lumni makes one for it.</span><a class="btn sm" href="/start">Connect an agent</a></div>`; return; }
+  const live = items.filter((k) => !k.revoked_at).length;
+  const shown = keysAll ? items : items.slice(0, 8);
+  b.innerHTML = `<table class="tbl"><thead><tr><th>Name</th><th>Starts with</th><th>Can</th><th>Made</th><th></th></tr></thead><tbody>
+    ${shown.map((k) => `<tr class="${k.revoked_at ? 'gone' : ''}">
+      <td><span class="nm">${E(keyName(k))}</span>${k.revoked_at ? `<span class="sub">Revoked ${E(dayOf(k.revoked_at))}</span>` : k.expires_at ? `<span class="sub">Expires ${E(dayOf(k.expires_at))}</span>` : ''}</td>
+      <td><span class="mono">${E(k.prefix || '')}…</span></td>
+      <td><div class="chips">${(k.scopes ?? []).map((sc) => `<span class="chip ${sc === 'admin' ? 'accent' : ''}">${E(sc)}</span>`).join('')}</div></td>
+      <td>${E(dayOf(k.created_at))}</td>
+      <td>${k.revoked_at ? '<span class="chip">Revoked</span>' : `<span class="act"><button class="btn sm" data-revoke="${E(k.id)}">Revoke</button></span>`}</td>
+    </tr>`).join('')}</tbody></table>
+    <div class="more-row">${plural(live, 'key')} can reach Lumni${items.length > live ? `, ${fmtN(items.length - live)} revoked` : ''}.${items.length > shown.length ? ` <button class="linkish" id="keys-all">Show all ${fmtN(items.length)}</button>` : ''} If one of these is the key this console signs in with, revoking it signs the console out.</div>`;
+  $('#keys-all')?.addEventListener('click', () => { keysAll = true; renderKeys(); });
+  $$('[data-revoke]', b).forEach((btn) => {
+    const k = items.find((x) => x.id === btn.dataset.revoke);
+    confirmable(btn, 'Confirm revoke', async () => {
+      const out = await save('DELETE', `/v1/api-keys/${encodeURIComponent(k.id)}`, undefined, `${keyName(k)} is revoked. Agents using it are refused from their next call.`);
+      if (!out) return;
+      await load('keys');
+      renderKeys(); renderIndex(); saved('keys');
+    });
+  });
+}
+
+// ─── 3. spend ───────────────────────────────────────
+
+let spendMode = null;
+function renderSpend() {
+  const { d, b } = part('spend');
+  const lz = S.spend?.data?.tz;
+  d.textContent = `A daily limit on what your AIs spend, counted in ${lz && lz !== ZONE ? `${lz} days` : 'your days, midnight to midnight'}. When it’s reached, Lumni slows checks down or holds new actions.`;
+  const s = S.spend, bill = S.billing;
+  setOld('spend', s?.status === 'old' && bill?.status === 'old');
+  if (!s) return;
+  const l = s.status === 'ok' ? s.data : null;
+  const spent = micro(l?.spent_today_micros_usd);
+  const limit = micro(l?.daily_micros_usd);
+  const pace = micro(l?.pace_micros_usd);
+  spendMode = spendMode ?? l?.when_reached ?? 'SLOW';
+  const left = s.status === 'old'
+    ? `<div class="empty"><span><b>Spend limits need a newer Lumni API.</b> Update the Lumni server to set one here.</span></div>`
+    : s.status === 'error' ? errorBox(s.error)
+    : `${l ? `<div class="limit-now"><b class="num">${usd(limit)}</b><span>a day, then ${l.when_reached === 'HOLD' ? 'hold new actions' : 'slow down'}</span></div>
+        <div class="bar"><i class="pace-i" style="width:${Math.min(100, ((pace ?? 0) / limit) * 100).toFixed(1)}%"></i><i style="width:${Math.min(100, ((spent ?? 0) / limit) * 100).toFixed(1)}%"></i></div>
+        <div class="pace">${usd(spent)} spent so far today${pace ? `, on pace for ${usd(pace)}` : ''}.${l.slow_at ? ` At this pace it’s reached at <b>${E(clock(l.slow_at))}</b>.` : ' At this pace it isn’t reached today.'}</div>`
+      : `<div class="limit-now none"><b>No daily limit</b></div><div class="pace">Your AIs can spend as much as they need. Set a limit and Lumni paces them before it runs out.</div>`}
+      <div class="form">
+        <div class="money-in"><span>$</span><input id="lim" inputmode="decimal" value="${limit ? String(+limit.toFixed(2)) : ''}" placeholder="250" aria-label="Daily limit in dollars"/><span style="font-weight:550">a day</span></div>
+        <span style="font-size:13px;color:var(--ink2)">then</span>
+        <div class="seg" id="when"><button data-v="SLOW" aria-pressed="${spendMode === 'SLOW'}">Slow down</button><button data-v="HOLD" aria-pressed="${spendMode === 'HOLD'}">Hold new actions</button></div>
+        <button class="btn sm primary" id="lim-save">${l ? 'Save limit' : 'Set limit'}</button>
+        ${l ? '<button class="btn sm" id="lim-del">Remove limit</button>' : ''}
+      </div>`;
+  const usage = bill?.status === 'ok' ? bill.data : null;
+  const right = bill?.status === 'old' ? `<div class="bill"><div class="k">Billing</div><div class="oldtxt">Billing needs a newer Lumni API.</div></div>`
+    : bill?.status === 'error' ? `<div class="bill"><div class="k">Billing</div>${errorBox(bill.error)}</div>`
+    : usage ? `<div class="bill"><div class="k">Your plan</div><div class="plan">${E(cap(usage.plan ?? 'Standard'))}</div>
+        <dl><dt>Price per checked action</dt><dd>${usd(micro(usage.price_per_action_micros_usd))}</dd>
+        <dt>Checked today</dt><dd>${fmtN(usage.checked_actions ?? 0)}</dd>
+        <dt>Lumni cost today</dt><dd>${usd(micro(usage.cost_micros_usd))}</dd></dl></div>` : '<div class="loading"></div>';
+  b.innerHTML = `<div class="spend"><div>${left}</div><div>${right}</div></div>`;
+  $$('#when button').forEach((x) => (x.onclick = () => { spendMode = x.dataset.v; $$('#when button').forEach((y) => y.setAttribute('aria-pressed', String(y === x))); }));
+  const sb = $('#lim-save');
+  if (sb) sb.onclick = async () => {
+    const v = Number(String($('#lim').value).replace(/[$,\s]/g, ''));
+    if (!(v > 0)) { Shell.toast('Type a daily limit in dollars, above zero.', 'bad'); $('#lim').focus(); return; }
+    const out = await save('PUT', '/v1/config/spend-limit', { daily_micros_usd: Math.round(v * 1e6), when_reached: spendMode, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }, `Your AIs can spend ${usd(v)} a day, then Lumni ${spendMode === 'HOLD' ? 'holds new actions' : 'slows them down'}.`);
+    if (!out) return;
+    S.spend = { status: 'ok', data: out };
+    renderSpend(); renderIndex(); saved('spend'); rereadSoon();
+  };
+  const db = $('#lim-del');
+  if (db) db.onclick = async () => {
+    const out = await save('DELETE', '/v1/config/spend-limit', undefined, 'The daily spend limit is gone.');
+    if (!out) return;
+    S.spend = { status: 'ok', data: null };
+    renderSpend(); renderIndex(); saved('spend'); rereadSoon();
+  };
+}
+
+// ─── 4. notifications ───────────────────────────────
+
+const EVENTS = [
+  ['approval.requested', 'A decision needs a person', 'The moment a rule asks you'],
+  ['incident.opened', 'An incident opens', 'A burst of step-ins, as it starts'],
+  ['digest.weekly', 'The weekly digest', 'Your fleet’s week, once a week'],
+];
+let draft = null, notifyErr = null, queued = {};
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const canon = (n) => JSON.stringify({ channels: n.channels, routes: [...n.routes].sort((a, b) => a.event.localeCompare(b.event)) });
+
+function draftFrom(n) {
+  const d = { channels: clone(n?.channels ?? []), routes: {} };
+  for (const [ev] of EVENTS) {
+    const r = (n?.routes ?? []).find((x) => x.event === ev);
+    const m = /^(\w{3}) (\d\d:\d\d) (\S+)$/.exec(r?.schedule ?? '');
+    d.routes[ev] = { channels: [...(r?.channels ?? [])], day: m?.[1] ?? 'MON', time: m?.[2] ?? '09:00', tz: m?.[3] ?? (W?.zone && W.zone !== 'UTC' ? W.zone : ZONE) };
+  }
+  return d;
+}
+function bodyOf(d) {
+  return {
+    channels: d.channels.map((c) => (c.kind === 'slack' ? { id: c.id, kind: 'slack', target: c.target ?? '', connection_id: c.connection_id ?? '' } : { id: c.id, kind: 'email', target: c.target ?? '' })),
+    routes: EVENTS.map(([ev]) => ev).filter((ev) => d.routes[ev].channels.length).map((ev) => {
+      const r = d.routes[ev];
+      return ev === 'digest.weekly' ? { event: ev, channels: r.channels, schedule: `${r.day} ${r.time} ${r.tz}` } : { event: ev, channels: r.channels };
+    }),
+  };
+}
+const chLabel = (c) => (c.target ? c.target : c.kind === 'slack' ? 'New Slack channel' : 'New email');
+
+function renderNotify(keepDraft) {
+  const { d, b } = part('notify');
+  d.textContent = 'Where Lumni tells you when a decision waits, an incident opens, or the week is done.';
+  const s = S.notify;
+  setOld('notify', s?.status === 'old');
+  if (!s || s.status === 'old') return;
+  if (s.status === 'error') { b.innerHTML = errorBox(s.error); return; }
+  if (!keepDraft || !draft) draft = draftFrom(s.data);
+  const server = s.data ?? { channels: [], routes: [] };
+  const savedIds = new Set((server.channels ?? []).map((c) => c.id));
+  const dirty = canon(bodyOf(draft)) !== canon({ channels: server.channels ?? [], routes: server.routes ?? [] });
+  b.innerHTML = `<div class="nt">
+    <div>
+      <div class="lab">Channels</div>
+      <div class="chs">${draft.channels.length ? draft.channels.map((c, i) => `
+        <div class="ch ${c.kind}" data-i="${i}">
+          <span class="ic" title="${c.kind === 'slack' ? 'Slack' : 'Email'}">${c.kind === 'slack' ? '#' : '@'}</span>
+          ${c.kind === 'slack'
+            ? `<input data-f="target" value="${E(c.target ?? '')}" placeholder="#channel" aria-label="Slack channel"/><input class="mono-in" data-f="connection_id" value="${E(c.connection_id ?? '')}" placeholder="Composio Slack connection id" aria-label="Composio Slack connection id"/>`
+            : `<input data-f="target" value="${E(c.target ?? '')}" placeholder="name@company.com" aria-label="Email address"/>`}
+          <div class="r">${queued[c.id] ? `<span class="q">Queued as <code>${E(queued[c.id])}</code></span>` : ''}
+            <button class="btn sm" data-test="${E(c.id)}" ${savedIds.has(c.id) && !dirty ? '' : `disabled title="${savedIds.has(c.id) ? 'Save your changes first' : 'Save this channel first'}"`}>Send a test</button>
+            <button class="x" data-rm="${i}" aria-label="Remove">×</button></div>
+        </div>`).join('') : '<div class="empty"><span><b>No channels yet.</b> Nothing is sent until you add one. Add a Slack channel or an email address.</span></div>'}</div>
+      <div class="addrow"><button class="btn sm" id="add-slack"># Add a Slack channel</button><button class="btn sm" id="add-email">@ Add an email</button></div>
+    </div>
+    <div>
+      <div class="lab">What goes where</div>
+      <div class="routes">${EVENTS.map(([ev, t, sub]) => {
+        const r = draft.routes[ev];
+        return `<div class="route" data-ev="${ev}"><div><b>${t}</b><small>${sub}</small></div>
+          <div class="to">${draft.channels.length ? draft.channels.map((c) => `<button class="tog" data-ch="${E(c.id)}" aria-pressed="${r.channels.includes(c.id)}"><span>${E(chLabel(c))}</span></button>`).join('') : '<span class="none-to">Add a channel first</span>'}
+            ${ev === 'digest.weekly' ? `<span class="sched">Every <select data-s="day" aria-label="Day">${DAYS.map((x) => `<option value="${x}" ${x === r.day ? 'selected' : ''}>${DAYNAME[x]}</option>`).join('')}</select> at <input type="time" data-s="time" value="${E(r.time)}" aria-label="Time"/> <span title="Time zone">${E(r.tz)}</span></span>` : ''}
+          </div></div>`;
+      }).join('')}</div>
+    </div>
+    <div class="explain">
+      <div><b>Slack</b> needs a Slack connection made in Composio for this workspace. Paste its connection id, and the server needs <code>LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID</code>.</div>
+      <div><b>Email</b> needs SMTP set up on the Lumni server, with <code>LUMNI_SMTP_*</code>. Without it, emails queue but don’t leave.</div>
+    </div>
+    ${notifyErr ? errorBox(notifyErr) : ''}
+    <div class="savebar"><button class="btn sm primary" id="nt-save" ${dirty ? '' : 'disabled'}>Save notifications</button>${dirty ? '<button class="btn sm ghost" id="nt-undo">Discard changes</button>' : ''}<span class="state ${dirty ? 'dirty' : ''}">${dirty ? 'You have changes that aren’t saved.' : (server.channels ?? []).length ? 'Saved. Send a test to check a channel.' : 'Nothing is sent yet.'}</span></div>
+  </div>`;
+
+  const rerender = () => renderNotify(true);
+  $$('.ch input', b).forEach((inp) => {
+    inp.oninput = () => {
+      draft.channels[+inp.closest('.ch').dataset.i][inp.dataset.f] = inp.value;
+      // Keep focus: refresh only the dirty state and the route labels.
+      const pos = inp.selectionStart, f = inp.dataset.f, i = inp.closest('.ch').dataset.i;
+      rerender();
+      const again = $(`.ch[data-i="${i}"] input[data-f="${f}"]`);
+      again?.focus(); again?.setSelectionRange(pos, pos);
+    };
+  });
+  $$('[data-rm]', b).forEach((x) => (x.onclick = () => {
+    const [gone] = draft.channels.splice(+x.dataset.rm, 1);
+    for (const ev in draft.routes) draft.routes[ev].channels = draft.routes[ev].channels.filter((id) => id !== gone.id);
+    rerender();
+  }));
+  const add = (kind) => {
+    let n = 1;
+    while (draft.channels.some((c) => c.id === `${kind}-${n}`)) n++;
+    draft.channels.push(kind === 'slack' ? { id: `${kind}-${n}`, kind, target: '', connection_id: '' } : { id: `${kind}-${n}`, kind, target: '' });
+    rerender();
+    $$('.ch input[data-f="target"]', b).pop()?.focus();
+  };
+  $('#add-slack').onclick = () => add('slack');
+  $('#add-email').onclick = () => add('email');
+  $$('.tog', b).forEach((t) => (t.onclick = () => {
+    const r = draft.routes[t.closest('.route').dataset.ev];
+    const id = t.dataset.ch;
+    r.channels = r.channels.includes(id) ? r.channels.filter((x) => x !== id) : [...r.channels, id];
+    rerender();
+  }));
+  $$('.sched [data-s]', b).forEach((x) => (x.onchange = () => { draft.routes['digest.weekly'][x.dataset.s] = x.value; rerender(); }));
+  $('#nt-undo')?.addEventListener('click', () => { notifyErr = null; renderNotify(false); });
+  $('#nt-save').onclick = async () => {
+    if (!real()) { Shell.toast(DEMO_SAVE); return; }
+    const btn = $('#nt-save');
+    btn.disabled = true;
+    const out = await Shell.write('PUT', '/v1/config/notifications', bodyOf(draft), { ok: 'Notifications saved.', reload: false });
+    if (!out) {
+      // Shell.write shows the API's message in its toast; keep it beside the form too.
+      notifyErr = document.querySelector('#shell-toast.bad span')?.textContent || 'Lumni’s API refused these settings.';
+      renderNotify(true);
+      return;
+    }
+    notifyErr = null;
+    S.notify = { status: 'ok', data: { channels: out.channels ?? [], routes: out.routes ?? [] } };
+    renderNotify(false); renderIndex(); saved('notify');
+  };
+  $$('[data-test]', b).forEach((x) => (x.onclick = async () => {
+    const c = draft.channels.find((y) => y.id === x.dataset.test);
+    if (!real()) { Shell.toast(DEMO_SAVE); return; }
+    x.disabled = true;
+    const out = await Shell.write('POST', '/v1/notifications/send', { channel_id: c.id, kind: 'digest', ref_id: 'test' }, { ok: `A test digest is queued for ${chLabel(c)}.`, reload: false });
+    x.disabled = false;
+    if (!out) return;
+    queued[c.id] = out.id ?? 'a job';
+    renderNotify(true); saved('notify');
+  }));
+}
+
+// ─── 5. limits and holds ────────────────────────────
+
+function scopeWords(s = {}) {
+  const parts = [];
+  if (s.actor_id) parts.push(`${aiName(s.actor_id)}’s`);
+  parts.push(s.operation ? opWords(s.operation) : parts.length ? 'actions' : 'Every action');
+  if (s.resource) parts.push(`on ${s.resource.endsWith('*') ? `anything starting ${s.resource.slice(0, -1)}` : thingName(s.resource)}`);
+  return cap(parts.join(' '));
+}
+function renderLimits() {
+  const { d, b } = part('limits');
+  d.textContent = 'Caps on how many actions run at once, rates per minute, and holds that let nothing new start. Set them from Tower or Runtime.';
+  const s = S.limits;
+  setOld('limits', s?.status === 'old');
+  if (!s || s.status === 'old') return;
+  if (s.status === 'error') { b.innerHTML = errorBox(s.error); return; }
+  const items = s.data?.items ?? [];
+  if (!items.length) { b.innerHTML = `<div class="empty"><span><b>No caps or holds.</b> Every AI runs as fast as Lumni’s checks allow.</span><a class="btn sm" href="/tower">Open the tower</a></div>`; return; }
+  b.innerHTML = `<table class="tbl"><thead><tr><th>What it covers</th><th>Limit</th><th>Right now</th><th></th></tr></thead><tbody>
+    ${items.map((l) => `<tr>
+      <td><span class="nm">${E(scopeWords(l.scope))}</span><span class="sub">${E(l.id)}${l.mode && l.mode !== 'ENFORCE' ? `, ${E(modeName(l.mode).toLowerCase())} only` : ''}</span></td>
+      <td>${[l.hold ? '<span class="chip accent">Held: nothing new starts</span>' : '', l.max_in_flight != null ? `<span class="chip">${fmtN(l.max_in_flight)} at a time</span>` : '', l.per_minute != null ? `<span class="chip">${fmtN(l.per_minute)} a minute</span>` : ''].filter(Boolean).join(' ')}</td>
+      <td>${fmtN(l.in_flight_now ?? 0)} running${l.waiting_now ? `, <b>${fmtN(l.waiting_now)} waiting</b>` : ', none waiting'}</td>
+      <td><span class="act"><button class="btn sm" data-lim="${E(l.id)}">Remove</button></span></td></tr>`).join('')}</tbody></table>`;
+  $$('[data-lim]', b).forEach((x) => (x.onclick = async () => {
+    const l = items.find((y) => y.id === x.dataset.lim);
+    x.disabled = true;
+    const out = await save('DELETE', `/v1/config/limits/${encodeURIComponent(l.id)}`, undefined, `${scopeWords(l.scope)} has no ${l.hold ? 'hold' : 'limit'} now.`);
+    x.disabled = false;
+    if (!out) return;
+    await load('limits');
+    renderLimits(); renderIndex(); saved('limits'); rereadSoon();
+  }));
+}
+
+// ─── 6. autopilot ───────────────────────────────────
+
+function renderPilot() {
+  const { d, b } = part('pilot');
+  d.textContent = 'AIs that earned the right to skip an approval rule, under an amount. Lumni takes it back on its own if they slip.';
+  const s = S.pilot;
+  setOld('pilot', s?.status === 'old');
+  if (!s || s.status === 'old') return;
+  if (s.status === 'error') { b.innerHTML = errorBox(s.error); return; }
+  const items = [...(s.data?.items ?? [])].sort((a, b2) => (!!b2.active - !!a.active));
+  if (!items.length) { b.innerHTML = `<div class="empty"><span><b>No AI is on Autopilot.</b> Autonomy shows which ones have earned it.</span><a class="btn sm" href="/autonomy">Open Autonomy</a></div>`; return; }
+  const below = (g) => g.below?.value == null ? '' : g.below.pointer === '/amount' ? ` under ${usd(g.below.value)}` : `, ${E(String(g.below.pointer).slice(1).replace(/_/g, ' '))} under ${fmtN(g.below.value)}`;
+  b.innerHTML = `<table class="tbl"><tbody>
+    ${items.map((g) => {
+      const a = aiOf(g.actor_id);
+      const rules = (g.skip_rules ?? []).map(ruleName).filter(Boolean);
+      return `<tr class="${g.active ? '' : 'gone'}">
+        <td style="width:44px"><span class="ai">${E(a?.initials ?? initialsOf(aiName(g.actor_id)))}</span></td>
+        <td><span class="nm">${E(aiName(g.actor_id))}</span><span class="sub">${E(opWords(g.operation))}${below(g)}, skips ${rules.length ? `“${E(rules.join('”, “'))}”` : plural((g.skip_rules ?? []).length, 'approval rule')}</span></td>
+        <td>${g.active ? `Since ${E(dayOf(g.since))}<span class="sub">${fmtN(g.slips ?? 0)} of ${fmtN(g.revert_after?.slips ?? 0)} slips in its last ${plural(g.revert_after?.per ?? 0, 'action')}</span>` : `Taken back ${E(dayOf(g.reverted_at))}<span class="sub">It slipped ${plural(g.slips ?? 0, 'time')}</span>`}</td>
+        <td>${g.active ? `<span class="act"><button class="btn sm" data-pilot="${E(g.actor_id)}">Take back</button></span>` : '<span class="chip">Ended</span>'}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  $$('[data-pilot]', b).forEach((x) => (x.onclick = async () => {
+    x.disabled = true;
+    const name = aiName(x.dataset.pilot);
+    const out = await save('DELETE', `/v1/config/autopilot/${encodeURIComponent(x.dataset.pilot)}`, undefined, `${name} asks again before acting.`);
+    x.disabled = false;
+    if (!out) return;
+    await load('pilot');
+    renderPilot(); renderIndex(); saved('pilot'); rereadSoon();
+  }));
+}
+
+// ─── 7. activity log ────────────────────────────────
+
+function sentence(e) {
+  const by = whoName(e.by), t = e.target ?? {}, a = e.after ?? {}, b = e.before ?? {};
+  const q = (s) => `“${E(s)}”`;
+  switch (e.type) {
+    case 'enforcement.set': return `${E(by)} set ${E(opWords(t.operation ?? a.operation))} to ${E(modeName(a.mode))}${t.rule && t.rule !== '*' ? ' for one rule' : ''}`;
+    case 'enforcement.cleared': return `${E(by)} put ${E(opWords(t.operation))} back on the workspace default`;
+    case 'policy_rule.updated': {
+      const name = a.name ?? b.name ?? 'a rule';
+      if (e.before && e.after && b.numeric_threshold !== a.numeric_threshold && a.numeric_threshold != null) return `${E(by)} changed ${q(name)} from ${fmtN(b.numeric_threshold ?? 0)} to ${fmtN(a.numeric_threshold)}`;
+      if (b.enabled !== a.enabled && a.enabled != null) return `${E(by)} switched ${a.enabled ? 'on' : 'off'} ${q(name)}`;
+      if (b.name && a.name && b.name !== a.name) return `${E(by)} renamed ${q(b.name)} to ${q(a.name)}`;
+      return `${E(by)} edited ${q(name)}`;
+    }
+    case 'policy_rule.created': return `${E(by)} added the rule ${q(a.name ?? t.id ?? '')}`;
+    case 'verifier.changed': {
+      const name = a.name ?? b.name ?? t.id ?? 'a checker';
+      if (!e.after) return `${E(by)} removed the checker ${q(name)}`;
+      if (!e.before) return `${E(by)} switched on the checker ${q(name)}`;
+      if (b.enabled !== a.enabled) return `${E(by)} switched ${a.enabled ? 'on' : 'off'} the checker ${q(name)}`;
+      return `${E(by)} changed the checker ${q(name)}`;
+    }
+    case 'policy_rule.deleted': return `${E(by)} deleted the rule ${q(b.name ?? t.id ?? '')}`;
+    case 'approval.decided': {
+      const st = String(a.status ?? '').toUpperCase();
+      const link = t.action_id ? ` <a href="${real() ? `/journey?id=${encodeURIComponent(t.action_id)}` : `/journey?story=${encodeURIComponent(t.action_id)}`}">See it</a>` : '';
+      const verb = st === 'DENIED' ? 'denied' : st === 'APPROVED' ? 'approved' : 'decided on';
+      // Newer APIs record what the action was, and who asked.
+      if (t.summary) return `${E(by)} ${verb} ${q(t.summary === t.operation ? opWords(t.operation) : t.summary)}${t.actor_id ? ` from ${E(aiName(t.actor_id))}` : ''}${link}`;
+      return `${E(by)} ${verb} an action that asked${link}`;
+    }
+    case 'limit.set': return !e.after ? `${E(by)} removed the limit on ${E(scopeWords(b.scope).toLowerCase())}` : `${E(by)} ${e.before ? 'changed' : 'added'} a limit on ${E(scopeWords(a.scope).toLowerCase())}${a.hold ? ', holding it' : a.max_in_flight != null ? `, ${fmtN(a.max_in_flight)} at a time` : a.per_minute != null ? `, ${fmtN(a.per_minute)} a minute` : ''}`;
+    case 'spend_limit.set': return !e.after ? `${E(by)} removed the daily spend limit${t.actor_id ? ` for ${E(aiName(t.actor_id))}` : ''}` : `${E(by)} set the daily spend limit${t.actor_id ? ` for ${E(aiName(t.actor_id))}` : ''} to ${usd(micro(a.daily_micros_usd))}, then ${a.when_reached === 'HOLD' ? 'hold' : 'slow down'}`;
+    case 'actor.paused': return `${E(by)} paused ${E(aiName(t.id ?? t.actor_id))}`;
+    case 'actor.resumed': return `${E(by)} let ${E(aiName(t.id ?? t.actor_id))} act again`;
+    case 'workspace.paused': return a.paused ? `${E(by)} paused every AI` : `${E(by)} let every AI act again`;
+    case 'autopilot.granted': return `${E(by)} put ${E(aiName(t.actor_id))} on Autopilot for ${E(opWords(t.operation))}`;
+    case 'autopilot.reverted': return !e.by || e.by === 'system' ? `Lumni took ${E(aiName(t.actor_id))} off Autopilot after it slipped` : `${E(by)} took ${E(aiName(t.actor_id))} off Autopilot`;
+    case 'proof.created': return e.before ? `${E(by)} revoked a proof link` : `${E(by)} shared proof of an action`;
+    case 'notifications.updated': return `${E(by)} changed where notifications go`;
+    default: return `${E(by)} changed ${E(String(e.type ?? 'a setting').replace(/[._]/g, ' '))}`;
+  }
+}
+
+function renderLog() {
+  const { d, right, b } = part('log');
+  d.textContent = 'Every change to how Lumni behaves, who made it and when.';
+  right.innerHTML = '';
+  const s = S.log;
+  setOld('log', s?.status === 'old');
+  if (!s || s.status === 'old') return;
+  const chips = `<div class="filters" id="filters">${LOG_TYPES.map(([n, v]) => `<button data-v="${v}" aria-pressed="${S.logFilter === v}">${n}</button>`).join('')}</div>`;
+  if (s.status === 'error') { b.innerHTML = chips + errorBox(s.error); bindLog(); return; }
+  const items = s.items ?? [];
+  b.innerHTML = `${chips}
+    <div class="log">${items.length ? items.map((e, i) => {
+      const sys = !e.by || e.by === 'system';
+      return `<div class="ev" style="animation-delay:${Math.min(i, 12) * 30}ms"><span class="who ${sys ? 'sys' : ''}" title="${E(whoName(e.by))}">${sys ? 'Lu' : E(initialsOf(e.by))}</span>
+        <div class="t">${sentence(e)}<em>, ${E(when(e.at))}</em></div><span class="k">${E(String(e.type ?? '').split('.')[0].replace(/_/g, ' '))}</span></div>`;
+    }).join('') : `<div class="empty"><span><b>${S.logFilter ? 'Nothing of this kind yet.' : 'Nothing has changed yet.'}</b> ${real() ? 'History starts when the Lumni server’s audit log was installed.' : ''}</span></div>`}</div>
+    <div class="log-foot">${items.length ? `${plural(items.length, 'change')} shown.` : ''}${s.cursor ? ' <button class="btn sm" id="log-more">Load more</button>' : items.length ? ' That’s all of them.' : ''}</div>`;
+  bindLog();
+}
+function bindLog() {
+  $$('#filters button').forEach((x) => (x.onclick = async () => {
+    S.logFilter = x.dataset.v;
+    $$('#filters button').forEach((y) => y.setAttribute('aria-pressed', String(y === x)));
+    await loadLog(false);
+    renderLog();
+  }));
+  const more = $('#log-more');
+  if (more) more.onclick = async () => { more.disabled = true; await loadLog(true); renderLog(); };
+}
+
+// ─── boot ───────────────────────────────────────────
+
+// ─── people ─────────────────────────────────────────
+
+const ROLE_WORDS = { owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer' };
+const ROLE_HELP = { owner: 'Everything, including owners', admin: 'Everything but owners', member: 'Watch, and approve or deny', viewer: 'Watch only' };
+let lastLink = null;
+
+function renderPeople() {
+  if (!accounts()) return;
+  const { d, b } = part('people');
+  d.textContent = 'Everyone who can sign in to this workspace. Each person gets their own key, so the activity log says who did what.';
+  const s = S.people;
+  if (!s || s.status !== 'ok') { b.innerHTML = s?.status === 'error' ? errorBox(s.error) : '<div class="loading"></div>'; return; }
+  const { me, members, invites } = s.data;
+  const roles = (cur, self) => Object.keys(ROLE_WORDS).filter((r) => r !== 'owner' || me.role === 'owner')
+    .map((r) => `<option value="${r}" ${r === cur ? 'selected' : ''}>${ROLE_WORDS[r]}</option>`).join('');
+  const rows = members.map((m) => {
+    const self = m.id === me.id;
+    const locked = !me.can_manage || self || (m.role === 'owner' && me.role !== 'owner');
+    return `<tr>
+      <td><span class="person"><span class="ai">${E(m.initials)}</span><span><span class="nm">${E(m.name)}${self ? ' <small class="you">You</small>' : ''}</span><span class="sub">${E(m.email)}</span></span></span></td>
+      <td>${locked ? `<span class="chip ${m.role === 'owner' ? 'accent' : ''}" title="${E(ROLE_HELP[m.role])}">${ROLE_WORDS[m.role]}</span>` : `<select class="role" data-role="${E(m.id)}" title="${E(ROLE_HELP[m.role])}">${roles(m.role)}</select>`}</td>
+      <td class="muted">${m.last_seen ? `Seen ${E(when(m.last_seen))}` : 'Not signed in yet'}</td>
+      <td>${locked ? '' : `<span class="act"><button class="btn sm ghost" data-reset="${E(m.id)}">Reset link</button><button class="btn sm" data-remove="${E(m.id)}">Remove</button></span>`}</td>
+    </tr>`;
+  }).join('');
+  const inviteForm = me.can_manage ? `<form class="invite" id="invite">
+      <input id="inv-email" type="email" placeholder="Email (optional: leave empty for a one-use link)" autocomplete="off">
+      <select id="inv-role">${roles('member')}</select>
+      <button class="btn sm accent">Make an invite link</button></form>
+      ${lastLink ? `<div class="linkbox"><span>${E(lastLink.what)}</span><code>${E(lastLink.link)}</code><button class="btn sm" id="copy-link">Copy</button></div>` : ''}
+      ${invites.length ? `<div class="pending"><div class="lab">Invites waiting</div>${invites.map((i) => `<div class="inv"><span>${E(i.email ?? 'Anyone with the link')} · ${ROLE_WORDS[i.role]}</span><small>Expires ${E(when(i.expires_at))}</small><button class="btn sm ghost" data-uninvite="${E(i.id)}">Revoke</button></div>`).join('')}</div>` : ''}`
+    : '<div class="hint">Owners and admins can invite people and change roles.</div>';
+  b.innerHTML = `<table class="tbl"><thead><tr><th>Person</th><th>Role</th><th>Last seen</th><th></th></tr></thead><tbody>${rows}</tbody></table>${inviteForm}`;
+
+  $('#invite')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#inv-email').value.trim() || null;
+    const out = await save('POST', '/v1/console/members/invite', { email, role: $('#inv-role').value }, 'Invite link made. It works once, for 7 days.');
+    if (!out) return;
+    lastLink = { what: email ? `Send this to ${email}:` : 'Anyone with this link can join, once:', link: out.link };
+    await load('people'); renderPeople(); renderIndex(); saved('people');
+  });
+  $('#copy-link')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(lastLink.link); } catch {} $('#copy-link').textContent = 'Copied'; });
+  $$('[data-role]').forEach((sel) => (sel.onchange = async () => {
+    const out = await save('PATCH', `/v1/console/members/${encodeURIComponent(sel.dataset.role)}`, { role: sel.value }, `They’re ${ROLE_WORDS[sel.value].toLowerCase() === 'admin' ? 'an admin' : `a ${ROLE_WORDS[sel.value].toLowerCase()}`} now. Their old key is revoked; the next sign-in gets the new access.`);
+    await load('people'); renderPeople(); if (out) saved('people');
+  }));
+  $$('[data-reset]').forEach((btn) => (btn.onclick = async () => {
+    const out = await save('POST', `/v1/console/members/${encodeURIComponent(btn.dataset.reset)}/reset`, {}, 'Reset link made. It works once, for a day.');
+    if (!out) return;
+    const m = members.find((x) => x.id === btn.dataset.reset);
+    lastLink = { what: `Send this to ${m?.name ?? 'them'} to choose a new password:`, link: out.link };
+    renderPeople();
+  }));
+  $$('[data-remove]').forEach((btn) => confirmable(btn, 'Confirm, remove', async () => {
+    const out = await save('DELETE', `/v1/console/members/${encodeURIComponent(btn.dataset.remove)}`, undefined, 'Removed. Their key is revoked.');
+    if (!out) return;
+    await load('people'); renderPeople(); renderIndex(); saved('people');
+  }));
+  $$('[data-uninvite]').forEach((btn) => (btn.onclick = async () => {
+    await save('DELETE', `/v1/console/members/invites/${encodeURIComponent(btn.dataset.uninvite)}`, undefined, 'Invite revoked.');
+    await load('people'); renderPeople(); renderIndex();
+  }));
+}
+
+function renderAll() {
+  renderWorkspace(); renderPeople(); renderKeys(); renderSpend(); renderNotify(false); renderLimits(); renderPilot(); renderLog(); renderIndex();
+}
+
+async function onWorld(w, first) {
+  W = w;
+  const name = real() ? (Shell.session?.tenant?.name ?? Shell.config.workspace ?? 'your workspace') : null;
+  $('#h1').innerHTML = real() ? `Settings <span class="soft">for ${E(name)}</span>` : 'Settings <span class="soft">for the demo</span>';
+  $('#sub').textContent = real()
+    ? 'How Lumni steps in, who can reach it, what your AIs may spend and who hears about it. Every change here lands in the activity log.'
+    : 'The same settings your workspace has, filled in with made-up values. Try anything; nothing here is saved.';
+  if (ownRefresh) {
+    // Our own re-read after a write: the sections are already fresh.
+    ownRefresh = false;
+    renderWorkspace(); renderIndex();
+    return;
+  }
+  if (accounts() && !SECTIONS.some(([id]) => id === 'people')) SECTIONS = [SECTIONS[0], ['people', 'People'], ...SECTIONS.slice(1)];
+  if (first || !$('#cards').children.length) shell();
+  renderWorkspace();
+  await loadAll();
+  renderAll();
+  if (shotPending) { const s = shotPending; shotPending = null; runShot(s); }
+}
+
+// ─── shot states: each clicks a real control ────────
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const click = async (sel, root = document) => { const x = typeof sel === 'string' ? $(sel, root) : sel; x?.click(); await pause(120); return x; };
+async function scrollTo(id) { $(`#sec-${id}`)?.scrollIntoView({ block: 'start' }); await pause(50); }
+async function runShot(s) {
+  if (s === 'mode') { await click('#modes .mode[data-m="ENFORCE"]'); }
+  if (s === 'pause-ask') { await click('#pause'); }
+  if (s === 'pause') { await click('#pause'); await click('#pause'); }
+  if (s === 'resume-ask') { await click('#pb-resume'); }
+  if (s === 'resume') { await click('#pb-resume'); await click('#pb-resume'); }
+  if (s === 'revoke') {
+    const x = $('[data-revoke]');
+    await click(x);
+    await click(x);
+  }
+  if (s === 'spend-set') { $('#lim').value = '250'; await click('#when button[data-v="HOLD"]'); await click('#lim-save'); }
+  if (s === 'spend-remove') {
+    if (!$('#lim-del')) { $('#lim').value = '120'; await click('#lim-save'); await pause(400); }
+    await click('#lim-del');
+  }
+  const fill = (inp, v) => { inp.value = v; inp.dispatchEvent(new Event('input')); };
+  const notify = async (conn) => {
+    await click('#add-slack');
+    fill($$('.ch.slack input[data-f="target"]').pop(), '#ai-ops');
+    fill($$('.ch.slack input[data-f="connection_id"]').pop(), conn);
+    await click('#add-email');
+    fill($$('.ch.email input[data-f="target"]').pop(), 'ops@example.com');
+    for (const ev of ['approval.requested', 'incident.opened']) await click(`.route[data-ev="${ev}"] .tog`);
+    await click('.route[data-ev="digest.weekly"] .tog:last-of-type');
+    await click('#nt-save');
+    await pause(400);
+  };
+  if (s === 'notify-save') { await notify('ca_slack_1'); }
+  if (s === 'notify-error') { await notify('ca_not_mine'); }
+  if (s === 'notify-test') { await notify('ca_slack_1'); await click('[data-test]'); await pause(300); }
+  if (s === 'limit-remove') {
+    // The fresh fake has no limits, so this state makes one through the API, then removes it in the page.
+    if (real() && !(S.limits?.data?.items ?? []).length) {
+      await Shell.api.put('/v1/config/limits/cap-ai_deploy', { scope: { operation: 'vercel.deploy', actor_id: 'ai_deploy' }, max_in_flight: 1, mode: 'ENFORCE' });
+      await Shell.api.put('/v1/config/limits/hold-checkout', { scope: { resource: 'vercel:site:checkout' }, hold: true, mode: 'ENFORCE' });
+      await load('limits'); renderLimits(); renderIndex();
+    }
+    await click('[data-lim]');
+    await pause(300);
+  }
+  if (s === 'pilot-remove') {
+    if (real() && !(S.pilot?.data?.items ?? []).length) {
+      await Shell.api.put('/v1/config/autopilot/ai_refund', { operation: 'stripe.refund', skip_rules: ['pr_refunds'], below: { pointer: '/amount', value: 100 }, revert_after: { slips: 2, per: 1000 } });
+      await Shell.api.put('/v1/config/autopilot/ai_price', { operation: 'salesforce.update_price', skip_rules: ['pr_prices'], below: { pointer: '/change_pct', value: 5 }, revert_after: { slips: 2, per: 500 } });
+      await load('pilot'); renderPilot(); renderIndex();
+    }
+    await click('[data-pilot]');
+    await pause(300);
+  }
+  if (s === 'log-filter') { await click('#filters button[data-v^="enforcement"]'); }
+  if (s === 'log-after') {
+    // A few writes, then the log that recorded them.
+    await click('#modes .mode[data-m="WARN"]');
+    $('#lim').value = '80'; await click('#lim-save');
+    await pause(500);
+    await loadLog(false); renderLog(); renderIndex();
+  }
+}
+
+Shell.boot({ nav: 'Settings', onWorld });
+</script>
+</body>
+</html>

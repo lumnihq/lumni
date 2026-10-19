@@ -1,0 +1,41 @@
+{
+  "name": "lumniverse",
+  "version": "0.5.0",
+  "description": "Connect AI agents to Lumni, see it work with sample agents, or try the demo.",
+  "type": "module",
+  "bin": {
+    "lumniverse": "bin/lumni.mjs",
+    "lumni": "bin/lumni.mjs"
+  },
+  "files": [
+    "bin",
+    "assets",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "assets": "sh scripts/assets.sh",
+    "prepack": "sh scripts/assets.sh",
+    "test": "node --test test/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lumnihq/lumni",
+    "directory": "packages/lumni"
+  },
+  "homepage": "https://lumniverse.com",
+  "keywords": [
+    "ai-agents",
+    "coordination",
+    "guardrails",
+    "mcp",
+    "agents"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@lumniverse/sdk": "^0.3.0"
+  }
+}

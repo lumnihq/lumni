@@ -1,0 +1,60 @@
+name: Release images
+# Publishes the images the installer runs, for amd64 and arm64:
+#   ghcr.io/<namespace>/lumni           API, worker, gateway, CLI
+#   ghcr.io/<namespace>/lumni-console   the console
+# <namespace> is the IMAGE_NAMESPACE repository variable , or
+# the repository owner. A v1.2.3 tag publishes 1.2.3, 1.2 and latest.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to publish (e.g. edge)
+        required: true
+        default: edge
+permissions:
+  contents: read
+  packages: write
+jobs:
+  images:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - name: lumni
+            file: Dockerfile
+          - name: lumni-console
+            file: console/Dockerfile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ vars.IMAGE_NAMESPACE || github.repository_owner }}/${{ matrix.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.name }}
+            org.opencontainers.image.licenses=FSL-1.1-ALv2
+            org.opencontainers.image.url=https://lumniverse.com
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

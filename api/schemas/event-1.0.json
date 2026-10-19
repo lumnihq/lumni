@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lumni.dev/schemas/event-1.0.json",
+  "title": "Lumni Event Envelope 1.0",
+  "type": "object",
+  "required": ["schema_version", "event_id", "type", "source", "occurred_at"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "event_id": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "actor": {"type": "object"},
+    "session_id": {"type": "string"},
+    "work_id": {"type": "string"},
+    "payload": {}
+  },
+  "additionalProperties": true
+}

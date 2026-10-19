@@ -1,0 +1,19 @@
+# Lumni behind HTTPS. Caddy gets and renews certificates by itself; point
+# the two hostnames' DNS (A records) at this machine and open ports 80 and 443.
+# The console: app.<your domain>
+{$LUMNI_APP_HOST} {
+	encode zstd gzip
+	reverse_proxy console:5200 {
+		# The live stream on Today stays open; don't buffer it.
+		flush_interval -1
+	}
+}
+
+# The API agents call: api.<your domain>
+{$LUMNI_API_HOST} {
+	encode zstd gzip
+	reverse_proxy lumnid:8080 {
+		flush_interval -1
+	}
+}
+

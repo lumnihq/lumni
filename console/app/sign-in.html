@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sign in to Lumni</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  body { display: grid; place-items: center; min-height: 100vh; min-width: 0; padding: 24px; }
+  .box { width: 440px; max-width: 100%; padding: 34px 32px 28px; animation: rise .5s var(--ease) both; }
+  .wm { display: inline-block; margin-bottom: 26px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+  .lead { color: var(--ink2); margin-top: 6px; }
+  form { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+  label { font-size: 13px; font-weight: 650; color: var(--ink2); }
+  input { height: 46px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); font: 600 14.5px var(--sans); color: var(--ink); }
+  input.mono { font-family: var(--mono); }
+  input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+  input[readonly] { color: var(--ink2); }
+  .btn { justify-content: center; height: 44px; }
+  .or { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px; font-size: 12.5px; color: var(--ink3); }
+  .or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
+  .err { min-height: 20px; font-size: 13.5px; font-weight: 600; color: var(--red); }
+  .foot { margin-top: 18px; font-size: 13px; color: var(--ink2); }
+  .foot a { color: var(--accent); font-weight: 650; }
+  .sso { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+  .sso a { display: flex; align-items: center; justify-content: center; gap: 10px; height: 44px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px var(--line2); font-weight: 650; font-size: 14.5px; color: var(--ink); text-decoration: none; transition: box-shadow .2s; }
+  .sso a:hover { box-shadow: inset 0 0 0 1px var(--ink3), var(--shadow); }
+  .sso svg { width: 18px; height: 18px; }
+  .note { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); font-size: 13.5px; color: var(--ink2); }
+  .note b { color: var(--ink); }
+  .step { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--accent); background: var(--accent-soft); padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<main class="card box" id="box">
+  <a class="wm" href="/today">lum<i>n</i>i</a>
+  <h1>Signing you in…</h1>
+</main>
+<script>
+const Q = new URLSearchParams(location.search);
+const next = Q.get('next') || '/today';
+const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/today';
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const box = $('#box');
+const head = (title, lead, step) => `<a class="wm" href="/today">lum<i>n</i>i</a>${step ? `<div class="step">${esc(step)}</div>` : ''}<h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}`;
+const GH = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.88.87 2.34.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>';
+const GO = '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
+async function post(path, body, csrf) {
+  const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', ...(csrf ? { 'x-csrf-token': csrf } : {}) }, body: JSON.stringify(body), credentials: 'same-origin' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message ?? `That didn’t work (${res.status}).`);
+  return data;
+}
+function onSubmit(form, fn) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type=submit]');
+    $('#err').textContent = '';
+    btn.disabled = true;
+    try {
+      await fn(Object.fromEntries(new FormData(form)));
+    } catch (err) {
+      $('#err').textContent = err.message === 'Failed to fetch' ? 'This console’s server can’t be reached.' : err.message;
+      btn.disabled = false;
+    }
+  });
+}
+const realMode = () => { try { localStorage.setItem('lumni.console.data', 'real'); } catch {} };
+const go = (to = safeNext) => { realMode(); location.assign(to); };
+const sso = (st, extra = '') => {
+  const links = [];
+  if (st.providers.github) links.push(`<a href="/console/auth/oauth/github/start?next=${encodeURIComponent(safeNext)}${extra}">${GH}Continue with GitHub</a>`);
+  if (st.providers.google) links.push(`<a href="/console/auth/oauth/google/start?next=${encodeURIComponent(safeNext)}${extra}">${GO}Continue with Google</a>`);
+  return links.length ? `<div class="sso">${links.join('')}</div><div class="or">or with email</div>` : '';
+};
+const field = (name, label, type = 'text', attrs = '') => `<label for="${name}">${label}</label><input id="${name}" name="${name}" type="${type}" ${attrs}>`;
+
+// ─── accounts ─────────────────────────────────────────
+
+function setupView(st) {
+  box.innerHTML = `${head('Set up Lumni', 'You’re the first one here, so you become the owner. You can invite your team next.', 'First run')}
+    <form id="f">
+      ${field('name', 'Your name', 'text', 'autocomplete="name" required')}
+      ${field('email', 'Email', 'email', 'autocomplete="email" required')}
+      ${field('password', 'Password', 'password', 'autocomplete="new-password" minlength="10" required placeholder="At least 10 characters"')}
+      ${field('workspace', 'Workspace name', 'text', 'placeholder="Acme"')}
+      <button class="btn accent" type="submit">Create the owner account</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>`;
+  onSubmit($('#f'), async (v) => { await post('/console/auth/setup', v); go('/start'); });
+}
+
+function signInView(st, msg = '') {
+  box.innerHTML = `${head('Sign in to Lumni', 'Your AIs’ day, and where Lumni stepped in.')}
+    ${sso(st)}
+    <form id="f">
+      ${field('email', 'Email', 'email', 'autocomplete="email" required')}
+      ${field('password', 'Password', 'password', 'autocomplete="current-password" required')}
+      <button class="btn accent" type="submit">Sign in</button>
+      <div class="err" id="err" role="alert">${esc(msg)}</div>
+    </form>
+    <p class="foot">${st.signup === 'open' ? 'New here? <a href="/sign-in?signup=1">Create an account</a>' : 'No account? Ask your workspace owner for an invite.'} · <a href="/today?data=mock" id="demo">Open the demo</a> · <a href="/privacy">Privacy</a></p>`;
+  onSubmit($('#f'), async (v) => { await post('/console/auth/login', v); go(); });
+  $('#demo').onclick = () => { try { localStorage.setItem('lumni.console.data', 'mock'); } catch {} };
+}
+
+function signUpView(st) {
+  box.innerHTML = `${head('Create your account', 'You get your own workspace. Invite your team from Settings.')}
+    ${sso(st)}
+    <form id="f">
+      ${field('name', 'Your name', 'text', 'autocomplete="name" required')}
+      ${field('email', 'Work email', 'email', 'autocomplete="email" required')}
+      ${field('password', 'Password', 'password', 'autocomplete="new-password" minlength="10" required placeholder="At least 10 characters"')}
+      ${field('workspace', 'Workspace name', 'text', 'placeholder="Your company"')}
+      <button class="btn accent" type="submit">Create account</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+    <p class="foot">Have an account? <a href="/sign-in">Sign in</a></p>`;
+  onSubmit($('#f'), async (v) => { await post('/console/auth/signup', v); go('/start'); });
+}
+
+async function inviteView(st, token) {
+  let inv;
+  try {
+    inv = await (await fetch(`/console/auth/invite?token=${encodeURIComponent(token)}`)).json();
+    if (inv.error) throw new Error(inv.error.message);
+  } catch (e) {
+    return signInView(st, e.message || 'That invite link isn’t valid.');
+  }
+  if (Q.get('have')) inv.has_account = true;
+  if (inv.status !== 'open') return signInView(st, inv.status === 'used' ? 'That invite was already used. Sign in, or ask for a new one.' : 'That invite has expired. Ask for a new one.');
+  const who = inv.invited_by ? `${esc(inv.invited_by)} invited you` : 'You’re invited';
+  const lead = `${who} to <b>${esc(inv.workspace)}</b> as ${inv.role === 'admin' ? 'an admin' : `a ${esc(inv.role)}`}.`;
+  const extra = `&invite=${encodeURIComponent(token)}`;
+  const locked = inv.email ? `value="${esc(inv.email)}" readonly` : '';
+  if (inv.has_account) {
+    box.innerHTML = `${head(`Join ${esc(inv.workspace)}`, lead, 'Invite')}${sso(st, extra)}
+      <form id="f">
+        ${field('email', 'Email', 'email', `autocomplete="email" required ${locked}`)}
+        ${field('password', 'Password', 'password', 'autocomplete="current-password" required')}
+        <button class="btn accent" type="submit">Sign in and join</button>
+        <div class="err" id="err" role="alert"></div>
+      </form>`;
+    onSubmit($('#f'), async (v) => { await post('/console/auth/login', { ...v, invite: token }); go('/today'); });
+    return;
+  }
+  box.innerHTML = `${head(`Join ${esc(inv.workspace)}`, lead, 'Invite')}${sso(st, extra)}
+    <form id="f">
+      ${field('name', 'Your name', 'text', 'autocomplete="name" required')}
+      ${field('email', 'Email', 'email', `autocomplete="email" required ${locked}`)}
+      ${field('password', 'Password', 'password', 'autocomplete="new-password" minlength="10" required placeholder="At least 10 characters"')}
+      <button class="btn accent" type="submit">Create account and join</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+    <p class="foot">Already have an account? <a href="/sign-in?invite=${encodeURIComponent(token)}&have=1">Sign in to join</a></p>`;
+  onSubmit($('#f'), async (v) => { await post('/console/auth/signup', { ...v, invite: token }); go('/today'); });
+}
+
+function resetView(token) {
+  box.innerHTML = `${head('Choose a new password', 'This link works once.')}
+    <form id="f">
+      ${field('password', 'New password', 'password', 'autocomplete="new-password" minlength="10" required placeholder="At least 10 characters"')}
+      <button class="btn accent" type="submit">Save and sign in</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>`;
+  onSubmit($('#f'), async (v) => { await post('/console/auth/reset', { token, password: v.password }); go('/today'); });
+}
+
+function noWorkspaceView() {
+  box.innerHTML = `${head('You’re not in a workspace', 'You were removed from your workspace, or haven’t joined one. Ask an owner for an invite link.')}
+    <form id="f"><button class="btn" type="submit">Sign out</button></form>`;
+  $('#f').onsubmit = async (e) => { e.preventDefault(); await fetch('/v1/auth/session', { method: 'DELETE' }); location.reload(); };
+}
+
+// ─── keys (development) ───────────────────────────────
+
+function keyView(cfg) {
+  box.innerHTML = `${head('Sign in to your workspace', 'Lumni reads your workspace through the API this console is connected to.')}
+    <div id="admin"></div>
+    <div class="or" id="or">or paste an API key</div>
+    <form id="f">
+      <label for="key">API key</label>
+      <input id="key" name="key" class="mono" type="password" autocomplete="off" placeholder="lumni_…" />
+      <button class="btn primary" type="submit">Sign in</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+    <p class="foot">Just looking? <a href="/today?data=mock" id="demo">Open the demo</a></p>`;
+  const signIn = async (body) => { await post('/v1/auth/session', body); go(); };
+  if (!cfg.realAvailable) {
+    $('#err').textContent = 'This console isn’t connected to a Lumni API yet. Set LUMNI_API_URL and an admin key in console/.env, then restart it.';
+    $('#f').querySelector('button').disabled = true;
+    $('#or').hidden = true;
+  } else if (cfg.adminKey) {
+    $('#admin').innerHTML = `<form style="margin-top:22px"><button class="btn accent" type="button" id="as-admin">Sign in as this server’s admin</button></form>`;
+    $('#as-admin').onclick = () => signIn({}).catch((e) => ($('#err').textContent = e.message));
+  } else $('#or').hidden = true;
+  onSubmit($('#f'), async (v) => { if (!v.key.trim()) throw new Error('Paste a key first.'); await signIn({ key: v.key.trim() }); });
+  $('#demo').onclick = () => { try { localStorage.setItem('lumni.console.data', 'mock'); } catch {} };
+}
+
+(async () => {
+  let cfg = {};
+  try { cfg = await (await fetch('/console/config.json')).json(); } catch {}
+  if (cfg.auth !== 'accounts') return keyView(cfg);
+  if (!cfg.realAvailable) {
+    box.innerHTML = `${head('Lumni can’t be reached', 'This console can’t reach its Lumni API right now. Check LUMNI_API_URL, then reload.')}`;
+    return;
+  }
+  const s = await (await fetch('/v1/auth/session', { credentials: 'same-origin' })).json().catch(() => ({}));
+  const st = s.accounts ?? { setup: false, signup: 'invite', providers: { password: true } };
+  if (Q.get('reset')) return resetView(Q.get('reset'));
+  if (s.signed_in && !Q.get('invite')) return go();
+  if (s.signed_in && Q.get('invite')) {
+    // Signed in already: join with this invite.
+    try {
+      await post('/v1/console/account/accept', { token: Q.get('invite') }, s.csrf_token);
+      return go('/today');
+    } catch (e) {
+      box.innerHTML = `${head('That invite didn’t work', esc(e.message))}<p class="foot"><a href="/today">Go to your workspace</a></p>`;
+      return;
+    }
+  }
+  if (st.no_workspace) return noWorkspaceView();
+  if (st.setup) return setupView(st);
+  if (Q.get('invite')) return inviteView(st, Q.get('invite'));
+  if (Q.get('signup') && st.signup === 'open') return signUpView(st);
+  signInView(st, Q.get('error') ?? '');
+})();
+</script>
+</body>
+</html>

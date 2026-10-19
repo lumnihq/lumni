@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Day map</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; --lab: 262px; --pad: 24px; }
+  .head { display: flex; align-items: flex-end; gap: 24px; padding: 34px 40px 0; }
+  .head h1 { font-size: 34px; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; }
+  .head h1 em { font-style: normal; color: var(--accent); }
+  .head p { margin-top: 8px; font-size: 16px; color: var(--ink2); max-width: 820px; }
+  .head .controls { margin-left: auto; display: flex; gap: 10px; flex: none; align-items: center; }
+
+  .seg { display: flex; padding: 3px; border-radius: 12px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13.5px; font-weight: 650; color: var(--ink2); transition: background .2s, color .2s, box-shadow .2s; }
+  .seg button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(10,15,28,.12); }
+  .btn svg { width: 14px; height: 14px; }
+
+  .body { display: grid; grid-template-columns: 1fr 340px; gap: 20px; padding: 22px 40px 40px; align-items: stretch; }
+  .tl { padding: 20px 0 18px; position: relative; display: flex; flex-direction: column; }
+
+  /* The whole day, with a window you can move. */
+  .ov { position: relative; margin: 0 var(--pad); }
+  .ov-head { display: flex; align-items: baseline; gap: 10px; margin: 0 var(--pad) 10px; font-size: 13px; color: var(--ink2); font-weight: 600; }
+  .ov-head b { color: var(--ink); font-size: 14px; font-weight: 700; }
+  .ov-head .r { margin-left: auto; color: var(--ink3); }
+  .ov canvas { display: block; width: 100%; height: 70px; border-radius: 10px; }
+  .ov .hours { position: relative; height: 22px; }
+  .ov .hours span { position: absolute; top: 5px; transform: translateX(-50%); font-size: 11.5px; font-weight: 600; color: var(--ink3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ov .shade { position: absolute; top: 0; height: 70px; background: rgba(244,244,247,.72); pointer-events: none; }
+  .ov .shade.l { border-radius: 10px 0 0 10px; }
+  .ov .shade.r { border-radius: 0 10px 10px 0; }
+  .brush { position: absolute; top: -3px; height: 76px; border-radius: 9px; box-shadow: inset 0 0 0 2px var(--ink), 0 8px 20px -10px rgba(13,14,20,.45); cursor: grab; touch-action: none; }
+  .brush:active { cursor: grabbing; }
+  .brush .h { position: absolute; top: 50%; width: 14px; height: 30px; margin-top: -15px; cursor: ew-resize; display: grid; place-items: center; }
+  .brush .h::after { content: ''; width: 6px; height: 22px; border-radius: 4px; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .brush .h.l { left: -7px; }
+  .brush .h.r { right: -7px; }
+  .ovnow { position: absolute; top: -3px; height: 76px; width: 0; border-left: 2px solid var(--accent); pointer-events: none; }
+  .ovnow span { position: absolute; top: -20px; left: 0; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+
+  /* The brushed window, one row per thing. */
+  .dhead { display: flex; align-items: center; gap: 12px; margin: 18px var(--pad) 0; padding-top: 16px; border-top: 1px solid var(--line); }
+  .dhead b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .dhead small { font-size: 13px; color: var(--ink2); font-weight: 600; }
+  .dhead .r { margin-left: auto; font-size: 12.5px; color: var(--ink3); font-weight: 600; }
+  .axis { position: relative; height: 34px; margin-left: var(--lab); margin-right: var(--pad); }
+  .axis span { transition: opacity .2s; white-space: nowrap; position: absolute; top: 12px; transform: translateX(-50%); font-size: 12px; color: var(--ink3); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .axis span::after { content: ''; position: absolute; left: 50%; top: 19px; height: 5px; border-left: 1px solid var(--line2); }
+
+  .rows { position: relative; }
+  .row { display: grid; grid-template-columns: var(--lab) 1fr; height: 66px; border-top: 1px solid var(--line); animation: rise .5s var(--ease) both; }
+  .row.quiet { border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #fafafc, #fff); }
+  .who { padding: 13px 14px 0 var(--pad); display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; align-items: start; }
+  .who b { font-size: 14.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who small { grid-column: 1; grid-row: 2; font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who small i { font-style: normal; color: var(--ink3); margin-left: 6px; }
+  .who .cnt { grid-row: 1 / span 2; grid-column: 2; justify-self: end; align-self: center; min-width: 30px; height: 24px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 750; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+  .who small .hold { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); font-weight: 650; }
+  .who small .hold .ai { width: 18px; height: 18px; border-radius: 5px; font-size: 9px; }
+  .who small .queue { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--sky-soft, #e6f2ff); color: #1f78d1; font-weight: 650; font-size: 11.5px; }
+  .who .cnt.zero { background: var(--wash); color: var(--ink3); }
+  .row.quiet .who b { color: var(--ink2); font-weight: 650; }
+  .track { position: relative; margin-right: var(--pad); }
+  .track canvas { position: absolute; left: 0; bottom: 8px; width: 100%; height: 26px; }
+  .track::before { content: ''; position: absolute; left: 0; right: 0; bottom: 8px; border-top: 1px solid var(--line); }
+  .lane { position: absolute; left: 0; right: 0; top: 0; height: 30px; }
+
+  .mk { position: absolute; top: 15px; transform: translate(-50%, -50%); cursor: pointer; z-index: 2; transition: transform .45s var(--spring), opacity .25s; }
+  .mk.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px #fff, 0 0 0 4.5px var(--s); }
+  .mk.bub { height: 20px; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--c); color: #fff; font-size: 11px; font-weight: 750; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px #fff, 0 4px 10px -4px var(--c); }
+  .mk::after { content: ''; position: absolute; left: 50%; top: 100%; height: 10px; border-left: 1.5px dotted var(--c); opacity: .55; margin-top: 3px; }
+  .mk.off, .rows.focus .mk.off { opacity: 0; transform: translate(-50%, -50%) scale(.2); pointer-events: none; }
+  .mk:hover, .mk.sel { transform: translate(-50%, -50%) scale(1.25); z-index: 3; }
+  .mk.sel { animation: ping 1.3s ease-out infinite; }
+  .rows.focus .mk:not(.hl) { opacity: .18; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c); } 100% { box-shadow: 0 0 0 2px #fff, 0 0 0 16px transparent; } }
+
+  /* Now, which you can drag. */
+  .nowline { position: absolute; top: -34px; bottom: 0; width: 0; z-index: 4; pointer-events: none; }
+  .nowline::before { content: ''; position: absolute; top: 26px; bottom: 0; left: -1px; border-left: 2px solid var(--accent); }
+  .nowline::after { content: ''; position: absolute; top: 26px; bottom: 0; left: 1px; width: 42px; background: linear-gradient(90deg, rgba(91,75,245,.09), transparent); }
+  .nowpill { position: absolute; top: 4px; left: 0; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: grab; pointer-events: auto; box-shadow: 0 6px 16px -6px rgba(91,75,245,.7); touch-action: none; }
+
+  .tip { position: absolute; z-index: 9; width: 290px; padding: 13px 15px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 13px; line-height: 1.4; box-shadow: 0 20px 40px -12px rgba(13,14,20,.5); transform: translate(-50%, calc(-100% - 14px)); pointer-events: none; animation: rise .2s var(--ease) both; }
+  .tip b { display: block; font-size: 13.5px; }
+  .tip .when { color: #b9bccb; font-size: 12px; }
+  .tip ul { list-style: none; margin: 9px 0; display: grid; gap: 4px; }
+  .tip li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .tip li i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .tip li span { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tip .why { color: #d6d8e2; font-size: 12.5px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.12); }
+  .tip .why em { font-style: normal; color: #b9bccb; display: block; font-size: 11.5px; }
+
+  .legend { display: flex; gap: 18px; padding: 16px var(--pad) 0; margin-top: auto; font-size: 12.5px; color: var(--ink2); font-weight: 600; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .legend .ramp { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+  .legend .ramp b { width: 3px; background: var(--ink); border-radius: 1px; }
+
+  /* What Lumni did in the window, by reason. */
+  .feed { contain: size; padding: 20px 18px 14px; background: linear-gradient(180deg, #f2f0ff 0%, #f8f7ff 100%); border-color: var(--accent-line); display: flex; flex-direction: column; min-height: 0; }
+  .feed .fh { display: flex; align-items: center; gap: 8px; }
+  .feed .fh a { margin-left: auto; font-size: 13px; font-weight: 650; color: var(--accent); }
+  .feed h3 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; margin: 12px 0 2px; font-variant-numeric: tabular-nums; }
+  .feed > p { font-size: 13px; color: var(--ink2); margin-bottom: 12px; }
+  .feedlist { flex: 1; min-height: 0; overflow: auto; scrollbar-width: none; mask-image: linear-gradient(#000 88%, transparent); padding: 2px; margin: -2px; }
+  .feedlist::-webkit-scrollbar { display: none; }
+  .grp { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; padding: 12px 12px 11px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 8px; cursor: pointer; transition: box-shadow .2s; }
+  .grp.new { animation: rise .45s var(--ease) both; }
+  .grp:hover, .grp.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+  .grp .n { grid-row: 1 / span 3; min-width: 30px; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--c); color: #fff; font-size: 12px; font-weight: 750; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+  .grp b { font-size: 13.5px; font-weight: 650; line-height: 1.3; }
+  .grp small { font-size: 12px; color: var(--ink2); }
+  .grp .links { display: flex; gap: 12px; align-items: center; margin-top: 4px; font-size: 12px; font-weight: 650; }
+  .grp .links a { color: var(--accent); }
+  .grp .kept { font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+  .empty { font-size: 13px; color: var(--ink2); padding: 18px 4px; }
+  .est { margin: 10px var(--pad) 0; font-size: 12px; color: var(--ink3); font-weight: 550; line-height: 1.4; }
+  .est b { color: var(--ink2); font-weight: 650; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <section class="head">
+    <div>
+      <h1 id="title"></h1>
+      <p id="sub"></p>
+    </div>
+    <div class="controls">
+      <button class="btn" id="replay"><svg viewBox="0 0 14 14"><path d="M3 2.2v9.6L11.4 7z" fill="currentColor"/></svg>Replay</button>
+      <div class="seg" role="group" aria-label="Zoom">
+        <button data-z="day" aria-pressed="false">Day</button>
+        <button data-z="hour" aria-pressed="true">Hour</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="body">
+    <article class="card tl" id="tl">
+      <div class="ov-head"><b>Today</b><span id="ovsub"></span><span class="r">Drag the window, or pull its edges</span></div>
+      <div class="ov" id="ov">
+        <canvas id="ovc"></canvas>
+        <div class="shade l" id="shl"></div><div class="shade r" id="shr"></div>
+        <div class="ovnow" id="ovnow"><span>Now</span></div>
+        <div class="brush" id="brush"><span class="h l" data-e="l"></span><span class="h r" data-e="r"></span></div>
+        <div class="hours" id="hours"></div>
+      </div>
+      <div class="dhead"><b id="range"></b><small id="rangesub"></small><span class="r">Most fought-over first</span></div>
+      <div class="axis" id="axis"></div>
+      <div class="rows" id="rows"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Stopped a repeat</span>
+        <span><i style="background:var(--sky)"></i>Made it wait its turn</span>
+        <span><i style="background:var(--orange)"></i>Made it look again</span>
+        <span><i style="background:var(--ink)"></i>Asked a person</span>
+        <span style="margin-left:auto"><span class="ramp"><b style="height:4px;opacity:.15"></b><b style="height:7px;opacity:.35"></b><b style="height:9px;opacity:.6"></b><b style="height:12px;opacity:.9"></b></span>Darker = busier</span>
+      </div>
+      <p class="est" id="est" hidden></p>
+    </article>
+    <aside class="card feed">
+      <div class="fh"><span class="tag solid" id="feedtag">Live</span><a href="/flow">Open in Flow</a></div>
+      <h3 id="feedtitle"></h3>
+      <p id="feedsub"></p>
+      <div class="feedlist" id="feed"></div>
+    </aside>
+  </section>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// Minutes since midnight, from the world's own clock.
+let NOW = 14 * 60 + 13 + 1 / 3;
+const KINDS = ['stop', 'wait', 'recheck', 'ask'];
+const COL = { stop: '#5b4bf5', recheck: '#f08a24', wait: '#3b9eff', ask: '#0d0e14', bad: '#ff3b30' };
+const SOFT = { stop: '#dcd7ff', recheck: '#fde3c8', wait: '#d4e9ff', ask: '#dcdce4', bad: '#ffd9d6' };
+const KTXT = {
+  stop: (n) => `${n === 1 ? 'Repeat' : 'Repeats'} stopped`,
+  wait: () => 'Made to wait its turn',
+  recheck: () => 'Made to look again',
+  ask: () => 'Asked a person',
+};
+
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const fmtT = (m, ap = true) => {
+  const tot = Math.round(m);
+  let h = Math.floor(tot / 60) % 24, mm = tot % 60;
+  const a = h >= 12 ? 'PM' : 'AM';
+  h = ((h + 11) % 12) + 1;
+  return `${h}:${String(mm).padStart(2, '0')}${ap ? ' ' + a : ''}`;
+};
+const ampm = (m) => (Math.floor(Math.round(m) / 60) % 24 >= 12 ? 'PM' : 'AM');
+const fmtRange = (a, b) => (ampm(a) === ampm(b) ? `${fmtT(a, false)} to ${fmtT(b)}` : `${fmtT(a)} to ${fmtT(b)}`);
+const fmtSpan = (s) => {
+  s = Math.round(s);
+  if (s < 60) return `${s} minutes`;
+  const h = Math.floor(s / 60), m = s % 60;
+  return `${h} ${h === 1 ? 'hour' : 'hours'}${m ? ` ${m} min` : ''}`;
+};
+const comma = (n) => Math.round(n).toLocaleString('en-US');
+const E = (s) => Shell.esc(s);
+const plural = (n, one, many) => (Math.round(n) === 1 ? one : many);
+const trunc = (s, n = 90) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const hourName = (h) => { h = Math.floor(h) % 24; return h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`; };
+/** Demo stories are named; real ones are action ids. */
+const storyHref = (s) => (Shell.isReal ? `/journey?id=${encodeURIComponent(s)}` : `/journey?story=${encodeURIComponent(s || 'omar')}`);
+
+// The things AIs fight over most. Per world we generate their day.
+const CAT = [
+  { t: 'Refunds queue', app: 'stripe', mix: { stop: 0.6, wait: 0.15, recheck: 0.1, ask: 0.15 }, pref: ['p-refund2', 'g-bigrefund', 'p-book'] },
+  { t: 'Checkout site', app: 'vercel', mix: { wait: 0.7, recheck: 0.2, stop: 0.1 }, pref: ['p-deploy'] },
+  { t: 'Acme’s account', app: 'salesforce', mix: { wait: 0.45, recheck: 0.35, ask: 0.08, stop: 0.12 }, pref: ['p-acct', 'p-oldaddr', 'g-email', 'p-ticket2'] },
+  { t: 'Sam’s subscription', app: 'stripe', mix: { recheck: 0.6, wait: 0.2, stop: 0.2 }, pref: ['p-oldplan', 'p-cancelled', 'p-acct'] },
+  { t: 'March invoices', app: 'stripe', mix: { stop: 0.55, wait: 0.35, recheck: 0.1 }, pref: ['p-invoice2', 'p-book', 'p-oldplan'] },
+  { t: 'Enterprise price list', app: 'salesforce', mix: { recheck: 0.75, wait: 0.15, ask: 0.1 }, pref: ['p-oldprice', 'g-downgrade', 'p-acct'] },
+  { t: 'Initech’s account', app: 'salesforce', mix: { wait: 0.5, recheck: 0.4, stop: 0.1 }, pref: ['p-acct', 'p-oldaddr', 'p-ticket2'] },
+  { t: 'Payout schedule', app: 'quickbooks', mix: { wait: 0.8, stop: 0.2 }, pref: ['p-book', 'p-invoice2'] },
+  { t: 'Support inbox', app: 'zendesk', mix: { stop: 0.8, wait: 0.2 }, pref: ['p-ticket2', 'p-acct'] },
+  { t: 'Renewals batch', app: 'stripe', mix: { stop: 0.7, recheck: 0.3 }, pref: ['p-cancelled', 'p-oldplan'] },
+  { t: 'Q3 quotes', app: 'gmail', mix: { stop: 0.5, recheck: 0.5 }, pref: ['p-quote2', 'p-oldprice'] },
+  { t: 'Hooli’s account', app: 'salesforce', mix: { wait: 0.5, recheck: 0.3, ask: 0.2 }, pref: ['p-acct', 'p-oldaddr', 'g-downgrade'] },
+  { t: 'Pricing page', app: 'vercel', mix: { wait: 0.6, recheck: 0.4 }, pref: ['p-deploy', 'p-oldplan'] },
+  { t: 'April ledger close', app: 'quickbooks', mix: { wait: 0.7, stop: 0.3 }, pref: ['p-book', 'p-invoice2'] },
+];
+
+// Per-minute rate from an hourly series (the current hour is partial).
+function perMinute(hourly, R, jitter) {
+  const rate = hourly.map((v, h) => (h * 60 < NOW ? v / Math.max(1, Math.min(60, NOW - h * 60)) : 0));
+  const out = new Float32Array(1440);
+  for (let m = 0; m < 1440; m++) {
+    if (m >= NOW) break;
+    const f = m / 60 - 0.5, h0 = Math.max(0, Math.floor(f)), t = Math.max(0, f - h0);
+    const h1 = Math.min(Math.floor(NOW / 60), h0 + 1);
+    const v = rate[h0] * (1 - t) + rate[h1] * t;
+    out[m] = v * (1 - jitter + R() * jitter * 2);
+  }
+  return out;
+}
+
+// Cumulative activity, to place things where the day is busy.
+const cdfOf = (arr) => { const c = new Float64Array(arr.length); let s = 0; for (let i = 0; i < arr.length; i++) c[i] = s += arr[i]; return c; };
+const pickAt = (cdf, u) => { const target = u * cdf[cdf.length - 1]; let lo = 0, hi = cdf.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < target) lo = mid + 1; else hi = mid; } return lo; };
+
+/**
+ * Your workspace: the things it names, with their counts for the day. The API
+ * doesn't say when each touch happened, so a row follows the day's own hourly
+ * shape, scaled to its touches, and its step-ins sit at even steps through it.
+ */
+function buildReal(w, tot, stepRate) {
+  const total = Math.max(1, w.total);
+  const caught = new Map(w.facts.map((f) => [f.id, f.caught || 0]));
+  const cdf = cdfOf(tot);
+  const WHY = { wait: 'Another AI was changing the same thing', recheck: 'Its info was out of date' };
+  const things = w.things.map((t, i) => {
+    const share = t.touches / total;
+    const a = new Float32Array(1440);
+    for (let m = 0; m < NOW; m++) a[m] = tot[m] * share;
+    const patternFor = (kind) => (w.patterns[kind] ?? []).find((q) => q.thing?.id === t.id) ?? (w.patterns[kind] ?? []).find((q) => q.app === t.app) ?? { id: `${kind}-${t.app}`, kind, t: WHY[kind] ?? 'Lumni stepped in', story: null };
+    const TXT = { wait: 'waited its turn on', recheck: 'looked again at', stop: 'was stopped repeating on', ask: 'asked you about', bad: 'said it changed' };
+    let ev;
+    if (t.hours) {
+      // The server says which hour each step-in on this thing happened in; spread them inside it.
+      ev = [];
+      for (const kind of ['stop', 'wait', 'recheck', 'ask', 'bad']) {
+        const hrs = t.hours[kind] ?? [];
+        for (let h = 0; h < 24; h++) {
+          for (let j = 0, c = hrs[h] || 0; j < c; j++) {
+            ev.push({ m: Math.min(NOW - 0.05, h * 60 + ((j + 0.5) / c) * 60), kind, p: patternFor(kind), thing: i, txt: `An AI ${TXT[kind]} ${t.name}` });
+          }
+        }
+      }
+      ev.sort((x, y) => x.m - y.m);
+    } else {
+      const kinds = [];
+      const nW = t.waits || 0, nR = caught.get(t.id) || 0;
+      // Interleave the kinds so neither bunches at one end of the day.
+      for (let k = 0, n = nW + nR; k < n; k++) kinds.push(Math.floor(((k + 1) * nW) / n) > Math.floor((k * nW) / n) ? 'wait' : 'recheck');
+      ev = kinds.map((kind, j) => ({ m: Math.min(NOW - 0.05, pickAt(cdf, (j + 0.5) / kinds.length)), kind, p: patternFor(kind), thing: i, txt: `An AI ${TXT[kind]} ${t.name}` })).sort((x, y) => x.m - y.m);
+    }
+    return { t: t.name, app: w.app(t.app).name, ais: t.holders, a, day: t.touches, ev, lease: t.lease ?? null };
+  });
+  const quiet = new Float32Array(1440);
+  for (let m = 0; m < NOW; m++) {
+    let s = 0;
+    for (const t of things) s += t.a[m];
+    quiet[m] = Math.max(0, tot[m] - s);
+  }
+  const contested = w.things.filter((t) => t.holders > 1 || t.waits > 0).length;
+  return { w, tot, stepRate, steps: w.steps, things, contested, quiet };
+}
+
+function build(w) {
+  const R = rng(w.key === 'small' ? 101 : w.key === 'mid' ? 202 : w.key === 'large' ? 303 : 404);
+  // Your workspace is counted by the hour, so it's drawn smooth, with no made-up jitter.
+  const tot = perMinute(w.hourly, R, Shell.isReal ? 0 : 0.12);
+  const stepRate = perMinute(w.stepHourly, R, Shell.isReal ? 0 : 0.2);
+  if (Shell.isReal) return buildReal(w, tot, stepRate);
+  const steps = KINDS.reduce((s, k) => s + (w.kinds[k] || 0), 0);
+  const things = [];
+
+  const nTop = w.key === 'small' ? 5 : CAT.length;
+  const topShare = { small: 1, mid: 0.42, large: 0.2 }[w.key];
+  const actShare = { small: 0.035, mid: 0.0036, large: 0.00034 }[w.key];
+  const aisCap = w.scale.ais;
+  const zipf = CAT.slice(0, nTop).map((_, i) => 1 / Math.pow(i + 1.6, 0.85));
+  const zs = zipf.reduce((a, b) => a + b, 0);
+  const smallN = [7, 5, 4, 4, 2];
+  const askBoost = Math.min(1.5, (w.kinds.ask / steps) / 0.01);
+
+  const pick = pickAt;
+  const totCdf = cdfOf(tot);
+
+  for (let i = 0; i < nTop; i++) {
+    const c = CAT[i];
+    const share = actShare * (1.6 - i * 0.07) * (0.8 + R() * 0.4);
+    const bursts = [];
+    const nb = 2 + Math.floor(R() * 3);
+    for (let b = 0; b < nb; b++) bursts.push({ at: pick(totCdf, R()), wd: 5 + R() * 30, amp: 1.5 + R() * 3.5 });
+    if (i === 0) bursts.push({ at: 11 * 60 + 20, wd: 22, amp: 6 }); // the refund spike at 11
+    if (R() < 0.85) bursts.push({ at: NOW - 3 - R() * 52, wd: 3 + R() * 9, amp: 3 + R() * 4 });
+    const a = new Float32Array(1440);
+    let on = true, left = 0, day = 0;
+    for (let m = 0; m < NOW; m++) {
+      const exp = tot[m] * share;
+      if (left-- <= 0) {
+        if (exp > 6) { on = true; left = 30; }
+        else { on = !on; left = on ? 3 + R() * 22 * (0.4 + exp) : 1 + R() * 12 / (1 + exp); }
+      }
+      let bf = 1;
+      for (const b of bursts) bf += b.amp * Math.exp(-(((m - b.at) / b.wd) ** 2));
+      let v = exp * bf * (0.55 + R() * 0.9) * (on ? 1 : 0.05);
+      if (m > NOW - 1) v *= NOW - m;
+      a[m] = v; day += v;
+    }
+    // Step-ins land where the thing is busiest.
+    const wts = a.map((v, m) => (m < NOW ? Math.pow(v, 1.6) : 0));
+    const cdf = cdfOf(wts);
+    const n = w.key === 'small' ? smallN[i] : Math.round(steps * topShare * zipf[i] / zs);
+    const mix = {};
+    for (const k of KINDS) mix[k] = (c.mix[k] || 0) * (k === 'ask' ? askBoost : 1) * (w.patterns[k]?.length ? 1 : 0);
+    const ms = KINDS.reduce((s, k) => s + mix[k], 0);
+    const ev = [];
+    for (let j = 0; j < n; j++) {
+      const m = Math.min(NOW - 0.05, pick(cdf, R()) + R());
+      let u = R() * ms, kind = KINDS[0];
+      for (const k of KINDS) { if ((u -= mix[k]) <= 0) { kind = k; break; } }
+      const pats = w.patterns[kind];
+      const pref = pats.filter((p) => c.pref.includes(p.id));
+      let p;
+      if (pref.length && R() < 0.8) p = pref[Math.floor(R() * pref.length)];
+      else { let s = pats.reduce((t, q) => t + q.n, 0) * R(); p = pats.find((q) => (s -= q.n) <= 0) ?? pats[0]; }
+      ev.push({ m, kind, p, thing: i });
+    }
+    ev.sort((x, y) => x.m - y.m);
+    const ais = w.key === 'small' ? [4, 3, 3, 2, 2][i] : Math.min(aisCap, Math.round((w.key === 'mid' ? 18 : 64) * (1 - i * 0.045) * (0.7 + R() * 0.3)));
+    things.push({ t: c.t, app: w.app(c.app)?.name ?? 'More apps', ais, a, day, ev });
+  }
+
+  const quiet = new Float32Array(1440);
+  for (let m = 0; m < NOW; m++) {
+    let s = 0;
+    for (const t of things) s += t.a[m];
+    quiet[m] = Math.max(tot[m] * 0.25, tot[m] - s);
+  }
+  const contested = w.key === 'small' ? nTop : Math.round(steps / (w.key === 'mid' ? 2.1 : 3.2));
+  return { w, tot, stepRate, steps, things, contested, quietThings: w.scale.things - 0, quiet };
+}
+
+// ─── state ───────────────────────────────────────────
+let D, A = NOW - 60, B = NOW, nowAt = NOW, shown = [], clusters = [], sel = null, selPat = null;
+let TW = 0; // track width
+const tx = (m) => ((m - A) / (B - A)) * TW;
+
+// ─── header ──────────────────────────────────────────
+function renderHead() {
+  const { w, steps, contested } = D;
+  const things = w.scale.things;
+  if (!things) {
+    $('#title').innerHTML = 'Nothing was changed yet today. <em>The day map fills in as your AIs act.</em>';
+    $('#sub').textContent = 'Each thing an AI changes gets a row here, with every time Lumni made one wait, look again or stop.';
+    return;
+  }
+  // Your workspace names its ten busiest things; if all ten were shared, there may be more.
+  const atLeast = Shell.isReal && contested === w.things.length && contested >= 10 ? 'At least ' : '';
+  $('#title').innerHTML = `${fmtN(things)} ${plural(things, 'thing was', 'things were')} changed today. <em>${contested ? `${atLeast}${fmtN(contested)} ${plural(contested, 'was', 'were')} fought over.` : 'None were fought over.'}</em>`;
+  const did = [w.kinds.wait && 'made AIs take turns', w.kinds.recheck && 'sent them back to look again when their info was old', w.kinds.stop && 'stopped repeats before they landed'].filter(Boolean);
+  const list = did.length > 1 ? `${did.slice(0, -1).join(', ')}, and ${did.at(-1)}` : did[0];
+  $('#sub').textContent = `${fmtN(w.scale.ais)} ${plural(w.scale.ais, 'AI', 'AIs')} shared them. ` + (steps ? `Lumni stepped in ${fmtN(steps)} ${plural(steps, 'time', 'times')} to keep them in order${list ? `: it ${list}` : ''}.` : 'Lumni hasn’t needed to step in yet today.');
+}
+
+// ─── the day overview ────────────────────────────────
+const OV = { W: 0, H: 70 };
+const ox = (m) => (m / 1440) * OV.W;
+function drawOverview() {
+  const cv = $('#ovc');
+  const dpr = devicePixelRatio || 1;
+  OV.W = cv.clientWidth;
+  cv.width = OV.W * dpr; cv.height = OV.H * dpr;
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  g.fillStyle = '#f7f7fa';
+  g.fillRect(0, 0, OV.W, OV.H);
+  // Hour grid.
+  g.strokeStyle = '#ececf1';
+  g.lineWidth = 1;
+  for (let h = 1; h < 24; h++) { const x = Math.round(ox(h * 60)) + 0.5; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, OV.H); g.stroke(); }
+  // Activity, in 5-minute bins.
+  const bin = 5, n = Math.ceil(NOW / bin);
+  const act = [], st = [];
+  for (let i = 0; i < n; i++) {
+    let s = 0, k = 0;
+    for (let m = i * bin; m < Math.min(NOW, (i + 1) * bin); m++) { s += D.tot[m]; k += D.stepRate[m]; }
+    act.push(s); st.push(k);
+  }
+  const amax = Math.max(...act, 1e-6), smax = Math.max(...st, 1e-6);
+  const top = 10, base = OV.H - 2;
+  const ay = (v) => base - (v / amax) * (base - top);
+  g.beginPath();
+  g.moveTo(0, base);
+  act.forEach((v, i) => g.lineTo(ox(i * bin + bin / 2), ay(v)));
+  g.lineTo(ox(NOW), ay(act[n - 1]));
+  g.lineTo(ox(NOW), base);
+  g.closePath();
+  const grad = g.createLinearGradient(0, top, 0, base);
+  grad.addColorStop(0, 'rgba(13,14,20,.20)');
+  grad.addColorStop(1, 'rgba(13,14,20,.05)');
+  g.fillStyle = grad;
+  g.fill();
+  g.beginPath();
+  act.forEach((v, i) => (i ? g.lineTo : g.moveTo).call(g, ox(i * bin + bin / 2), ay(v)));
+  g.strokeStyle = 'rgba(13,14,20,.5)';
+  g.lineWidth = 1.25;
+  g.stroke();
+  // Step-ins, as violet ticks from the floor.
+  g.fillStyle = '#5b4bf5';
+  st.forEach((v, i) => {
+    if (v <= 0) return;
+    const hgt = Math.max(2, Math.sqrt(v / smax) * (OV.H * 0.5));
+    g.globalAlpha = 0.35 + 0.6 * Math.sqrt(v / smax);
+    g.fillRect(ox(i * bin) + 0.5, base - hgt, Math.max(1.4, ox(bin) - 1.2), hgt);
+  });
+  g.globalAlpha = 1;
+  // The rest of the day hasn't happened.
+  g.fillStyle = '#fbfbfd';
+  g.fillRect(ox(NOW), 0, OV.W - ox(NOW), OV.H);
+  g.strokeStyle = '#e6e6ee';
+  for (let x = ox(NOW) + 4; x < OV.W + OV.H; x += 7) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x - OV.H, OV.H); g.stroke(); }
+
+  $('#hours').innerHTML = [0, 3, 6, 9, 12, 15, 18, 21, 24].map((h) => `<span style="left:${(h / 24) * 100}%;${h === 0 ? 'transform:none' : h === 24 ? 'transform:translateX(-100%)' : ''}">${h === 0 || h === 24 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? h + ' AM' : h - 12 + ' PM'}</span>`).join('');
+  $('#ovnow').style.left = ox(NOW) - 1 + 'px';
+  const dayN = D.w.total;
+  $('#ovsub').textContent = `${fmtN(dayN)} ${dayN === 1 ? 'action' : 'actions'} so far, ${fmtN(D.steps)} ${D.steps === 1 ? 'step-in' : 'step-ins'}${Shell.isReal ? ', counted by the hour' : ''}`;
+}
+
+function placeBrush() {
+  const l = ox(A), r = ox(B);
+  Object.assign($('#brush').style, { left: l + 'px', width: Math.max(8, r - l) + 'px' });
+  $('#shl').style.cssText = `left:0;width:${l}px`;
+  $('#shr').style.cssText = `left:${r}px;width:${Math.max(0, OV.W - r)}px`;
+  const z = Math.abs(A) < 0.5 && Math.abs(B - NOW) < 0.5 ? 'day' : Math.abs(B - A - 60) < 0.5 ? 'hour' : '';
+  $$('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.z === z)));
+}
+
+function bindBrush() {
+  const br = $('#brush');
+  br.onpointerdown = (e) => {
+    e.preventDefault();
+    stopReplay();
+    br.setPointerCapture(e.pointerId);
+    const edge = e.target.dataset.e;
+    const x0 = e.clientX, a0 = A, b0 = B;
+    br.onpointermove = (ev) => {
+      const dm = ((ev.clientX - x0) / OV.W) * 1440;
+      if (edge === 'l') A = Math.max(0, Math.min(b0 - 5, a0 + dm));
+      else if (edge === 'r') B = Math.min(NOW, Math.max(a0 + 5, b0 + dm));
+      else { const s = b0 - a0; A = Math.max(0, Math.min(NOW - s, a0 + dm)); B = A + s; }
+      nowAt = B;
+      schedule();
+    };
+    br.onpointerup = () => (br.onpointermove = null);
+  };
+  // Click the day to centre the window there.
+  $('#ov').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.brush')) return;
+    const r = $('#ovc').getBoundingClientRect();
+    const m = ((e.clientX - r.left) / OV.W) * 1440, s = B - A;
+    A = Math.max(0, Math.min(NOW - s, m - s / 2)); B = A + s; nowAt = B;
+    stopReplay(); schedule();
+  });
+}
+
+let pend = 0;
+function schedule() {
+  if (pend) return;
+  pend = requestAnimationFrame(() => { pend = 0; renderDetail(false); });
+}
+
+// ─── the detail rows ─────────────────────────────────
+function inWin(t) {
+  let lo = 0, hi = t.ev.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (t.ev[m].m < A) lo = m + 1; else hi = m; }
+  const out = [];
+  for (let i = lo; i < t.ev.length && t.ev[i].m <= B; i++) out.push(t.ev[i]);
+  return out;
+}
+const sumA = (arr, a, b) => { let s = 0; for (let m = Math.floor(a); m < Math.min(NOW, b); m++) s += arr[m]; return s; };
+
+function rank() {
+  const rows = D.things.map((t) => ({ t, ev: inWin(t), act: sumA(t.a, A, B) }));
+  rows.sort((x, y) => y.ev.length - x.ev.length || y.act - x.act);
+  return rows.slice(0, 7);
+}
+
+function ticks() {
+  const s = B - A;
+  const step = [1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240].find((k) => s / k <= 7) ?? 360;
+  const out = [];
+  for (let m = Math.ceil(A / step) * step; m <= B; m += step) out.push(m);
+  return out;
+}
+
+function renderDetail(animate) {
+  placeBrush();
+  shown = rank();
+  const real = Shell.isReal;
+  const quietN = Math.max(0, D.w.scale.things - shown.length);
+  $('#range').textContent = fmtRange(A, B);
+  $('#rangesub').textContent = fmtSpan(B - A);
+  TW = $('#axis').clientWidth;
+  $('#axis').innerHTML = ticks().map((m) => { const x = tx(m); return x < 18 || x > TW - 18 ? '' : `<span style="left:${x}px">${fmtT(m)}</span>`; }).join('');
+
+  // Step-ins the quiet things needed in this window.
+  const winSteps = D.steps * (sumA(D.stepRate, A, B) / Math.max(1e-6, sumA(D.stepRate, 0, NOW)));
+  const topSteps = shown.reduce((s, r) => s + r.ev.length, 0) + D.things.filter((t) => !shown.some((r) => r.t === t)).reduce((s, t) => s + inWin(t).length, 0);
+  // Your workspace: every step-in of the hour that isn't on a row, such as repeats, which the API doesn't tie to a thing.
+  D.quietSteps = real ? Math.max(0, Math.round(winSteps - shown.reduce((s, r) => s + r.ev.length, 0))) : D.w.key === 'small' ? D.things.filter((t) => !shown.some((r) => r.t === t)).reduce((s, t) => s + inWin(t).length, 0) : Math.round(Math.max(winSteps - topSteps, winSteps * 0.35) + D.things.filter((t) => !shown.some((r) => r.t === t)).reduce((s, t) => s + inWin(t).length, 0));
+
+  const winAct = sumA(D.tot, A, B), dayAct = sumA(D.tot, 0, NOW);
+  $('#rows').innerHTML = shown.map((r, i) => {
+    const frac = Math.min(1, Math.sqrt((r.act / Math.max(1e-6, r.t.day)) * 24) * 0.55);
+    // Your workspace says how many AIs touched a thing today, not when.
+    const ais = real ? r.t.ais : Math.max(r.ev.length ? Math.min(2, r.t.ais) : 1, Math.round(r.t.ais * frac));
+    return `<div class="row" style="animation-delay:${animate ? i * 0.05 : 0}s;${animate ? '' : 'animation:none'}">
+      <div class="who"><b title="${E(r.t.t)}">${E(r.t.t)}</b><span class="cnt ${r.ev.length ? '' : 'zero'}">${comma(r.ev.length)}</span>
+        <small>${E(r.t.app)}<i>${real ? (r.t.lease?.holder ? holdLine(r.t.lease) : `${ais} ${plural(ais, 'AI', 'AIs')}, ${fmtN(r.t.day)} ${plural(r.t.day, 'touch', 'touches')}`) : `${ais} ${ais === 1 ? 'AI' : 'AIs'} touched it`}</i></small></div>
+      <div class="track"><canvas data-i="${i}"></canvas><div class="lane" data-i="${i}"></div></div></div>`;
+  }).join('') + (!D.things.length
+    ? `<div class="row quiet" style="${animate ? '' : 'animation:none'}"><div class="who"><b>Nothing changed yet</b><span class="cnt ${D.quietSteps ? '' : 'zero'}" id="qcnt">${fmtN(D.quietSteps)}</span><small>Rows appear as AIs act</small></div><div class="track"><canvas data-q="1"></canvas></div></div>`
+    : `<div class="row quiet" style="animation-delay:${animate ? shown.length * 0.05 : 0}s;${animate ? '' : 'animation:none'}"><div class="who"><b>${quietN ? `+ ${fmtN(quietN)} quieter ${plural(quietN, 'thing', 'things')}` : 'Nothing else'}</b><span class="cnt ${D.quietSteps ? '' : 'zero'}" id="qcnt">${fmtN(D.quietSteps)}</span>
+        <small>${D.quietSteps ? (real ? 'Not tied to one thing' : 'Spread too thin for a row') : 'Changed, never fought over'}</small></div>
+      <div class="track"><canvas data-q="1"></canvas></div></div>`)
+    + `<div class="nowline" id="nowline"><span class="nowpill" id="nowpill"></span></div>`;
+
+  // A shared scale so rows compare; the quiet row has its own.
+  D.max = 0;
+  for (const r of shown) D.max = Math.max(D.max, colMax(r.t.a));
+  D.qmax = colMax(D.quiet);
+  D.qmin = real ? 0 : D.qmax * 0.2;
+  buildClusters();
+  bindNow();
+  setNow(nowAt, true);
+  renderFeed(true);
+}
+
+// Columns: one per minute when there is room, else minutes pooled per column.
+function cols() {
+  const s = B - A;
+  const per = s <= TW / 3 ? 1 : Math.ceil(s / (TW / 3));
+  return { per, n: Math.ceil(s / per), w: TW / Math.ceil(s / per) };
+}
+function colMax(arr) {
+  const { per, n } = cols();
+  let mx = 0;
+  for (let c = 0; c < n; c++) { let s = 0; const m0 = A + c * per; for (let m = Math.floor(m0); m < m0 + per && m < NOW; m++) s += arr[m]; mx = Math.max(mx, s / per); }
+  return mx || 1;
+}
+
+function drawStrip(cv, arr, mx, upTo, mn = 0, tone = 0.8) {
+  const dpr = devicePixelRatio || 1, H = 26;
+  if (cv.width !== Math.round(TW * dpr)) { cv.width = Math.round(TW * dpr); cv.height = H * dpr; }
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, TW, H);
+  const { per, n, w } = cols();
+  const gap = w > 5 ? 1.5 : w > 2.5 ? 1 : 0.4;
+  for (let c = 0; c < n; c++) {
+    const m0 = A + c * per;
+    if (m0 >= upTo || m0 >= NOW) break;
+    let s = 0;
+    for (let m = Math.floor(m0); m < m0 + per && m < NOW; m++) s += arr[m];
+    const v = s / per;
+    if (v <= 0) continue;
+    const k = Math.max(0, Math.min(1, Math.sqrt((v - mn) / Math.max(1e-9, mx - mn))));
+    const h = 3 + k * (H - 3);
+    g.fillStyle = `rgba(13,14,20,${0.1 + tone * k})`;
+    const x = c * w, ww = Math.max(0.6, Math.min(w - gap, (Math.min(upTo, NOW) - m0) / per * w - gap));
+    g.fillRect(x, H - h, ww, h);
+  }
+}
+
+// Markers closer than 14px join into a numbered bubble.
+function buildClusters() {
+  clusters = [];
+  shown.forEach((r, ri) => {
+    const pts = r.ev.map((e) => ({ x: tx(e.m), e }));
+    let cs = [];
+    for (const p of pts) {
+      const c = cs[cs.length - 1];
+      if (c && p.x - c.x0 < 14) c.ev.push(p.e), (c.xs += p.x);
+      else cs.push({ x0: p.x, xs: p.x, ev: [p.e] });
+    }
+    const wOf = (c) => (c.ev.length === 1 ? 15 : 22 + String(c.ev.length).length * 6);
+    cs.forEach((c) => (c.x = c.xs / c.ev.length));
+    for (let again = true; again;) {
+      again = false;
+      for (let i = 1; i < cs.length; i++) {
+        const a = cs[i - 1], b = cs[i];
+        if (b.x - a.x < (wOf(a) + wOf(b)) / 2 + 8) {
+          a.ev.push(...b.ev); a.xs += b.xs; a.x = a.xs / a.ev.length; cs.splice(i, 1); again = true; break;
+        }
+      }
+    }
+    for (const c of cs) {
+      const by = {}, bp = {};
+      for (const e of c.ev) { by[e.kind] = (by[e.kind] || 0) + 1; bp[e.p.id] = (bp[e.p.id] || 0) + 1; }
+      const kind = Object.keys(by).sort((a, b) => by[b] - by[a])[0];
+      const pid = Object.keys(bp).sort((a, b) => bp[b] - bp[a])[0];
+      c.ev.sort((a, b) => a.m - b.m);
+      clusters.push({ ...c, row: ri, kind, by, pid, pids: new Set(Object.keys(bp)), times: c.ev.map((e) => e.m), shownN: -1 });
+    }
+  });
+  for (const [i, c] of clusters.entries()) {
+    const lane = $(`.lane[data-i="${c.row}"]`);
+    const el = document.createElement('div');
+    el.className = `mk ${c.ev.length > 1 ? 'bub' : 'dot'} off`;
+    el.style.cssText = `left:${c.x}px;--c:${COL[c.kind]};--s:${SOFT[c.kind]}`;
+    el.dataset.i = i;
+    el.onmouseenter = () => showTip(c, el);
+    el.onmouseleave = hideTip;
+    el.onclick = (ev) => { ev.stopPropagation(); select(i); };
+    lane.appendChild(el);
+    c.el = el;
+  }
+  applySel();
+}
+
+const countUpTo = (times, t) => { let lo = 0, hi = times.length; while (lo < hi) { const m = (lo + hi) >> 1; if (times[m] <= t) lo = m + 1; else hi = m; } return lo; };
+
+function setNow(m, force) {
+  nowAt = Math.max(A, Math.min(B, m));
+  const nl = $('#nowline');
+  nl.style.left = `calc(var(--lab) + ${tx(nowAt)}px)`;
+  $('#nowpill').textContent = nowAt >= NOW - 0.05 ? `Now, ${fmtT(nowAt)}` : fmtT(nowAt);
+  const px = tx(nowAt);
+  for (const sp of $$('#axis span')) sp.style.opacity = Math.abs(parseFloat(sp.style.left) - px) < 78 ? 0 : 1;
+  shown.forEach((r, i) => drawStrip($(`canvas[data-i="${i}"]`), r.t.a, D.max, nowAt));
+  drawStrip($('canvas[data-q]'), D.quiet, D.qmax, nowAt, D.qmin, 0.45);
+  for (const c of clusters) {
+    const n = countUpTo(c.times, nowAt);
+    if (n === c.shownN && !force) continue;
+    c.shownN = n;
+    c.el.classList.toggle('off', n === 0);
+    if (c.ev.length > 1) c.el.textContent = n ? comma(n) : '';
+  }
+  const q = $('#qcnt');
+  if (q) q.textContent = fmtN(D.quietSteps * ((nowAt - A) / Math.max(1e-6, B - A)));
+  renderFeed(false);
+}
+
+function bindNow() {
+  const pill = $('#nowpill');
+  pill.onpointerdown = (e) => {
+    stopReplay();
+    pill.setPointerCapture(e.pointerId);
+    const rect = $('#axis').getBoundingClientRect();
+    pill.onpointermove = (ev) => setNow(A + ((ev.clientX - rect.left) / TW) * (B - A));
+    pill.onpointerup = () => (pill.onpointermove = null);
+  };
+}
+
+/** Your workspace: who holds a thing right now, and how many wait behind it. */
+function holdLine(l) {
+  const h = l.holder, q = l.queue?.length ?? 0;
+  const since = h.since ? `since ${new Date(h.since).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '';
+  const tip = `${h.actor} holds it now${since ? ` ${since}` : ''}, fencing token ${h.token ?? 'not given'}${q ? `. Waiting: ${l.queue.map((x) => x.actor).join(', ')}` : ''}`;
+  return `<span class="hold" title="${E(tip)}"><span class="ai">${E(h.initials ?? '?')}</span>holds it</span>${q ? `<span class="queue">${fmtN(q)} waiting</span>` : ''}`;
+}
+
+// ─── tooltip and selection ───────────────────────────
+function showTip(c, el) {
+  hideTip();
+  const card = $('#tl').getBoundingClientRect(), r = el.getBoundingClientRect();
+  const evs = c.ev.filter((e) => e.m <= nowAt);
+  if (!evs.length) return;
+  const by = {};
+  for (const e of evs) by[e.kind] = (by[e.kind] || 0) + 1;
+  const p = evs.find((e) => e.p.id === c.pid)?.p ?? evs[0].p;
+  const t = D.things[evs[0].thing];
+  const tip = document.createElement('div');
+  tip.className = 'tip';
+  tip.id = 'tip';
+  const one = evs.length === 1;
+  // Your workspace doesn't time each step-in, so its tips say roughly when.
+  const about = Shell.isReal ? 'About ' : '';
+  tip.innerHTML = `<b>${E(one ? (evs[0].txt ?? p.t) : `${comma(evs.length)} step-ins on ${t.t}`)}</b>
+    <span class="when">${about}${one ? `${fmtT(evs[0].m)}, ${E(t.t)}` : fmtRange(evs[0].m, evs[evs.length - 1].m)}</span>
+    <ul>${KINDS.filter((k) => by[k]).map((k) => `<li><i style="background:${COL[k]}"></i>${KTXT[k](by[k])}<span>${comma(by[k])}</span></li>`).join('')}</ul>
+    <div class="why"><em>${one ? 'Why' : 'Mostly'}</em>${E(p.t)}</div>${Shell.isReal && t.lease?.holder ? `<div class="why"><em>Right now</em>${E(t.lease.holder.actor)} holds it${t.lease.holder.token != null ? `, fencing token ${E(t.lease.holder.token)}` : ''}${t.lease.queue?.length ? `, ${fmtN(t.lease.queue.length)} waiting` : ''}</div>` : ''}`;
+  const left = Math.max(155, Math.min(card.width - 155, r.left + r.width / 2 - card.left));
+  tip.style.left = left + 'px';
+  tip.style.top = r.top - card.top + 'px';
+  $('#tl').appendChild(tip);
+}
+function hideTip() { $('#tip')?.remove(); }
+
+function select(i) {
+  sel = i;
+  selPat = clusters[i]?.pid ?? null;
+  applySel();
+  renderFeed(true);
+  $(`.grp[data-p="${selPat}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function selectPat(pid) {
+  sel = null;
+  selPat = selPat === pid ? null : pid;
+  applySel();
+  renderFeed(true);
+}
+function applySel() {
+  $('#rows').classList.toggle('focus', !!selPat && sel === null);
+  clusters.forEach((c, i) => {
+    c.el.classList.toggle('sel', i === sel);
+    c.el.classList.toggle('hl', !!selPat && c.pids.has(selPat));
+  });
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.mk, .grp') && (sel !== null || selPat)) { sel = null; selPat = null; applySel(); renderFeed(true); }
+});
+
+// ─── the feed ────────────────────────────────────────
+let feedKey = '';
+
+/**
+ * Your workspace: every reason Lumni stepped in today, most first. The API
+ * doesn't time each one, so this list is the whole day, whatever the window.
+ */
+function renderFeedReal(force) {
+  const w = D.w;
+  const key = `real|${selPat}`;
+  if (!force && key === feedKey) return;
+  feedKey = key;
+  const pats = ['stop', 'recheck', 'wait', 'bad'].flatMap((k) => w.patterns[k] ?? []).sort((a, b) => b.n - a.n);
+  const items = [
+    ...pats.map((p) => ({ id: p.id, kind: p.kind, n: p.n, title: p.t, sub: `${w.app(p.app).name}${p.spike != null ? `, mostly around ${hourName(p.spike)}` : ''}`, kept: p.kept ? `${fmtMoney(p.kept)} kept` : '', href: p.story ? storyHref(p.story) : '', link: 'Replay one' })),
+    ...w.groups.map((g) => ({ id: g.id, kind: 'ask', n: g.n, title: g.t, sub: `${w.app(g.app).name}, waiting on you`, kept: '', href: '/needs-you', link: 'Decide' })),
+  ].sort((a, b) => b.n - a.n);
+  $('#feedtag').textContent = 'Today';
+  $('#feedtitle').textContent = w.steps ? `Lumni stepped in ${fmtN(w.steps)} ${plural(w.steps, 'time', 'times')} today` : 'Nothing needed Lumni yet';
+  $('#feedsub').textContent = w.steps ? 'By reason, for the whole day. Most first.' : 'When an AI has to wait, look again or stop, the reason shows up here.';
+  $('#feed').innerHTML = items.map((it) => `<div class="grp ${selPat === it.id ? 'sel' : ''}" data-p="${E(it.id)}">
+      <span class="n" style="--c:${COL[it.kind]}">${fmtN(it.n)}</span>
+      <b title="${E(it.title)}">${E(trunc(it.title))}</b><small>${E(it.sub)}</small>
+      <div class="links">${it.kept ? `<span class="kept">${it.kept}</span>` : ''}${it.href ? `<a href="${it.href}">${it.link}</a>` : ''}</div></div>`).join('');
+  for (const el of $$('#feed .grp')) el.onclick = (ev) => { if (!ev.target.closest('a')) selectPat(el.dataset.p); };
+}
+
+function renderFeed(force) {
+  if (Shell.isReal) return renderFeedReal(force);
+  const seen = [];
+  for (const r of shown) for (const e of r.ev) if (e.m <= nowAt) seen.push(e);
+  const quietSeen = Math.round(D.quietSteps * ((nowAt - A) / Math.max(1e-6, B - A)));
+  // Spread the quiet things' step-ins over reasons by their share of the day.
+  const all = KINDS.flatMap((k) => D.w.patterns[k]);
+  const pSum = all.reduce((s, p) => s + p.n, 0) || 1;
+  const groups = new Map();
+  for (const e of seen) {
+    const g = groups.get(e.p.id) ?? { p: e.p, n: 0, last: 0, things: new Set(), evs: [] };
+    g.n++; g.last = Math.max(g.last, e.m); g.things.add(e.thing); g.evs.push(e);
+    groups.set(e.p.id, g);
+  }
+  // Largest remainder, so the groups add up to the headline.
+  const raw = all.map((p) => (quietSeen * p.n) / pSum);
+  const alloc = raw.map(Math.floor);
+  let rest = quietSeen - alloc.reduce((a, b) => a + b, 0);
+  raw.map((v, i) => [v - alloc[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (rest > 0) { alloc[i]++; rest--; } });
+  if (quietSeen > 0) for (const [pi, p] of all.entries()) {
+    const k = alloc[pi];
+    if (!k) continue;
+    const g = groups.get(p.id) ?? { p, n: 0, last: A, things: new Set(), evs: [] };
+    g.n += k; g.extra = (g.extra || 0) + Math.max(1, Math.round(k / 2.4));
+    groups.set(p.id, g);
+  }
+  const total = [...groups.values()].reduce((s, g) => s + g.n, 0);
+  const individual = total <= 8;
+  const key = `${A}|${B}|${total}|${selPat}|${individual}`;
+  if (!force && key === feedKey) return;
+  feedKey = key;
+
+  const live = nowAt >= NOW - 0.05 && Math.abs(B - NOW) < 0.05;
+  $('#feedtag').textContent = live ? 'Live' : replaying ? `Replaying ${fmtT(nowAt)}` : fmtRange(A, nowAt);
+  $('#feedtitle').textContent = total ? `Lumni stepped in ${fmtN(total)} ${total === 1 ? 'time' : 'times'}` : 'Nothing needed Lumni yet';
+  $('#feedsub').textContent = total
+    ? individual ? `${fmtRange(A, nowAt)}. Newest first. Click one to find it.` : `${fmtRange(A, nowAt)}, grouped by reason. Newest first.`
+    : `Nothing in ${fmtRange(A, nowAt)} was fought over. Move the window to look elsewhere.`;
+
+  let items;
+  if (individual) {
+    items = seen.sort((a, b) => b.m - a.m).map((e) => ({
+      id: `${e.p.id}`, k: `${e.thing}-${e.m}`, kind: e.kind, n: null,
+      title: e.txt ?? e.p.t,
+      sub: `${fmtT(e.m)}, ${D.things[e.thing].t}`,
+      kept: e.p.money ? `$${e.p.money} kept` : '',
+      story: e.p.story,
+    }));
+  } else {
+    items = [...groups.values()].sort((a, b) => b.last - a.last).map((g) => {
+      const nThings = g.things.size + (g.extra || 0);
+      const tc = {};
+      for (const e of g.evs) tc[e.thing] = (tc[e.thing] || 0) + 1;
+      const top = Object.keys(tc).sort((x, y) => tc[y] - tc[x]);
+      const near = top.length ? D.things[top[0]].t : null;
+      const kept = g.p.money ? fmtMoney(g.p.money * g.n) + ' kept' : '';
+      return {
+        id: g.p.id, k: g.p.id, kind: g.p.kind, n: g.n,
+        title: g.p.t,
+        sub: near ? `Last at ${fmtT(g.last)}. Mostly ${near}${nThings > 1 ? `, and ${comma(nThings - 1)} more ${nThings - 1 === 1 ? 'thing' : 'things'}` : ''}` : `On ${comma(nThings)} quieter ${nThings === 1 ? 'thing' : 'things'}`,
+        kept, story: g.p.story,
+      };
+    });
+  }
+  const list = $('#feed');
+  const old = new Map($$('.grp', list).map((e) => [e.dataset.k, e]));
+  const frag = [];
+  for (const it of items) {
+    let el = old.get(it.k);
+    const html = `<span class="n" style="--c:${COL[it.kind]}">${it.n === null ? '' : fmtN(it.n)}</span>
+      <b>${E(it.title)}</b><small>${E(it.sub)}</small>
+      <div class="links">${it.kept ? `<span class="kept">${it.kept}</span>` : ''}<a href="${storyHref(it.story)}">Replay one</a></div>`;
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'grp new';
+      el.dataset.k = it.k;
+      el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
+    }
+    el.dataset.p = it.id;
+    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+    el.classList.toggle('sel', selPat === it.id);
+    el.onclick = (ev) => { if (!ev.target.closest('a')) selectPat(it.id); };
+    if (it.n === null) el.querySelector('.n').style.cssText = `--c:${COL[it.kind]};min-width:12px;width:12px;height:12px;padding:0;margin-top:3px`;
+    frag.push(el);
+  }
+  old.forEach((e, k) => { if (!frag.includes(e)) e.remove(); });
+  frag.forEach((e, i) => { if (list.children[i] !== e) list.insertBefore(e, list.children[i] ?? null); });
+  if (!items.length) list.innerHTML = '';
+}
+
+// ─── replay ──────────────────────────────────────────
+let raf = 0, replaying = false;
+function stopReplay() { cancelAnimationFrame(raf); replaying = false; }
+function replay() {
+  stopReplay();
+  replaying = true;
+  const t0 = performance.now(), dur = 3600;
+  const step = (t) => {
+    const p = Math.min(1, (t - t0) / dur);
+    const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    if (p >= 1) replaying = false;
+    setNow(A + e * (B - A));
+    if (p >= 1 && Q.has('tip')) { const c = [...clusters].filter((x) => Q.get('tip') !== 'lease' || D.things[x.ev[0]?.thing]?.lease?.holder).sort((x, y) => y.ev.length - x.ev.length)[0]; if (c) { showTip(c, c.el); if (Q.get('tip') === 'sel') select(clusters.indexOf(c)); } }
+    if (p < 1) raf = requestAnimationFrame(step);
+  };
+  setNow(A);
+  raf = requestAnimationFrame(step);
+}
+$('#replay').onclick = replay;
+
+$$('.seg button').forEach((b) => (b.onclick = () => {
+  stopReplay();
+  if (b.dataset.z === 'day') { A = 0; B = NOW; }
+  else { B = Math.min(NOW, Math.max(60, B)); A = Math.max(0, B - 60); }
+  nowAt = B;
+  renderDetail(true);
+  replay();
+}));
+
+const Q = new URLSearchParams(location.search);
+bindBrush();
+Shell.boot({
+  nav: 'Day map',
+  onWorld(w) {
+    if (!w) return;
+    stopReplay();
+    hideTip();
+    NOW = Math.max(1, Math.min(1440, w.nowH * 60));
+    D = build(w);
+    // Your workspace is counted by the hour, so it opens on the whole day.
+    const day = Q.get('zoom') === 'day' || (Shell.isReal && Q.get('zoom') !== 'hour');
+    A = day ? 0 : Math.max(0, NOW - 60); B = NOW; nowAt = A; sel = null; selPat = null;
+    const est = $('#est');
+    est.hidden = !Shell.isReal || !D.things.length;
+    est.innerHTML = D.w.things.some((t) => t.hours)
+      ? '<b>Step-ins sit in the hour they happened.</b> Within an hour they’re spread out, and each row’s shading follows the day’s hourly activity.'
+      : '<b>Times on these rows are estimates.</b> Your workspace counts each thing’s touches and step-ins for the day, not when each happened, so rows follow the day’s hourly shape.';
+    renderHead();
+    drawOverview();
+    renderDetail(true);
+    replay();
+  },
+});
+addEventListener('resize', () => { if (D) { drawOverview(); renderDetail(false); } });
+</script>
+</body>
+</html>

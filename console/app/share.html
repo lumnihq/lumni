@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Share proof</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  .body { display: grid; grid-template-columns: 540px 1fr; gap: 44px; padding: 34px 64px 50px 40px; align-items: start; }
+
+  .sheet { padding: 26px 26px 22px; border-radius: 24px; }
+  .sheet h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .sheet .lead { color: var(--ink2); font-size: 14.5px; margin-top: 6px; }
+  .lbl { font-size: 13px; font-weight: 650; color: var(--ink2); margin: 20px 0 8px; }
+  .link { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 6px 0 14px; border-radius: 12px; background: var(--wash); font-family: var(--mono); font-size: 13px; }
+  .link span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link .btn { height: 34px; font-family: var(--sans); font-size: 13px; }
+  .link .btn.copied { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+  .note { margin-top: 8px; font-size: 12.5px; line-height: 1.45; color: var(--ink2); }
+
+  .people { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+  .person { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .person:last-child { border: 0; color: var(--accent); font-weight: 600; font-size: 14px; }
+  .person .human { width: 34px; height: 34px; font-size: 12px; }
+  .person .tx { flex: 1; font-size: 14px; font-weight: 600; }
+  .person .tx small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 500; }
+  .check { width: 20px; height: 20px; border-radius: 6px; box-shadow: inset 0 0 0 2px var(--line2); display: grid; place-items: center; color: #fff; font-size: 12px; transition: all .2s; }
+  .person.on .check { background: var(--accent); box-shadow: none; }
+  .email { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+  .email span { color: var(--accent); font-weight: 700; }
+  .email input { flex: 1; border: 0; background: none; font: 600 14px var(--sans); color: var(--ink); }
+  .email input:focus { outline: none; }
+  .email:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+
+  .toggles { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+  .tg { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .tg:last-child { border: 0; }
+  .tg .tx { flex: 1; font-size: 14px; font-weight: 600; }
+  .tg .tx small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 500; }
+  .sw { width: 38px; height: 22px; border-radius: 999px; background: var(--line2); position: relative; transition: background .25s; flex: none; }
+  .sw::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .3s var(--spring); }
+  .tg.on .sw { background: var(--accent); }
+  .tg.on .sw::after { transform: translateX(16px); }
+
+  .exp { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; font-weight: 600; }
+  .foot { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+  .foot small { color: var(--ink2); font-size: 12.5px; flex: 1; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  /* Other actions worth sharing. */
+  .pick { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pick button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 34px; padding: 0 12px 0 10px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .pick button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick button[aria-pressed='true'] { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .pick i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+
+  /* What they'll see. */
+  .pv-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); margin-bottom: 12px; }
+  .browser { border-radius: 20px; background: #fff; box-shadow: var(--shadow-lg); overflow: hidden; transform: perspective(2000px) rotateY(-3deg); transform-origin: left center; transition: transform .6s var(--ease); }
+  .browser:hover { transform: none; }
+  .chrome { height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 14px; background: #f3f3f6; border-bottom: 1px solid var(--line); }
+  .chrome i { width: 10px; height: 10px; border-radius: 50%; background: #dcdce3; }
+  .chrome .url { margin-left: 14px; flex: 1; min-width: 0; height: 24px; border-radius: 8px; background: #fff; display: flex; align-items: center; padding: 0 10px; font-size: 12px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .pub { padding: 34px 40px 30px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .brand .logo { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 14px; }
+  .pub .status { display: inline-flex; align-items: center; gap: 8px; margin-top: 26px; padding: 5px 12px 5px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 700; }
+  .pub .status i { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 11px; }
+  .pub .status.bad { background: var(--bad-bg); color: var(--bad); }
+  .pub .status.bad i { background: var(--red); }
+  .pub .status.none { background: var(--wash); color: var(--ink2); }
+  .pub .status.none i { background: var(--ink3); }
+  .pub h2 { font-size: 40px; font-weight: 700; letter-spacing: -.035em; margin-top: 12px; line-height: 1.05; text-wrap: balance; }
+  .pub h2 + p { color: var(--ink2); margin-top: 8px; font-size: 15px; }
+
+  .sec { overflow: hidden; transition: max-height .5s var(--ease), opacity .4s, margin .5s var(--ease); max-height: 400px; opacity: 1; margin-top: 24px; }
+  .sec.off { max-height: 0; opacity: 0; margin-top: 0; }
+  .sec h4 { font-size: 13px; font-weight: 650; color: var(--ink2); margin-bottom: 10px; }
+  .tline { position: relative; padding-left: 26px; }
+  .tline::before { content: ''; position: absolute; left: 8px; top: 8px; bottom: 8px; border-left: 2px solid var(--line); }
+  .ev { position: relative; padding: 6px 0 10px; font-size: 14px; font-weight: 600; }
+  .ev small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 500; }
+  .ev::before { content: ''; position: absolute; left: -24px; top: 9px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 2.5px var(--ink3); }
+  .ev.ok::before { box-shadow: inset 0 0 0 4px var(--accent); }
+  .ev.stop::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-line); }
+  .ev.bad::before { box-shadow: inset 0 0 0 4px var(--red); }
+  /* A collapsible event keeps its dot inside its own box. */
+  .tline .ev.sec { margin-left: -26px; padding-left: 26px; }
+  .tline .ev.sec::before { left: 2px; }
+  .ev time { position: absolute; right: 0; top: 7px; font-size: 12.5px; color: var(--ink3); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chk { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--wash); font-size: 13px; font-weight: 600; }
+  .chk i { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-style: normal; font-size: 10px; display: grid; place-items: center; flex: none; }
+  .chk.hit i { box-shadow: 0 0 0 3px var(--accent-line); }
+  .chk.bad { background: var(--bad-bg); color: var(--bad); }
+  .chk.bad i { background: var(--red); }
+  .chk.none { color: var(--ink2); }
+  .chk.none i { background: var(--ink3); }
+  .byline { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; font-weight: 600; }
+  .pubfoot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink3); font-weight: 600; }
+  .pubfoot b { color: var(--ink); }
+  .blank { padding: 60px 40px; text-align: center; color: var(--ink2); font-size: 14.5px; line-height: 1.5; }
+  .blank b { display: block; color: var(--ink); font-size: 20px; margin-bottom: 6px; }
+
+  /* Your workspace: making real links. */
+  .swapnote { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--ink); font-size: 13px; line-height: 1.45; font-weight: 550; }
+  .swapnote a, .note a { color: var(--accent); font-weight: 650; }
+  .exp.sel { position: relative; cursor: pointer; }
+  .exp.sel select { appearance: none; -webkit-appearance: none; border: 0; background: none; font: 600 14px var(--sans); color: var(--ink); flex: 1; height: 100%; cursor: pointer; }
+  .exp.sel select:focus { outline: none; }
+  .exp.sel:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+  .email.bad { box-shadow: inset 0 0 0 2px var(--red); }
+  .note .err { color: var(--bad); font-weight: 650; }
+  .made { margin-top: 18px; padding: 14px; border-radius: 16px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .made.pop { animation: made .6s var(--spring) both; }
+  @keyframes made { from { transform: translateY(10px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+  .made-h { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+  .made-h i { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-style: normal; font-size: 11px; }
+  .made .link { background: #fff; }
+  .links { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+  .lk { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); transition: opacity .35s, transform .35s var(--ease); }
+  .lk:last-child { border: 0; }
+  .lk.going { opacity: .3; transform: translateX(8px); }
+  .lk .tx { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lk .tx small { display: block; font-size: 12px; color: var(--ink2); font-weight: 500; }
+  .lk.off .tx { color: var(--ink3); }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+  .btn.sm.confirm { background: var(--ink); color: #fff; box-shadow: none; }
+
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 100px); display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 12px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 20px 40px -12px rgba(13,14,20,.5); transition: transform .5s var(--spring); z-index: 20; }
+  .toast.on { transform: translate(-50%, 0); }
+  .toast i { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; font-style: normal; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <section class="body">
+    <article class="card sheet rise" id="sheet"></article>
+    <div class="rise" style="animation-delay:.12s">
+      <div class="pv-label"><span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span><span id="pvl">What they’ll see, live as you change it</span></div>
+      <div class="browser"><div class="chrome"><i></i><i></i><i></i><span class="url" id="url"></span></div><div class="pub" id="pub"></div></div>
+    </div>
+  </section>
+  <div class="toast" id="toast"><i>✓</i><span></span></div>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const E = (s) => Shell.esc(s);
+const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
+const lowerFirst = (s) => (s && !/^[A-Z]{2}/.test(s) ? s[0].toLowerCase() + s.slice(1) : s || '');
+
+// The demo: one made-up refund, shared with a made-up customer.
+const DEMO = {
+  title: 'Share proof of Omar’s refund',
+  lead: 'Send a link to this one refund. They see what happened and how it was checked, never your rules, prices or other customers.',
+  link: 'https://proof.lumni.app/acme/r-c204-k7q',
+  people: [
+    { i: 'OH', n: 'Omar Haddad', s: 'Customer, omar@haddad.io', on: true },
+    { i: 'JP', n: 'Jess Park', s: 'Finance, Acme', on: false },
+  ],
+  toggles: [
+    { id: 'what', t: 'What happened', s: 'The refund, the amount and when', on: true },
+    { id: 'proof', t: 'How it was checked', s: 'What Lumni read back from Stripe', on: true },
+    { id: 'stop', t: 'The second refund that was stopped', s: 'Shows nothing went out twice', on: true },
+    { id: 'ai', t: 'Which AI did it', s: 'Off by default, for your team’s privacy', on: false },
+  ],
+  brand: 'Acme', status: ['ok', 'Refunded once, and proven'],
+  h: '$60 back to Omar Haddad', p: 'Refund for order #4471. It reached your card on Sep 25.',
+  events: [['ok', 'Refund requested', 'From Acme support', '2:11 PM'], ['ok', 'Refund sent by Stripe', 're_3Pq…8xK', '2:11 PM'], ['stop', 'A second refund was stopped', 'Lumni saw it had already gone out', '2:13 PM', 'stop']],
+  checks: [['ok', 'Stripe shows one refund'], ['ok', 'Amount is $60.00'], ['ok', 'Right card, ending 4242'], ['ok', 'Nothing else changed']],
+  byline: ['Su', 'Support AI at Acme, checked by Lumni'],
+  receipt: 'Receipt r_c204',
+  send: 'Send to Omar',
+};
+
+// ─── drawing the demo ───────────────────────────────
+
+let d, on;
+
+function demoSheet() {
+  $('#sheet').innerHTML = `
+    <h1>${E(d.title)}</h1>
+    <p class="lead">${E(d.lead)}</p>
+    <div class="lbl">Link</div>
+    <div class="link"><span>${E(d.link)}</span><button class="btn" id="copy">Copy</button></div>
+    <div class="lbl">Send to</div>
+    <div class="people">${d.people.map((p, i) => `<div class="person ${p.on ? 'on' : ''}" data-i="${i}"><span class="check">✓</span><span class="human">${p.i}</span><span class="tx">${p.n}<small>${p.s}</small></span></div>`).join('')}
+      <div class="person">+ Add someone by email</div></div>
+    <div class="lbl">What they can see</div>
+    ${togglesHtml()}
+    <div class="lbl">Link stops working</div><div class="exp">7 days after you send it <span style="color:var(--ink3)">⌄</span></div>
+    <div class="foot"><small>You can turn the link off any time.</small><button class="btn">Cancel</button><button class="btn accent" id="send">${d.send}</button></div>`;
+  wireToggles();
+  $$('.person[data-i]').forEach((p) => (p.onclick = () => p.classList.toggle('on')));
+  $('#copy').onclick = (e) => { e.currentTarget.textContent = 'Copied'; e.currentTarget.classList.add('copied'); };
+  $('#send').onclick = () => {
+    $('#toast span').textContent = 'Sent. They can open it for 7 days.';
+    $('#toast').classList.add('on');
+    setTimeout(() => $('#toast').classList.remove('on'), 2600);
+  };
+}
+
+function demoPub() {
+  $('#url').textContent = d.link;
+  const [tone, text] = d.status;
+  $('#pub').innerHTML = `
+    <div class="brand"><span class="logo">${E(d.brand.trim()[0] ?? 'L')}</span>${E(d.brand)}</div>
+    <span class="status ${tone}"><i>${MARK[tone]}</i>${E(text)}</span>
+    <h2>${E(d.h)}</h2><p>${E(d.p)}</p>
+    <div class="sec" data-sec="what"><h4>What happened</h4><div class="tline">${d.events.map(([c, t, s, tm, k]) => `<div class="ev ${c} ${k ? 'sec' : ''}" ${k ? `data-sec="${k}" style="margin-top:0"` : ''}>${E(t)}<small>${E(s)}</small><time>${E(tm)}</time></div>`).join('')}</div></div>
+    <div class="sec" data-sec="proof"><h4>How it was checked</h4><div class="checks">${d.checks.map(([c, t]) => `<div class="chk ${c}"><i>✓</i>${E(t)}</div>`).join('')}</div></div>
+    <div class="sec" data-sec="ai"><h4>Who did it</h4><div class="byline"><span class="ai">${E(d.byline[0])}</span>${E(d.byline[1])}</div></div>
+    <div class="pubfoot"><span>Proven by <b>lumni</b></span><span>${E(d.receipt)}</span></div>`;
+  applyPub();
+}
+
+const MARK = { ok: '✓', bad: '!', none: '?' };
+
+function togglesHtml() {
+  return `<div class="toggles">${d.toggles.map((t) => `<div class="tg ${on[t.id] ? 'on' : ''}" data-id="${t.id}" role="switch" aria-checked="${!!on[t.id]}" tabindex="0"><span class="tx">${E(t.t)}<small>${E(t.s)}</small></span><span class="sw"></span></div>`).join('')}</div>`;
+}
+
+function wireToggles() {
+  $$('.tg').forEach((t) => (t.onclick = () => {
+    on[t.dataset.id] = !on[t.dataset.id];
+    t.classList.toggle('on', on[t.dataset.id]);
+    t.setAttribute('aria-checked', String(on[t.dataset.id]));
+    if (d.real) { live = null; realPub(); paintMadeNow(); } else applyPub();
+  }));
+}
+
+function applyPub() {
+  $$('#pub [data-sec]').forEach((e) => e.classList.toggle('off', !on[e.dataset.sec]));
+}
+
+function blank(title, text) {
+  d = null;
+  $('#sheet').innerHTML = `<h1>${E(title)}</h1><p class="lead">${E(text)}</p><div class="foot"><small></small><a class="btn primary" href="/journey">Open Journey</a></div>${madeListHtml()}`;
+  wireMadeList();
+  $('#url').textContent = location.origin + '/journey';
+  $('#pub').innerHTML = `<div class="blank"><b>Nothing to show yet</b>Pick an action and this is what someone you send it to would see.</div>`;
+}
+
+// ─── your workspace: a real public link to one action ─
+//
+// POST /v1/proofs makes a link anyone can open. What it shows is a strict
+// allowlist (GET /v1/public/proofs/{token}): the workspace name, a status
+// (proven, unproven or pending), the receipt id, and only the parts you
+// switch on: what (the operation, when, the app), checks (one line: was the
+// app outcome verified), stopped_repeat (when a repeat of it was stopped) and
+// actor (the AI's name). The preview shows exactly that and nothing more.
+
+const SHOW = ['what', 'checks', 'stopped_repeat', 'actor'];
+const STATUS = { proven: ['ok', 'Proven in the app'], unproven: ['bad', 'The app doesn’t show it'], pending: ['none', 'Not proven yet'] };
+const EXPIRES = [[24, '1 day'], [168, '7 days'], [720, '30 days'], [2160, '90 days']];
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const NEWER = 'Needs a newer Lumni API';
+const STORE = 'lumni.share.links';
+const BAD = ['MISMATCH', 'PARTIAL', 'FAILED'];
+
+let live = null;      // the live projection of the link just made, while its toggles are unchanged
+let notif;            // GET /v1/config/notifications: undefined while unread, null when it can't be read
+let form = { exp: 168, emails: '' };
+let made = (() => { try { return JSON.parse(sessionStorage.getItem(STORE) ?? '[]'); } catch { return []; } })();
+const keep = () => { try { sessionStorage.setItem(STORE, JSON.stringify(made.slice(0, 20))); } catch {} };
+const old = () => Shell.world?.source === 'snapshots';
+
+const when = (at) => new Date(at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const statusOf = (o) => (o?.status === 'VERIFIED' ? 'proven' : BAD.includes(o?.status) ? 'unproven' : 'pending');
+
+/** The share sheet for one action, from its journey and its raw record. */
+function fromJourney(j, raw, w, swappedFrom) {
+  const op = raw?.action?.operation ?? null;
+  const org = Shell.session?.tenant?.name ?? w.scale.org ?? 'Your workspace';
+  // A repeat stopped against this action is only known when we came from it.
+  // The link shows the first one stopped, which may be earlier, so no time until it's live.
+  const stopped = swappedFrom ? { at: null } : null;
+  const full = {
+    workspace: org,
+    status: statusOf(j.outcome),
+    receipt: j.receipt ?? null,
+    what: op ? { summary: op.replaceAll('.', ' '), at: j.at, app: op.split('.')[0] } : null,
+    checks: [{ t: 'App outcome verified', ok: statusOf(j.outcome) === 'proven' }],
+    stopped_repeat: stopped,
+    actor: j.who.name,
+  };
+  return {
+    real: true, id: j.id, j, swappedFrom, full, initials: j.who.initials,
+    title: `Share proof of “${clip(j.did, 34)}”`,
+    lead: 'Make a link anyone can open, no sign-in. It shows only what you switch on below, never your rules, keys, amounts or customers.',
+    toggles: [
+      { id: 'what', t: 'What it was', s: op ? `“${op.replaceAll('.', ' ')}”, when, and the app` : 'The operation, when, and the app', on: true },
+      { id: 'checks', t: 'How it was checked', s: 'Whether Lumni verified it in the app', on: true },
+      { id: 'stopped_repeat', t: 'The repeat that was stopped', s: stopped ? 'Lumni stopped a repeat of it, so this shows' : 'Shows only if Lumni stopped a repeat of it', on: true },
+      { id: 'actor', t: 'Which AI did it', s: 'Off by default, for your team’s privacy', on: false },
+    ],
+  };
+}
+
+function showOf() {
+  return Object.fromEntries(SHOW.map((k) => [k, !!on[k]]));
+}
+
+function realSheet(picks) {
+  const swap = d.swappedFrom;
+  const mail = notif === undefined ? 'Checking whether email is set up…'
+    : notif === null ? 'Lumni couldn’t tell whether email is set up. You can still copy the link.'
+    : notif.channels.some((c) => c.kind === 'email') ? 'Lumni emails the link to each address.'
+    : 'Email isn’t set up yet, so nobody would be emailed. <a href="/settings">Set it up in Settings</a>, or copy the link.';
+  $('#sheet').innerHTML = `
+    <h1>${E(d.title)}</h1>
+    <p class="lead">${E(d.lead)}</p>
+    ${swap ? `<p class="swapnote">You picked a stopped repeat. Its proof lives on the original, which shows the repeat was stopped. <a href="/journey?id=${encodeURIComponent(swap.id)}">Open the repeat</a></p>` : ''}
+    ${picks.length > 1 ? `<div class="lbl">Which action</div><div class="pick" id="pick">${picks.map((p) => `<button data-id="${E(p.story)}" aria-pressed="${p.story === d.id || p.story === swap?.id}" title="${E(p.t)}"><i style="background:${p.color}"></i><span>${E(clip(p.t, 46))}</span></button>`).join('')}</div>` : ''}
+    <div class="lbl">What they can see</div>
+    ${togglesHtml()}
+    <div class="row2">
+      <div><div class="lbl">Link stops working</div>
+        <label class="exp sel"><select id="exp" aria-label="Link stops working">${EXPIRES.map(([h, t]) => `<option value="${h}" ${h === form.exp ? 'selected' : ''}>${t} after you make it</option>`).join('')}</select><span style="color:var(--ink3)">⌄</span></label></div>
+    </div>
+    <div class="lbl">Email it to <span style="font-weight:500;color:var(--ink3)">(optional)</span></div>
+    <label class="email" id="emailbox"><span>+</span><input type="text" id="email" placeholder="name@company.com, another@company.com" autocomplete="off" value="${E(form.emails)}" /></label>
+    <p class="note" id="mailnote">${mail}</p>
+    <div class="foot"><small>Anyone with the link can open it until it stops working or you turn it off.</small><a class="btn" href="/journey?id=${encodeURIComponent(d.id)}">Open its journey</a><button class="btn accent" id="create" ${old() ? `disabled title="${NEWER}"` : ''}>Create link</button></div>
+    <div id="madenow"></div>
+    <div id="madelist">${madeListHtml()}</div>`;
+  wireToggles();
+  $('#exp').onchange = (e) => { form.exp = Number(e.target.value); };
+  $('#email').oninput = (e) => { form.emails = e.target.value; $('#emailbox').classList.remove('bad'); if (notif !== undefined) $('#mailnote').innerHTML = mail; };
+  $('#create').onclick = create;
+  $('#pick')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b && b.dataset.id !== d.id && b.dataset.id !== swap?.id) loadReal(Shell.world, b.dataset.id);
+  });
+  wireMadeList();
+  paintMadeNow();
+}
+
+/** The public page, as the projection would read with these switches. */
+function realPub() {
+  const P = live ?? d.full;
+  const show = live ? { what: true, checks: true, stopped_repeat: true, actor: true } : on;
+  const [tone, text] = STATUS[P.status] ?? STATUS.pending;
+  const url = live ? made.find((m) => m.id === live.id)?.url : null;
+  $('#url').textContent = url ?? 'Your link appears here once you make it';
+  $('#pvl').textContent = live ? 'What they see now, read from the live link' : 'What they’ll see, live as you change it';
+  const sec = (k, html) => (P[k] ? `<div class="sec ${show[k] ? '' : 'off'}" data-sec="${k}">${html}</div>` : '');
+  $('#pub').innerHTML = `
+    <div class="brand"><span class="logo">${E(String(P.workspace ?? 'L').trim()[0] ?? 'L')}</span>${E(P.workspace)}</div>
+    <span class="status ${tone}"><i>${MARK[tone]}</i>${E(text)}</span>
+    ${sec('what', `<h2>${E(cap(P.what?.summary ?? ''))}</h2><p>${E(when(P.what?.at))}, in ${E(cap(P.what?.app ?? ''))}</p>`)}
+    ${sec('checks', `<h4>How it was checked</h4><div class="checks">${(P.checks ?? []).map((c) => `<div class="chk ${c.ok ? 'ok' : 'none'}"><i>${c.ok ? '✓' : '?'}</i>${E(c.t)}${c.ok ? '' : ': not yet'}</div>`).join('')}</div>`)}
+    ${sec('stopped_repeat', `<h4>A repeat was stopped</h4><div class="tline"><div class="ev stop">A second one was stopped<small>Lumni saw the same thing again and didn’t let it through</small><time>${P.stopped_repeat?.at ? E(when(P.stopped_repeat.at)) : ''}</time></div></div>`)}
+    ${sec('actor', `<h4>Who did it</h4><div class="byline"><span class="ai">${E(d.initials ?? '')}</span>${E(P.actor)}</div>`)}
+    <div class="pubfoot"><span>Proven by <b>lumni</b></span><span>${P.receipt ? `Receipt ${E(clip(P.receipt, 26))}` : ''}</span></div>`;
+}
+
+// ─── making and turning off links ──────────────────
+
+function emailsOf() {
+  const list = form.emails.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+  const bad = list.filter((s) => !EMAIL.test(s));
+  return { list: [...new Set(list)], bad };
+}
+
+async function create(e) {
+  const btn = e.currentTarget;
+  form.emails = $('#email').value;
+  const { list, bad } = emailsOf();
+  if (bad.length) {
+    $('#emailbox').classList.add('bad');
+    $('#mailnote').innerHTML = `<span class="err">${E(clip(bad[0], 40))} isn’t an email address. Fix it, or clear the box.</span>`;
+    return;
+  }
+  if (!SHOW.some((k) => on[k])) return Shell.toast('Switch on at least one thing for them to see.', 'bad');
+  const action = d.id;
+  const label = d.j.did;
+  const show = showOf();
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  const body = { action_id: action, show, expires_in_hours: form.exp, ...(list.length ? { recipients: list } : {}) };
+  // The world doesn't carry proofs; it's re-read after, like every write.
+  const r = await Shell.write('POST', '/v1/proofs', body, { reload: false });
+  btn.disabled = false;
+  btn.textContent = 'Create link';
+  if (!r) return;
+  const sent = r.sent_to ?? [];
+  Shell.toast(sent.length ? `Link made and emailed to ${sent.length === 1 ? sent[0] : `${sent.length} people`}.` : 'Link made. Anyone with it can open it.');
+  made.unshift({ id: r.id, url: r.url, token: r.token, expires_at: r.expires_at, sent_to: sent, asked: list, action, label, show, at: Date.now(), off: false });
+  keep();
+  form.emails = '';
+  if (d?.id === action) { $('#email').value = ''; paintMadeNow(true); $('#madelist').innerHTML = madeListHtml(); wireMadeList(); }
+  readLive(r.id, r.token);
+  setTimeout(() => Shell.refresh(), 600);
+}
+
+/** Read the link back the way a stranger would, so the preview is the real page. */
+async function readLive(id, token) {
+  let p;
+  try { p = await Shell.api.get(`/v1/public/proofs/${encodeURIComponent(token)}`); } catch { return; }
+  const m = made.find((x) => x.id === id);
+  if (!d || !m || m.action !== d.id || m.off) return;
+  live = { ...p, id };
+  realPub();
+}
+
+function paintMadeNow(pop = false) {
+  const host = $('#madenow');
+  if (!host || !d) return;
+  const m = made.find((x) => x.action === d.id && !x.off);
+  const same = m && SHOW.every((k) => !!m.show[k] === !!on[k]);
+  if (!m || !same) {
+    host.innerHTML = '';
+    if (!live) $('#create') && ($('#create').textContent = m ? 'Create another link' : 'Create link');
+    return;
+  }
+  const mail = m.sent_to.length
+    ? `Emailed to ${E(m.sent_to.join(', '))}.`
+    : notif && notif.channels.some((c) => c.kind === 'email')
+      ? 'Nobody was emailed. Copy the link and send it yourself.'
+      : `Not emailed: email isn’t set up yet. <a href="/settings">Set it up in Settings</a>, or copy the link and send it yourself.`;
+  host.innerHTML = `<div class="made ${pop ? 'pop' : ''}">
+    <div class="made-h"><i>✓</i>Your link is live</div>
+    <div class="link"><span title="${E(m.url)}">${E(m.url)}</span><button class="btn" id="copy">Copy</button><a class="btn" href="${E(m.url)}" target="_blank" rel="noopener noreferrer">Open</a></div>
+    <p class="note">Stops working ${E(when(m.expires_at))}. ${mail}</p></div>`;
+  $('#create').textContent = 'Create another link';
+  $('#copy').onclick = async (e) => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(m.url); } catch { return Shell.toast('Your browser didn’t allow copying. Select the link and copy it yourself.', 'bad'); }
+    b.textContent = 'Copied';
+    b.classList.add('copied');
+  };
+}
+
+function madeListHtml() {
+  if (!made.length) return '';
+  return `<div class="lbl">Links you made</div><div class="links">${made.map((m) => `
+    <div class="lk ${m.off ? 'off' : ''}" data-id="${E(m.id)}">
+      <span class="tx">${E(clip(m.label, 40))}<small>${m.off ? 'Turned off. It no longer opens.' : `${SHOW.filter((k) => m.show[k]).length} of 4 parts shown, stops ${E(when(m.expires_at))}`}</small></span>
+      ${m.off ? '' : `<a class="btn sm" href="${E(m.url)}" target="_blank" rel="noopener noreferrer">Open</a><button class="btn sm" data-off ${old() ? `disabled title="${NEWER}"` : ''}>Turn off link</button>`}
+    </div>`).join('')}</div>`;
+}
+
+function wireMadeList() {
+  $$('.lk [data-off]').forEach((b) => (b.onclick = async () => {
+    // A second click on "Confirm" turns it off; anything else backs out.
+    if (!b.classList.contains('confirm')) {
+      b.classList.add('confirm');
+      b.textContent = 'Confirm, turn it off';
+      clearTimeout(b._t);
+      b._t = setTimeout(() => { b.classList.remove('confirm'); b.textContent = 'Turn off link'; }, 4000);
+      return;
+    }
+    clearTimeout(b._t);
+    const id = b.closest('.lk').dataset.id;
+    b.disabled = true;
+    const r = await Shell.write('DELETE', `/v1/proofs/${encodeURIComponent(id)}`, undefined, { ok: 'Link turned off. It no longer opens for anyone.', reload: false });
+    if (!r) { b.disabled = false; b.classList.remove('confirm'); b.textContent = 'Turn off link'; return; }
+    const m = made.find((x) => x.id === id);
+    if (m) m.off = true;
+    keep();
+    if (live?.id === id) { live = null; if (d?.real) realPub(); }
+    const row = b.closest('.lk');
+    row.classList.add('going');
+    setTimeout(() => {
+      $('#madelist') ? ($('#madelist').innerHTML = madeListHtml()) : null;
+      wireMadeList();
+      paintMadeNow();
+    }, 380);
+    setTimeout(() => Shell.refresh(), 600);
+  }));
+}
+
+// ─── which action ───────────────────────────────────
+
+const KCOL = { stop: 'var(--accent)', bad: 'var(--red)', recheck: '#f08a24', wait: '#3b9eff' };
+
+function picksOf(w) {
+  return ['stop', 'bad', 'recheck', 'wait'].map((k) => {
+    const p = (w.patterns?.[k] ?? []).find((x) => x.story);
+    return p && { ...p, color: KCOL[k] };
+  }).filter(Boolean).slice(0, 3);
+}
+
+async function readNotif() {
+  if (old()) { notif = null; return; }
+  try { notif = await Shell.api.get('/v1/config/notifications'); notif.channels ??= []; } catch { notif = null; }
+}
+
+let seq = 0;
+async function loadReal(w, id) {
+  const mine = ++seq;
+  const picks = picksOf(w);
+  id ??= w.patterns?.stop?.find((p) => p.story)?.story ?? picks[0]?.story ?? null;
+  if (!id) {
+    try { id = (await Shell.api.get('/v1/console/receipts?limit=1'))?.items?.[0]?.id ?? null; } catch {}
+  }
+  if (mine !== seq) return;
+  if (!id) return blank('Nothing to share yet', 'Once your AIs send actions through Lumni, you can share proof of any one of them from here.');
+  const read = (x) => Promise.all([
+    Shell.api.get(`/v1/console/journey/${encodeURIComponent(x)}`),
+    old() ? Promise.resolve(null) : Shell.api.get(`/v1/actions/${encodeURIComponent(x)}/journey`).catch(() => null),
+  ]);
+  let j, raw, from = null;
+  try {
+    [j, raw] = await read(id);
+    // A stopped repeat has nothing to prove; its original does, and shows the stop.
+    if (j.duplicateOf) {
+      from = { id: j.id, at: j.at };
+      [j, raw] = await read(j.duplicateOf);
+    }
+  } catch (e) {
+    if (mine !== seq || e.status === 401) return;
+    return blank(e.status === 404 ? 'That action isn’t in this workspace' : 'This action couldn’t be read', e.status === 404 ? 'Pick one of today’s actions on Journey and share it from there.' : e.message);
+  }
+  if (mine !== seq) return;
+  const url = new URL(location.href);
+  url.searchParams.set('id', from?.id ?? j.id);
+  history.replaceState(null, '', url.pathname + url.search);
+  const same = d?.id === j.id;
+  const prevOn = on;
+  d = fromJourney(j, raw, w, from);
+  on = same && prevOn ? prevOn : Object.fromEntries(d.toggles.map((t) => [t.id, t.on]));
+  if (!same) live = null;
+  const chosen = from?.id ?? j.id;
+  realSheet(picks.some((p) => p.story === chosen) ? picks : [{ story: chosen, t: j.did, color: 'var(--ink)' }, ...picks].slice(0, 3));
+  realPub();
+}
+
+const ask = new URLSearchParams(location.search);
+const shot = ask.get('shot');
+Shell.boot({
+  nav: 'Share',
+  async onWorld(w, first) {
+    if (!Shell.isReal) {
+      d = DEMO;
+      on = Object.fromEntries(d.toggles.map((t) => [t.id, t.on]));
+      demoSheet();
+      demoPub();
+      return;
+    }
+    if (first) await readNotif();
+    await loadReal(w, first ? ask.get('id') : d?.swappedFrom?.id ?? d?.id ?? null);
+    if (first && shot) runShot(shot);
+  },
+});
+
+// ─── screenshot states ──────────────────────────────
+// ?shot=create-link fills an email and makes a link; ?shot=revoke-link makes
+// one, then turns it off with the inline confirm.
+async function runShot(s) {
+  const until = async (f, ms = 4000) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < ms) await sleep(60); return f(); };
+  if (s !== 'create-link' && s !== 'revoke-link') return;
+  $('#email').value = 'dana@example.com';
+  $('#email').dispatchEvent(new Event('input'));
+  $('#create').click();
+  if (!(await until(() => $('.lk [data-off]')))) return;
+  if (s === 'revoke-link') {
+    // After the world is read again (600 ms after the write), so the list is settled.
+    await sleep(1500);
+    $('.lk [data-off]').click();
+    await sleep(300);
+    $('.lk [data-off]').click();
+  }
+}
+</script>
+</body>
+</html>

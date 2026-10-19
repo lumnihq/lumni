@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Fixes</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --k-stop: var(--accent); --k-recheck: #f08a24; --k-wait: #3b9eff; --k-ask: var(--ink); --k-bad: var(--red); --k-blind: #a3a7b3; }
+  .wrap { padding: 34px 40px 56px; }
+
+  /* Header: the sentence, and how a fix goes live. */
+  .head { display: flex; align-items: flex-end; gap: 40px; }
+  .head .eyebrow { font-size: 14px; }
+  .head h1 { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; margin-top: 6px; max-width: 900px; text-wrap: balance; }
+  .head h1 mark { background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 0 10px; white-space: nowrap; }
+  .head h1 .soft { color: var(--ink3); }
+  .head p { margin-top: 10px; color: var(--ink2); font-size: 16px; max-width: 760px; }
+  .steps { margin-left: auto; display: flex; gap: 0; flex: none; padding-bottom: 4px; }
+  .steps div { width: 172px; padding: 0 16px; border-left: 1px solid var(--line2); font-size: 13px; color: var(--ink2); font-weight: 550; line-height: 1.35; }
+  .steps b { display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+  .steps i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 750; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line2); }
+  .steps div:last-child i { background: var(--accent); color: #fff; box-shadow: none; }
+
+  .grid { display: grid; grid-template-columns: 430px minmax(0, 1fr); gap: 20px; margin-top: 30px; align-items: start; }
+
+  /* Left: the findings. */
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .list-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; font-weight: 650; color: var(--ink2); padding: 0 4px 2px; }
+  .find {
+    display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0;
+    padding: 16px 16px 14px 16px; border-radius: 16px; background: var(--paper); text-align: left;
+    box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(13,14,20,.03);
+    transition: box-shadow .25s var(--ease), transform .25s var(--ease);
+    animation: rise .6s var(--ease) both;
+  }
+  .list.quiet .find { animation: none; }
+  .find:hover { box-shadow: inset 0 0 0 1px var(--ink3), var(--shadow); }
+  .find.on { box-shadow: inset 0 0 0 2px var(--accent), 0 14px 30px -16px rgba(91,75,245,.45); }
+  .find .sev { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; position: relative; }
+  .find .sev.hi::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .3; }
+  .find .p { font-size: 15px; font-weight: 650; line-height: 1.3; letter-spacing: -0.005em; }
+  .find .d { grid-column: 2 / 4; font-size: 12.5px; color: var(--ink2); margin-top: 4px; line-height: 1.4; }
+  .find .cost { font-size: 12.5px; font-weight: 700; white-space: nowrap; padding: 3px 9px; border-radius: 999px; background: var(--wash); height: fit-content; }
+  .find .meta { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+  .find .meta .ai { width: 22px; height: 22px; font-size: 9.5px; border-radius: 6px; }
+  .find .meta .who { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .find .meta .who small { color: var(--ink2); font-weight: 500; font-size: 12.5px; }
+  .find .meta .go { margin-left: auto; height: 30px; padding: 0 12px; font-size: 13px; border-radius: 9px; flex: none; }
+  .find.on .go { background: var(--accent); color: #fff; box-shadow: 0 6px 16px -6px rgba(91,75,245,.6); }
+  .find .fix { grid-column: 2 / 4; display: flex; gap: 6px; align-items: baseline; font-size: 12.5px; margin-top: 8px; color: var(--accent); font-weight: 650; }
+  .find .fix span { color: var(--ink3); font-weight: 600; }
+  .state { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .state.done { background: var(--pop); color: var(--ink); }
+
+  .calm { padding: 18px 18px; border-radius: 16px; background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); font-size: 14px; line-height: 1.45; }
+  .calm b { color: var(--ink); display: block; font-size: 15px; margin-bottom: 4px; }
+  .calm .row { display: flex; gap: 8px; margin-top: 14px; }
+
+  /* Right: the fix studio, a card that flips. */
+  .studio-wrap { perspective: 2400px; min-width: 0; }
+  .flip { position: relative; transform-style: preserve-3d; transition: transform 1s cubic-bezier(.3, 1.22, .42, 1); }
+  .flip.on { transform: rotateY(-180deg); }
+  .flip.instant { transition: none; }
+  .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; padding: 26px 28px 26px; min-width: 0; }
+  .face.back { position: absolute; inset: 0; transform: rotateY(180deg); display: flex; flex-direction: column; background: linear-gradient(180deg, #f6f4ff 0%, #ffffff 46%); border-color: var(--accent-line); }
+  .flip.lift { animation: lift 1s var(--ease); }
+  @keyframes lift { 40% { scale: .965; } }
+
+  .s-top { display: flex; align-items: center; gap: 8px; }
+  .s-top .r { margin-left: auto; font-size: 13px; color: var(--ink2); font-weight: 600; }
+  .s-h { font-size: 25px; font-weight: 700; letter-spacing: -0.02em; margin-top: 12px; line-height: 1.2; }
+  .s-sub { color: var(--ink2); margin-top: 4px; font-size: 14.5px; }
+
+  .rule { margin-top: 18px; padding: 18px 20px 14px; border-radius: 16px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); }
+  .rule .lab { font-size: 12.5px; font-weight: 650; color: var(--ink2); display: flex; align-items: center; gap: 8px; }
+  .rule .lab span { margin-left: auto; font-weight: 550; color: var(--ink3); }
+  .sentence { font-size: 25px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.55; margin-top: 6px; }
+  .tok {
+    font: inherit; letter-spacing: inherit; display: inline; padding: 1px 9px 2px; margin: 0 1px;
+    border-radius: 9px; background: var(--paper); color: var(--accent);
+    box-shadow: inset 0 0 0 1.5px var(--accent-line), 0 1px 0 rgba(91,75,245,.08);
+    transition: box-shadow .2s, background .2s; position: relative; white-space: nowrap;
+  }
+  .tok:hover { box-shadow: inset 0 0 0 1.5px var(--accent); background: var(--accent-soft); }
+  .tok::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 8px; vertical-align: 3px; border-right: 2px solid var(--accent-2); border-bottom: 2px solid var(--accent-2); transform: rotate(45deg) translate(-2px, -2px); opacity: .7; }
+  .tok.moved { animation: tokpop .45s var(--spring); }
+  @keyframes tokpop { 30% { transform: translateY(-3px) scale(1.04); } }
+  .tok.ro { cursor: default; }
+  .tok.ro::after { display: none; }
+
+  /* Back-test. */
+  .bt { margin-top: 22px; }
+  .bt-h { display: flex; align-items: center; gap: 10px; }
+  .bt-h h3 { font-size: 15px; font-weight: 700; }
+  .bt-h small { font-size: 13px; color: var(--ink2); font-weight: 550; }
+  .bt-h .legend { margin-left: auto; display: flex; gap: 16px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  .legend { display: flex; gap: 18px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .bignums { display: flex; align-items: baseline; gap: 26px; margin-top: 12px; font-size: 26px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; }
+  .bignums .c b { color: var(--accent); }
+  .bignums .x b { color: var(--red); }
+  .bignums .x.zero b { color: var(--ink); }
+  .bignums small { font-size: 14px; font-weight: 550; color: var(--ink2); letter-spacing: 0; }
+
+  .chart { margin-top: 14px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .day { min-width: 0; }
+  .up, .down { display: flex; gap: 1.5px; }
+  .up { height: 140px; align-items: flex-end; border-bottom: 1.5px solid var(--ink); }
+  .down { height: 30px; align-items: flex-start; padding-top: 3px; }
+  .up i, .down i { flex: 1; min-width: 0; display: block; border-radius: 1.5px 1.5px 0 0; transition: height .55s var(--ease), background .3s; }
+  .up i { background: var(--accent-line); min-height: 1px; animation: growY .8s var(--ease) both; transform-origin: bottom; }
+  .up i.hot { background: var(--accent); }
+  .down i { background: var(--red); border-radius: 0 0 1.5px 1.5px; }
+  .down i.mark { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ink); }
+  @keyframes growY { from { transform: scaleY(0); } }
+  .day .dl { font-size: 11.5px; font-weight: 650; color: var(--ink3); margin-top: 2px; display: flex; justify-content: space-between; }
+  .day .dl b { color: var(--ink2); font-weight: 650; }
+  .day.wk .dl b { color: var(--ink3); }
+
+  /* The mistakes, to inspect. */
+  .mist { margin-top: 12px; border-top: 1px solid var(--line); }
+  .mist-h { display: flex; align-items: baseline; font-size: 13px; font-weight: 650; color: var(--ink2); padding: 12px 0 6px; }
+  .mist-h span { margin-left: auto; font-weight: 550; color: var(--ink3); }
+  .mi { border-bottom: 1px solid var(--line); }
+  .mi > button { width: 100%; display: grid; grid-template-columns: 10px 168px minmax(0, 1fr) 16px; align-items: center; gap: 12px; padding: 10px 2px; text-align: left; font-size: 14px; font-weight: 600; }
+  .mi > button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .mi > button time { font-size: 12.5px; color: var(--ink2); font-weight: 600; white-space: nowrap; }
+  .mi > button .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mi > button svg { color: var(--ink3); transition: transform .25s var(--ease); }
+  .mi.open > button svg { transform: rotate(180deg); }
+  .mi .more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s var(--ease); }
+  .mi.open .more { grid-template-rows: 1fr; }
+  .mi .more > div { overflow: hidden; }
+  .mi .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; padding: 4px 2px 14px 22px; font-size: 13.5px; line-height: 1.45; }
+  .mi .cols small { display: block; font-size: 12px; font-weight: 650; color: var(--ink2); margin-bottom: 3px; }
+  .mi .cols .tip { color: var(--accent); font-weight: 600; }
+  .mi.none > div { padding: 12px 2px; font-size: 13.5px; color: var(--ink2); }
+
+  /* Before and after, and the go button. */
+  .foot { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); align-items: center; }
+  .ba-h { font-size: 13px; font-weight: 650; color: var(--ink2); display: flex; align-items: center; gap: 8px; }
+  .delta { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--pop); color: var(--ink); }
+  .delta.flat { background: var(--wash); color: var(--ink2); }
+  .ba { display: grid; grid-template-columns: 96px minmax(0, 1fr) 92px; align-items: center; gap: 12px; margin-top: 10px; font-size: 13px; font-weight: 600; }
+  .ba > span:first-child { color: var(--ink2); }
+  .ba b { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; }
+  .ba .pipe { height: 14px; border-radius: 7px; background: var(--wash); position: relative; overflow: hidden; }
+  .ba .pipe i {
+    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; min-width: 6px;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.0) 0 10px, rgba(255,255,255,.38) 10px 13px);
+    background-size: 26px 100%; animation: flow 1.2s linear infinite; transition: width .6s var(--ease);
+  }
+  @keyframes flow { to { background-position: 26px 0; } }
+  .go-box { display: flex; flex-direction: column; gap: 8px; }
+  .go-box .btn { justify-content: center; height: 44px; font-size: 15px; }
+  .go-box .row { display: flex; gap: 8px; }
+  .go-box .row .btn { flex: 1; height: 36px; font-size: 13.5px; }
+  .go-box p { font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+
+  /* The back: watching. */
+  .watch { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 36px; margin-top: auto; padding-top: 26px; align-items: center; }
+  .ring { position: relative; width: 270px; height: 270px; }
+  .ring svg { width: 270px; height: 270px; transform: rotate(-90deg); }
+  .ring .arc { transition: stroke-dashoffset 1.2s var(--ease); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring .mid b { font-size: 46px; font-weight: 750; letter-spacing: -0.04em; line-height: 1; }
+  .ring .mid b small { font-size: 18px; color: var(--ink3); font-weight: 650; letter-spacing: -.01em; }
+  .ring .mid > span { font-size: 13px; color: var(--ink2); font-weight: 600; margin-top: 6px; }
+  .ring .mid .ready { color: var(--accent); }
+  .wstats { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--line); }
+  .wstats > div { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .wstats > div:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--line); }
+  .wstats small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+  .wstats b { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .wstats b.v { color: var(--accent); }
+  .wstats b.r { color: var(--red); }
+  .wstats b.z { color: var(--ink); }
+  .wstats em { font-style: normal; font-size: 12.5px; color: var(--ink2); font-weight: 550; display: block; }
+  .ring-cap { margin-top: 14px; font-size: 14px; font-weight: 650; }
+  .ring-cap span { display: block; font-weight: 500; color: var(--ink2); font-size: 13px; margin-top: 2px; }
+  .stream { margin-top: 18px; }
+  .stream h4 { font-size: 13px; font-weight: 650; color: var(--ink2); margin-bottom: 8px; display: flex; }
+  .stream h4 span { margin-left: auto; color: var(--ink3); font-weight: 550; }
+  .wh { display: grid; grid-template-columns: 76px 22px minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 12px; border-radius: 12px; border: 1.5px dashed var(--accent-line); background: rgba(255,255,255,.7); margin-bottom: 6px; font-size: 13.5px; font-weight: 600; animation: rise .5s var(--ease) both; }
+  .wh time { font-size: 12.5px; color: var(--ink2); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .wh .ai { width: 22px; height: 22px; font-size: 9.5px; border-radius: 6px; }
+  .wh span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wh-empty { padding: 14px; border-radius: 12px; border: 1.5px dashed var(--line2); color: var(--ink2); font-size: 13.5px; }
+  .expect { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 22px; border-top: 1px solid var(--line); }
+  .expect > div { padding: 14px 18px 0 0; font-size: 13px; color: var(--ink2); line-height: 1.4; }
+  .expect > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+  .expect small { display: block; font-size: 12px; font-weight: 650; color: var(--ink3); margin-bottom: 2px; }
+  .expect b { color: var(--ink); font-weight: 700; font-size: 15px; }
+  .road { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; margin-top: auto; padding-top: 22px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .road span:last-child { color: var(--accent); }
+  .trk { position: relative; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--accent-line) 0 4px, transparent 4px 8px); }
+  .trk i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); width: 0; transition: width 1.2s var(--ease); }
+  .trk b { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); left: 0; transition: left 1.2s var(--ease); box-shadow: 0 0 0 5px rgba(91,75,245,.14); }
+  .back-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .back-foot p { font-size: 13px; color: var(--ink2); max-width: 430px; margin-right: auto; }
+  .back-foot .btn.accent.ready { animation: nudge 1.6s var(--ease) infinite; }
+  @keyframes nudge { 50% { box-shadow: 0 0 0 6px rgba(91,75,245,.16), 0 6px 16px -6px rgba(91,75,245,.6); } }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(91,75,245,.18); animation: pulse 1.6s infinite; display: inline-block; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(91,75,245,0); } }
+
+  /* Real mode studio. */
+  .yours { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .slip2 { padding: 16px 18px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); background: #fff; }
+  .slip2.stopped { box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+  .slip2 small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+  .slip2 b { display: block; font-size: 30px; font-weight: 700; letter-spacing: -.03em; margin-top: 4px; }
+  .slip2 span { font-size: 13.5px; font-weight: 600; }
+  .slip2.stopped span { color: var(--accent); }
+
+  /* Fixes already running. */
+  .running { margin-top: 34px; }
+  .running-h { display: flex; align-items: baseline; gap: 12px; }
+  .running-h h2 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .running-h p { color: var(--ink2); font-size: 14px; }
+  .running-h a { margin-left: auto; font-size: 13.5px; font-weight: 650; color: var(--ink2); }
+  .rail { position: relative; height: 26px; margin-top: 18px; }
+  .rail::before { content: ''; position: absolute; left: 0; right: 0; top: 12px; border-top: 1.5px solid var(--line2); }
+  .rail .now { position: absolute; right: 0; top: 0; font-size: 12px; font-weight: 650; color: var(--ink); background: var(--canvas); padding-left: 8px; }
+  .rail .pin { position: absolute; top: 7px; width: 12px; height: 12px; border-radius: 50%; background: var(--canvas); border: 2.5px solid var(--ink); }
+  .rail .pin.w { border-color: var(--accent); background: var(--accent-soft); }
+  .runs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 6px; }
+  .run { padding: 18px 20px 16px; min-width: 0; animation: rise .6s var(--ease) both; }
+  .run .top1 { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--ink2); }
+  .run .top1 .state { margin-left: auto; }
+  .run .state.prot { background: var(--ink); color: #fff; }
+  .run p.big { font-size: 17px; font-weight: 650; line-height: 1.3; letter-spacing: -.01em; margin-top: 10px; min-height: 44px; }
+  .run p.big em { font-style: normal; color: var(--accent); }
+  .run svg { width: 100%; height: 56px; display: block; margin-top: 12px; overflow: visible; }
+  .run .ft { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .run .ft b { color: var(--ink); font-weight: 650; }
+  .run .rl { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+  .run .rl b { color: var(--ink); font-weight: 600; }
+  .run.wide { grid-column: span 2; }
+  /* Your workspace. */
+  .state.adv { background: var(--wash); color: var(--ink2); }
+  .note2 { margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--wash); font-size: 13px; color: var(--ink2); line-height: 1.45; }
+  .wk7 { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 16px; }
+  .wd { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--ink3); font-weight: 650; }
+  .wd .wb { width: 100%; height: 110px; display: flex; align-items: flex-end; border-bottom: 1.5px solid var(--ink); }
+  .wd .wb i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--accent-line); animation: growY .8s var(--ease) both; transform-origin: bottom; }
+  .wd.today .wb i { background: var(--accent); }
+  .wd b { font-size: 14px; color: var(--ink); font-weight: 700; margin-top: 4px; }
+  .wd.today span { color: var(--accent); }
+  .aiset { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 13.5px; font-weight: 600; }
+  .aiset .ai { width: 22px; height: 22px; font-size: 9.5px; border-radius: 6px; margin-right: -4px; }
+  .tpls { margin-top: 18px; border-top: 1px solid var(--line); }
+  .tpl { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 2px; border-bottom: 1px solid var(--line); }
+  .tpl .sev { width: 9px; height: 9px; border-radius: 50%; }
+  .tpl b { display: block; font-size: 15px; font-weight: 650; }
+  .tpl small { display: block; font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
+  .tpl .btn { height: 34px; font-size: 13.5px; }
+  .btn[disabled] { opacity: .6; pointer-events: none; }
+  .ai.lum { background: var(--accent); }
+  .sample { margin-top: 16px; padding: 12px 14px; border-radius: 12px; border: 1.5px dashed var(--line2); font-size: 14px; font-weight: 600; line-height: 1.45; }
+  .sample small { display: block; font-size: 12px; color: var(--ink2); font-weight: 600; margin-bottom: 3px; }
+  .does { list-style: none; margin-top: 8px; display: grid; gap: 5px; font-size: 13.5px; font-weight: 600; }
+  .does li::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin: 0 9px 2px 2px; }
+  .run.fresh { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+  .runs .run .top1 { white-space: nowrap; overflow: hidden; }
+  .running.quiet .run, .list.quiet .wd .wb i { animation: none; }
+  /* Back-test, edit and remove, in your workspace. */
+  #bt { transition: opacity .25s var(--ease); }
+  #bt.busy { opacity: .45; }
+  .pv-wait { margin-top: 14px; color: var(--ink3); font-size: 13.5px; font-weight: 600; }
+  .fp { margin-top: 10px; font-size: 14px; font-weight: 550; color: var(--ink2); line-height: 1.45; }
+  .fp b { color: var(--ink); font-weight: 700; }
+  .fp.hot { color: var(--ink); }
+  .pv-charts { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; margin-top: 16px; }
+  .pv-days { display: grid; gap: 8px; margin-top: 8px; }
+  .pv-days .wb { height: 96px; }
+  .pv-hours { display: flex; align-items: flex-end; gap: 2px; height: 96px; margin-top: 8px; border-bottom: 1.5px solid var(--ink); }
+  .pv-hours i { flex: 1; min-width: 0; background: var(--accent); border-radius: 2px 2px 0 0; animation: growY .7s var(--ease) both; transform-origin: bottom; }
+  .pv-hl { display: grid; grid-template-columns: repeat(4, 1fr) 0; font-size: 11.5px; font-weight: 650; color: var(--ink3); margin-top: 4px; }
+  .pv-ex { display: grid; grid-template-columns: 120px minmax(0, 220px) minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; font-weight: 600; }
+  .pv-ex:hover .t { color: var(--accent); }
+  .pv-ex time { font-size: 12.5px; color: var(--ink2); white-space: nowrap; }
+  .pv-ex .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pv-ex .dd { font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .edit { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line2); font-size: 13.5px; font-weight: 650; }
+  .edit[hidden] { display: none; }
+  .edit .inp { display: flex; align-items: center; height: 36px; width: 140px; padding: 0 10px; border-radius: 10px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .edit .inp:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+  .edit .inp i { font-style: normal; color: var(--ink2); margin-right: 2px; }
+  .edit input { border: 0; outline: 0; width: 100%; font: inherit; font-size: 15px; font-weight: 700; background: none; }
+  .edit .btn { height: 36px; font-size: 13.5px; }
+  .edit .btn[disabled] { opacity: .45; }
+  .edit small { flex-basis: 100%; font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .edit small b { color: var(--ink); }
+  .go-box .row.confirm .btn.danger { background: var(--ink); color: #fff; }
+  .rm-note { font-size: 12.5px; color: var(--ink2); }
+  .run .top1 .ar { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .run .top1 .state { flex: none; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// Fixes: Lumni found the pattern, wrote the rule in one plain sentence, and
+// back-tested it on last week. Every number below is read from the World.
+const HOURS = [0.9, 0.7, 0.6, 0.6, 0.8, 1.4, 2.6, 4.2, 6.1, 7.4, 7.9, 8.2, 7.6, 7.8, 8.1, 7.9, 7.2, 6.0, 4.6, 3.6, 2.8, 2.2, 1.7, 1.2];
+const HSUM = HOURS.reduce((a, b) => a + b, 0);
+// Last week, the seven days before today, each weighted by how busy that weekday is.
+const BUSY = { 0: 0.52, 1: 1.06, 2: 1.1, 3: 1.04, 4: 1.08, 5: 1.0, 6: 0.6 };
+let DAYS = [], WEEK = 6.4;
+const dateOf = (ms, o) => new Date(ms).toLocaleDateString('en-US', { timeZone: W?.zone || undefined, ...o });
+/** [weekday, day of month, weight, month] for each of the last seven days. */
+function lastWeek(w) {
+  DAYS = Array.from({ length: 7 }, (_, i) => {
+    const at = w.dayStart - (7 - i) * 86400e3 + 43200e3;
+    const dow = new Date(at).getUTCDay();
+    return [dateOf(at, { weekday: 'short' }), Number(dateOf(at, { day: 'numeric' })), BUSY[w.zone === 'UTC' ? dow : new Date(at).getDay()], dateOf(at, { month: 'short' })];
+  });
+  WEEK = DAYS.reduce((s, d) => s + d[2], 0);
+}
+/** "Sep 11", or a weekday when it's within the week. */
+const dayAgo = (n) => { const at = W.dayStart - n * 86400e3 + 43200e3; return n < 7 ? dateOf(at, { weekday: 'short' }) : dateOf(at, { month: 'short', day: 'numeric' }); };
+const nowMin = () => Math.round(W.nowH * 60);
+const KC = { stop: 'var(--k-stop)', recheck: 'var(--k-recheck)', wait: 'var(--k-wait)', ask: 'var(--k-ask)', bad: 'var(--k-bad)', blind: 'var(--k-blind)' };
+const KNAME = { stop: 'Stops repeats', recheck: 'Looks again', wait: 'Waits its turn', ask: 'Asks you', blind: 'Can’t be checked yet' };
+const NAMES = ['Lee Park', 'Dana Ruiz', 'Kai Moreno', 'Ruth Abara', 'Zoe Lind', 'Theo Grant', 'Nina Shah', 'Omar Haddad', 'Iris Cole', 'Hugo Bell'];
+const CO = ['Hooli', 'Umbra', 'Initech', 'Vandelay', 'Tyrell', 'Hale & Co', 'Wayne Supply', 'Stark & Sons'];
+
+const plural = (n, one, many) => (Math.round(n) === 1 ? one : many);
+const short = (name) => name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean)[0].slice(0, 2);
+const money = (n) => (n < 100 ? '$' + Math.max(1, Math.round(n)) : fmtMoney(n));
+const hourName = (h) => (h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`);
+const clockAt = (h, m) => `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+/** Counts a number from what's showing to what's true. */
+function tick(el, to, fmt = fmtN, ms = 900) {
+  const from = Number(el.dataset.v ?? 0);
+  el.dataset.v = to;
+  const run = (el._run = (el._run ?? 0) + 1); // a newer count wins
+  const t0 = performance.now();
+  const step = (t) => {
+    if (el._run !== run) return;
+    const p = Math.min(1, (t - t0) / ms);
+    el.textContent = fmt(from + (to - from) * (1 - Math.pow(1 - p, 4)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ─── the findings ────────────────────────────────────
+
+const opt = (l, c = 1, x = 1, mk) => ({ l, c, x, mk });
+
+function findings(w) {
+  const dF = w.scale.actions / Math.max(1, w.total); // so far today, to a whole day
+  const unit = w.money.unit;
+  const F = (id) => w.fleet.find((f) => f.id === id);
+  const perSec = (n) => (n * dF) / 86400;
+  const out = [];
+
+  // 1. Refund retries, from the top stop pattern.
+  {
+    const p = w.patterns.stop[0], ai = F('refund');
+    const day = p.n * dF;
+    out.push({
+      id: 'refund', kind: 'stop', ais: [ai],
+      problem: 'Refund agent retries after Stripe timeouts',
+      detail: `${fmtN(p.n)} retries today. Lumni stopped every one, but each still costs a model call and a Stripe check.`,
+      fix: 'Give refunds an idempotency key',
+      cost: day * unit * 6,
+      parts: ['Stop a ', 'what', ' if the same one went out in the last ', 'win', ', matched on ', 'key'],
+      tokens: {
+        what: [opt('refund'), opt('refund or invoice', 1.42, 1.7, 'inv'), opt('payment of any kind', 1.95, 3.4, 'pay')],
+        win: [opt('hour', 0.64, 0.35), opt('day'), opt('week', 1.1, 4.2, 'week')],
+        key: [opt('the order and amount'), opt('the customer and amount', 1.06, 3.6, 'cust'), opt('the order alone', 1.02, 1.9, 'order')],
+      },
+      pick: { what: 0, win: 1, key: 0 },
+      week: day * WEEK * 0.97, wrongRate: 0.0016,
+      words: { c: 'would have stopped correctly', x: 'would have blocked by mistake', C: 'Would have caught', X: 'Would have wrongly blocked', unit: 'repeat refunds', mist: 'mistakes', ba: 'Repeat refunds a week' },
+      spikes: [[5, 15, 3.4]], sees: perSec(ai.n),
+      would: (r) => `Would have stopped a repeat refund of $${20 + Math.round(r() * 16) * 5} to ${NAMES[Math.floor(r() * NAMES.length)]}`,
+      mk: {
+        base: [
+          { t: 'A refund paid in two halves', saw: (n) => `${n} got $30 back, then another $30 an hour later. Same order, same amount, so it looked like a repeat.`, was: 'It was one $60 refund, sent in two parts on purpose.', tip: 'Count partial refunds by their running total.' },
+          { t: 'A refund sent again after the card bounced', saw: (n) => `Refund agent refunded ${n} $85 twice in one day.`, was: 'Stripe returned the first one because the card had expired. The second went to a new card.', tip: 'Let a refund through if Stripe marked the first one failed.' },
+          { t: 'A person added a goodwill refund', saw: (n) => `Two $25 refunds on ${n}’s order, an hour apart.`, was: 'One was for shipping. The other was asked for by Jess on the support team.', tip: 'A person’s request always wins over the rule.' },
+        ],
+        inv: { t: 'An invoice that matched a refund', saw: (n) => `A $120 invoice to ${n} matched a $120 refund from the same morning.`, was: 'One was money out, one was money in. Different things with the same amount.', tip: 'Keep refunds and invoices as separate rules.' },
+        pay: { t: 'Two monthly payouts of the same size', saw: (n) => `Payout to ${n} was the same as last month’s.`, was: 'Payouts repeat every month on purpose.', tip: 'Leave payouts out of this rule.' },
+        week: { t: 'A second return, four days later', saw: (n) => `${n} returned a second item from the same order.`, was: 'Two returns, two refunds, both real.', tip: 'A day is long enough to catch retries.' },
+        cust: { t: 'Two orders with the same total', saw: (n) => `${n} had two $40 refunds on the same day.`, was: 'They were for two different orders.', tip: 'Match on the order, not the customer.' },
+        order: { t: 'A refund changed after a price fix', saw: (n) => `Refund agent sent a second refund on ${n}’s order.`, was: 'The first refund was $10 short. The second paid the rest.', tip: 'Include the amount in the match.' },
+      },
+    });
+  }
+
+  // 2. Old prices, from the top looked-again pattern.
+  {
+    const p = w.patterns.recheck[0], ai = F('pricer');
+    const day = p.n * dF;
+    out.push({
+      id: 'price', kind: 'recheck', ais: [ai],
+      problem: 'Price setter acts on prices older than 2 minutes',
+      detail: `Its reads are ${ai.lag} seconds old on average. ${fmtN(p.n)} times today Lumni made it look again at the last moment.`,
+      fix: 'Re-read the price if it’s over 60 seconds old',
+      cost: day * unit * 2.4,
+      parts: ['Make ', 'who', ' look again if its ', 'field', ' is over ', 'age', ' old'],
+      tokens: {
+        who: [opt('Price setter'), opt('every pricing AI', 1.35, 1.4, 'team'), opt('every AI', 2.6, 5, 'all')],
+        field: [opt('price'), opt('price or plan', 1.3, 1.5, 'plan')],
+        age: [opt('30 seconds', 1.22, 2.8, 'fast'), opt('60 seconds'), opt('2 minutes', 0.58, 0.45), opt('5 minutes', 0.24, 0.2)],
+      },
+      pick: { who: 0, field: 0, age: 1 },
+      week: day * WEEK * 0.97, wrongRate: 0.002,
+      words: { c: 'would have looked again in time', x: 'would have looked again for nothing', C: 'Would have caught', X: 'Would have slowed for nothing', unit: 'old price reads', mist: 'slow-downs', ba: 'Prices set from old reads a week' },
+      spikes: [0, 1, 4, 5, 6].map((d) => [d, 9, 2.1]), sees: perSec(ai.n),
+      would: (r) => `Would have sent it back for a ${61 + Math.floor(r() * 80)}-second-old seat price`,
+      mk: {
+        base: [
+          { t: 'A seat price nobody had touched', saw: () => 'The Enterprise seat price was 64 seconds old, so Price setter was sent back to read it.', was: 'It hadn’t changed in 3 hours. The re-read cost 410 ms and nothing else.', tip: 'Skip the re-read when the price didn’t change today.' },
+          { t: 'A plan read during a quiet hour', saw: (n) => `Price setter held a 71-second-old copy of ${n}’s plan.`, was: 'The plan last changed yesterday. Safe, just slower.', tip: 'Fine to keep. It costs less than one wrong price.' },
+          { t: 'A nightly price check', saw: () => 'The 2 AM batch read every price once and used them for 90 seconds.', was: 'Nothing changes at night. Each re-read added a second.', tip: 'Let the night batch use 5 minutes.' },
+        ],
+        team: { t: 'A discount AI using a cached rate', saw: () => 'Discount helper used a 70-second-old coupon rate.', was: 'Coupon rates change once a quarter.', tip: 'Keep this rule to Price setter.' },
+        all: { t: 'Ticket triage re-reading a customer name', saw: (n) => `Ticket triage was sent back to re-read ${n}’s name.`, was: 'Names rarely change. Nothing was wrong.', tip: 'Only prices need this rule.' },
+        plan: { t: 'A plan name read again', saw: (n) => `${n}’s plan was 66 seconds old.`, was: 'Only the plan’s label changed, not the price.', tip: 'Watch the price field only.' },
+        fast: { t: 'A price read 34 seconds earlier', saw: () => 'Price setter read the price list 34 seconds before using it.', was: 'Half a minute is fresh enough for list prices.', tip: '60 seconds catches the real cases.' },
+      },
+    });
+  }
+
+  // 3. The retry loop, from the AI that's in one right now.
+  {
+    const ai = w.fleet.find((f) => f.loop) ?? F('deploy');
+    const loops = w.money.waste.loops;
+    const day = loops.n * dF;
+    const others = w.fleet.filter((f) => f.id !== ai.id && f.repeats > 0).length;
+    out.push({
+      id: 'loop', kind: 'stop', ais: [ai], more: others,
+      problem: `${ai.name} retried the same restart 14 times`,
+      detail: `It’s in a loop on the checkout site right now. Across every AI, ${fmtN(loops.n)} retry ${plural(loops.n, 'loop', 'loops')} ran today.`,
+      fix: 'Stop any action retried 5 times in 10 minutes',
+      cost: day * unit * 8,
+      parts: ['Stop ', 'scope', ' retried ', 'times', ' in ', 'win'],
+      tokens: {
+        scope: [opt('any action'), opt('any deploy', 0.32, 0.25), opt(`anything ${ai.name} does`, 0.22, 0.18)],
+        times: [opt('3 times', 1.35, 3.4, 'three'), opt('5 times'), opt('10 times', 0.55, 0.3)],
+        win: [opt('5 minutes', 0.72, 0.55), opt('10 minutes'), opt('an hour', 1.3, 2.6, 'hour')],
+      },
+      pick: { scope: 0, times: 1, win: 1 },
+      week: day * WEEK * 0.97, wrongRate: 0.004,
+      words: { c: 'would have stopped correctly', x: 'would have blocked by mistake', C: 'Would have caught', X: 'Would have wrongly blocked', unit: 'retry loops', mist: 'mistakes', ba: 'Retry loops a week' },
+      spikes: [[5, 10, 4.2], [0, 16, 3.1], [4, 11, 2.2]], sees: perSec(w.fleet.reduce((s, f) => s + f.n, 0)) * 0.08,
+      would: (r) => r() < 0.5 ? `Would have stopped a 5th restart of the checkout site` : `Would have stopped a 5th retry of the same Zendesk call`,
+      mk: {
+        base: [
+          { t: 'A flaky test that passed on the 6th try', saw: () => `${ai.name} re-ran the checkout tests 5 times in 7 minutes.`, was: 'The 6th run passed. The retries were the right call.', tip: 'Allow more tries for test runs.' },
+          { t: 'Paging through a long inbox', saw: () => 'Ticket triage called the same inbox search 5 times.', was: 'Each call asked for the next page. Same call, new results.', tip: 'Count a call as the same only if it asks for the same page.' },
+          { t: 'A bank feed that was rate limited', saw: () => 'Reconciler asked the bank feed 5 times in 9 minutes.', was: 'The bank asked it to slow down, and it did.', tip: 'Let waits the app asked for through.' },
+        ],
+        three: { t: 'Three tries at a slow Stripe call', saw: (n) => `Refund agent asked about ${n}’s refund 3 times.`, was: 'Stripe was slow but answered on the 3rd try.', tip: '5 tries leaves room for slow apps.' },
+        hour: { t: 'Hourly syncs that looked like a loop', saw: () => 'Ledger booker ran the same sync 5 times in an hour.', was: 'It runs every 12 minutes on purpose.', tip: '10 minutes keeps scheduled work out.' },
+      },
+    });
+  }
+
+  // 4. The app Lumni can't check.
+  {
+    const app = w.apps.find((a) => a.blind) ?? { name: 'Gmail', n: 0 };
+    const ai = w.fleet.find((f) => f.app === 'gmail') ?? F('quote');
+    const day = app.n * dF;
+    out.push({
+      id: 'gmail', kind: 'blind', ais: [ai], connect: true,
+      problem: `${app.name} can’t be checked`,
+      detail: `${fmtN(app.n)} emails today from ${ai.name} and others. Lumni can’t read ${app.name} back, so none of them are proven.`,
+      fix: `Connect ${app.name}`,
+      cost: day * 0.003 * 6,
+      parts: ['Read back every ', 'what', ` in ${app.name} within `, 'win'],
+      tokens: {
+        what: [opt('sent email'), opt('sent email or draft', 1.18, 1.3)],
+        win: [opt('30 seconds', 0.96, 1.35), opt('2 minutes'), opt('10 minutes', 1, 0.95)],
+      },
+      pick: { what: 0, win: 1 },
+      week: day * WEEK, wrongRate: 0.003,
+      words: { c: 'would have been proven', x: 'never actually sent', C: 'Would have proven', X: 'Would have found never sent', unit: 'emails', mist: 'emails that never went out', ba: 'Emails nobody can prove, a week', red: true },
+      spikes: [[1, 16, 1.6], [5, 11, 1.5]], sees: perSec(app.n),
+      go: `Connect ${app.name} and watch`, ring: 'Show as proven after 500 clean read-backs', protect: 'Trust it now', bt: `Read from ${app.name}’s Sent folder, last week`,
+      would: (r) => `Would have proven a quote sent to ${CO[Math.floor(r() * CO.length)]}`,
+      mk: {
+        base: [
+          { t: `${CO[0]}’s renewal quote`, saw: () => `${ai.name} said it sent the renewal quote to ${CO[0]}.`, was: `${app.name}’s Sent folder has nothing from that minute. The customer never got it.`, tip: 'Lumni would have marked it red and asked for a resend.' },
+          { t: 'A follow-up stuck in drafts', saw: (n) => `${ai.name} said it followed up with ${n}.`, was: 'The email was saved as a draft and never sent.', tip: 'Read drafts too, to catch these.' },
+          { t: 'A quote that bounced', saw: () => `${ai.name} sent a quote to ${CO[2]}’s old address.`, was: `${app.name} sent it, then it bounced an hour later.`, tip: 'Read back bounces within the day.' },
+        ],
+      },
+    });
+  }
+
+  // 5. The AI that's wrong more than its peers.
+  {
+    const ai = w.fleet.find((f) => f.demote) ?? F('accounts');
+    const rate = ai.stale / Math.max(1, ai.n);
+    const peers = w.fleet.filter((f) => f.id !== ai.id);
+    const peerRate = peers.reduce((s, f) => s + f.stale, 0) / Math.max(1, peers.reduce((s, f) => s + f.n, 0));
+    const times = Math.max(2, Math.round(rate / Math.max(1e-6, peerRate)));
+    const down = w.LEVELS?.[Math.max(0, ai.level - 1)] ?? 'Watch';
+    const day = ai.stale * dF;
+    out.push({
+      id: 'demote', kind: 'recheck', ais: [ai],
+      problem: `${ai.name} is wrong more than its peers`,
+      detail: `${pct(rate)} of its updates used old info, ${times} times the rest of the fleet. It runs at ${ai.levelName} today.`,
+      fix: `Move it back to ${down}`,
+      cost: day * (unit * 3 + 0.35),
+      parts: ['Move ', 'who', ' to ', 'level', ' until it has ', 'streak', ' clean actions in a row'],
+      tokens: {
+        who: [opt(ai.name), opt('every Ops AI', 1.25, 2.2, 'ops')],
+        level: [opt(down), opt('ask a person first', 1, 3.2, 'ask')],
+        streak: [opt('200', 0.7, 0.6), opt('500'), opt('1,000', 1.15, 1.4)],
+      },
+      pick: { who: 0, level: 0, streak: 1 },
+      week: day * WEEK * 0.97, wrongRate: 0.003,
+      words: { c: 'wrong updates it would have held', x: 'good updates held up', C: 'Would have caught', X: 'Would have held up', unit: 'wrong updates', mist: 'good updates held up', ba: 'Wrong account updates a week' },
+      spikes: [[1, 14, 1.8], [4, 10, 2]], sees: perSec(ai.n),
+      go: `Move it to ${down}`, ring: `Back to ${ai.levelName} after 500 clean actions`, protect: `Keep it at ${down}`,
+      would: (r) => `Would have held a change to ${CO[Math.floor(r() * CO.length)]}’s address`,
+      mk: {
+        base: [
+          { t: `${CO[2]}’s owner change`, saw: () => `${ai.name} changed ${CO[2]}’s owner from a 50-second-old read.`, was: 'The owner hadn’t changed since. The update was right, but would have waited.', tip: 'Fine. A short wait is the price of the check.' },
+          { t: 'A phone number fix', saw: (n) => `${ai.name} updated ${n}’s phone number.`, was: 'The customer asked for it in a ticket a minute before.', tip: 'Updates a customer asked for could skip the hold.' },
+          { t: 'A bulk tag clean-up', saw: () => `${ai.name} retagged 40 accounts in one run.`, was: 'Tags are low risk. Every change was right.', tip: 'Leave tags out of the hold.' },
+        ],
+        ops: { t: 'Deploy bot’s release notes', saw: () => 'Deploy bot’s notes update was held as an Ops AI.', was: 'Release notes are never risky.', tip: `Keep the rule to ${ai.name}.` },
+        ask: { t: 'A held address change at night', saw: (n) => `${n}’s address change waited 6 hours for a person.`, was: 'It was right, and the customer waited.', tip: `${down} is enough for this AI.` },
+      },
+    });
+  }
+
+  // 6. Finance waiting for refunds, by hand.
+  {
+    const p = w.patterns.wait.find((x) => x.id === 'p-book') ?? w.patterns.wait[0];
+    const ai = F('ledger');
+    const day = p.n * dF;
+    out.push({
+      id: 'book', kind: 'wait', ais: [ai],
+      problem: 'Finance AI keeps checking if refunds have landed',
+      detail: `${fmtN(p.n)} waits today. Each one asks Stripe about 6 times before it can book the refund.`,
+      fix: 'Let finance wait for refunds to land, automatically',
+      cost: day * unit * 2,
+      parts: ['Hold ', 'who', ' until ', 'what', ' shows in Stripe, for up to ', 'max'],
+      tokens: {
+        who: [opt(ai.name), opt('every Finance AI', 1.32, 1.3)],
+        what: [opt('the refund'), opt('any payment', 1.5, 1.8, 'pay')],
+        max: [opt('5 minutes', 0.82, 0.6), opt('15 minutes'), opt('an hour', 1.04, 2.4, 'long')],
+      },
+      pick: { who: 0, what: 0, max: 1 },
+      week: day * WEEK * 0.97, wrongRate: 0.0015,
+      words: { c: 'would have waited its turn cleanly', x: 'would have held too long', C: 'Would have handled', X: 'Would have held too long', unit: 'waits', mist: 'holds that ran too long', ba: 'Times finance checked by hand, a week' },
+      spikes: [[5, 15, 2.4]], sees: perSec(ai.n),
+      would: (r) => `Would have held it until ${NAMES[Math.floor(r() * NAMES.length)]}’s refund landed`,
+      mk: {
+        base: [
+          { t: 'A refund Stripe never finished', saw: (n) => `${ai.name} was held 15 minutes for ${n}’s $45 refund.`, was: 'The refund failed on Stripe’s side. Booking should have stopped at once.', tip: 'Let a failed refund end the hold early.' },
+          { t: 'A refund held for review', saw: (n) => `${n}’s refund sat in Stripe’s review for 20 minutes.`, was: 'It landed later. The hold ran out first.', tip: 'Fine. It booked on the next pass.' },
+          { t: 'Month-end rush', saw: () => 'Forty refunds landed in one batch at 5 PM.', was: 'All were right; the holds just ran long.', tip: 'Raise the hold at month end.' },
+        ],
+        pay: { t: 'A payout held like a refund', saw: () => `${ai.name} waited on a payout to land.`, was: 'Payouts book on a schedule, not on landing.', tip: 'Keep this to refunds.' },
+        long: { t: 'A stuck refund held an hour', saw: (n) => `${n}’s refund kept ${ai.name} waiting an hour.`, was: 'It was never going to land.', tip: '15 minutes covers nearly every refund.' },
+      },
+    });
+  }
+
+  return out.sort((a, b) => b.cost - a.cost);
+}
+
+// ─── the back-test ───────────────────────────────────
+
+function mult(f) {
+  let c = 1, x = 1;
+  for (const k in f.tokens) { const o = f.tokens[k][f.pick[k]]; c *= o.c; x *= o.x; }
+  return { c, x };
+}
+function maxMult(f) {
+  let c = 1;
+  for (const k in f.tokens) c *= Math.max(...f.tokens[k].map((o) => o.c));
+  return c;
+}
+function backtest(f) {
+  const m = mult(f);
+  const caught = Math.round(f.week * m.c);
+  const wrong = Math.round(f.week * f.wrongRate * m.x);
+  return { caught, wrong, m };
+}
+// Hour-by-hour shape for the week, fixed per finding so changes read as changes.
+function shape(f, seed) {
+  const r = rng(seed);
+  const out = [];
+  DAYS.forEach(([, , dw], d) => {
+    for (let h = 0; h < 24; h++) {
+      let v = (HOURS[h] / HSUM) * (dw / WEEK) * (0.82 + r() * 0.36);
+      for (const [sd, sh, sm] of f.spikes ?? []) if (sd === d && sh === h) v *= sm;
+      out.push(v);
+    }
+  });
+  const s = out.reduce((a, b) => a + b, 0);
+  return out.map((v) => v / s);
+}
+// Where mistakes would land: a fixed draw, weighted by how busy each hour was.
+function mistakeOrder(sh, seed) {
+  const r = rng(seed + 7);
+  const cum = []; let s = 0;
+  for (const v of sh) cum.push((s += v));
+  return Array.from({ length: 400 }, () => { const x = r() * s; return cum.findIndex((c) => c >= x); });
+}
+
+// ─── state ───────────────────────────────────────────
+
+let LOADED = performance.now();
+let W, LIST = [], SEL = 0, STATE = {}, OPEN = -1, timer = null;
+const shot = new URLSearchParams(location.search).get('shot');
+
+function render(w, first) {
+  W = w;
+  LOADED = performance.now();
+  clearInterval(timer); timer = null;
+  STATE = {}; OPEN = -1; SEL = 0;
+  if (Shell.isReal) return renderReal(w, first);
+  lastWeek(w);
+  LIST = findings(w).map((f, i) => {
+    const seed = (w.scale.seed ?? 1) * 131 + i * 17 + f.id.length;
+    const sh = shape(f, seed);
+    return { ...f, pick: { ...f.pick }, sh, order: mistakeOrder(sh, seed), seed };
+  });
+  const total = LIST.reduce((s, f) => s + f.cost, 0) * WEEK;
+  SEL = Math.max(0, LIST.findIndex((f) => f.id === new URLSearchParams(location.search).get('pick')));
+  $('#main').innerHTML = `
+    <section class="head rise">
+      <div>
+        <div class="eyebrow">${w.scale.org}, ${w.dayLabel}</div>
+        <h1>Lumni found ${LIST.length} things worth fixing. <span class="soft">Together they’d save</span> <mark><span class="num" id="save">${money(0)}</span> a week</mark></h1>
+        <p>Each fix is one plain sentence. Lumni back-tested it on last week’s ${fmtN(w.scale.actions * WEEK)} actions, and a new rule only watches until you say protect.</p>
+      </div>
+      <div class="steps">
+        <div><b><i>1</i>Back-test</b>On last week, before anything changes</div>
+        <div><b><i>2</i>Watch</b>Records what it would have done</div>
+        <div><b><i>3</i>Protect</b>Steps in for real, when you say so</div>
+      </div>
+    </section>
+    <section class="grid">
+      <div class="list" id="list"></div>
+      <div class="studio-wrap rise" style="animation-delay:.12s"><div class="flip" id="flip"><article class="card face front" id="front"></article><article class="card face back" id="back"></article></div></div>
+    </section>
+    <section class="running" id="running">${running(w)}</section>`;
+  tick($('#save'), total, money, 1400);
+  list();
+  studio(true);
+
+  if (shot === 'watching' || shot === 'protecting') {
+    const f = LIST[SEL];
+    STATE[f.id] = startState(f, 12 * 60);
+    if (shot === 'protecting') STATE[f.id].mode = 'protect';
+    list(); studio(true);
+  }
+  if (shot === 'mistake') { OPEN = 0; studio(true); }
+  timer = setInterval(live, 1000);
+}
+
+function list() {
+  // Cards rise in once; later redraws (a new state tag) stay put.
+  const el = $('#list');
+  el.classList.toggle('quiet', !!el.dataset.drawn);
+  el.dataset.drawn = '1';
+  el.innerHTML = `<div class="list-h">Findings, most costly first <span>${LIST.length} this week</span></div>` + LIST.map((f, i) => {
+    const st = STATE[f.id]?.mode;
+    const ai = f.ais[0];
+    const hi = i < 2;
+    return `<button class="find ${i === SEL ? 'on' : ''}" data-i="${i}" style="animation-delay:${0.08 + i * 0.05}s">
+      <span class="sev ${hi ? 'hi' : ''}" style="background:${KC[f.kind]};color:${KC[f.kind]}" title="${KNAME[f.kind]}"></span>
+      <span class="p">${f.problem}</span>
+      <span class="cost num" title="What it costs a week">${money(f.cost * WEEK)} a week</span>
+      <span class="d">${f.detail}</span>
+      <span class="meta">
+        <span class="ai" style="${f.kind === 'blind' ? 'background:var(--k-blind)' : ''}">${short(ai.name)}</span>
+        <span class="who">${ai.name} <small>${ai.copies > 1 ? `${fmtN(ai.copies)} copies` : '1 copy'}${f.more ? `, and ${f.more} more AIs` : ''}</small></span>
+        ${st ? `<span class="state ${st === 'protect' ? 'done' : ''}">${st === 'protect' ? 'Protecting' : 'Watching'}</span>` : `<span class="btn go">Fix</span>`}
+      </span>
+    </button>`;
+  }).join('');
+}
+
+$('#main').addEventListener('click', (e) => {
+  if (Shell.isReal) return;
+  const card = e.target.closest('.find[data-i]');
+  if (card) {
+    const i = Number(card.dataset.i);
+    if (i === SEL) return;
+    SEL = i; OPEN = -1;
+    list(); studio(true);
+    return;
+  }
+  const tok = e.target.closest('.tok:not(.ro)');
+  if (tok) {
+    const f = LIST[SEL], k = tok.dataset.k;
+    f.pick[k] = (f.pick[k] + 1) % f.tokens[k].length;
+    OPEN = -1;
+    tok.textContent = f.tokens[k][f.pick[k]].l;
+    tok.classList.remove('moved'); void tok.offsetWidth; tok.classList.add('moved');
+    update();
+    return;
+  }
+  const mi = e.target.closest('.mi > button');
+  if (mi) {
+    const i = Number(mi.dataset.i);
+    OPEN = OPEN === i ? -1 : i;
+    $$('.mi').forEach((m, j) => m.classList.toggle('open', j === OPEN));
+    markBar();
+    return;
+  }
+  const act = e.target.closest('[data-act]');
+  if (act) action(act.dataset.act);
+});
+
+// ─── the studio ──────────────────────────────────────
+
+function sentence(f, ro = false) {
+  return f.parts.map((p) => f.tokens[p]
+    ? `<button class="tok ${ro ? 'ro' : ''}" data-k="${p}" ${ro ? 'tabindex="-1"' : 'title="Click to try another"'}>${f.tokens[p][f.pick[p]].l}</button>`
+    : p).join('') + '.';
+}
+
+function studio(instant) {
+  const f = LIST[SEL];
+  const st = STATE[f.id];
+  const flip = $('#flip');
+  flip.classList.toggle('instant', !!instant);
+  flip.classList.toggle('on', !!st);
+  $('#front').innerHTML = front(f);
+  $('#back').innerHTML = st ? back(f, st) : '';
+  update(true);
+  if (st) paintBack(f, st, true);
+  if (instant) requestAnimationFrame(() => requestAnimationFrame(() => flip.classList.remove('instant')));
+}
+
+function front(f) {
+  const i = LIST.indexOf(f);
+  const red = f.words.red;
+  return `
+    <div class="s-top"><span class="tag solid">Fix ${i + 1} of ${LIST.length}</span><span class="tag" style="gap:7px"><i style="width:8px;height:8px;border-radius:50%;background:${KC[f.kind]}"></i>${KNAME[f.kind]}</span>
+      <span class="r">Saves about ${money(f.cost * WEEK)} a week</span></div>
+    <h2 class="s-h">${f.fix}</h2>
+    <p class="s-sub">${f.problem}. Here’s the rule Lumni wrote for it.</p>
+    <div class="rule">
+      <div class="lab">The rule, in plain words <span>Click a highlighted word to try another</span></div>
+      <div class="sentence" id="sentence">${sentence(f)}</div>
+    </div>
+    <div class="bt">
+      <div class="bt-h"><h3>Back-test on last week</h3><small>${f.bt ?? `${DAYS[0][3]} ${DAYS[0][1]} to ${DAYS[6][3] === DAYS[0][3] ? '' : DAYS[6][3] + ' '}${DAYS[6][1]}, every ${f.ais[0].name} action`}</small></div>
+      <div class="bignums">
+        <span class="c">${f.words.C} <b class="num" id="bC">0</b>.</span>
+        <span class="x" id="bXw">${f.words.X} <b class="num" id="bX">0</b>.</span>
+      </div>
+      <div class="chart" id="chart">${DAYS.map(([d, n, dw], di) => `<div class="day ${dw < 0.8 ? 'wk' : ''}">
+        <div class="up">${Array.from({ length: 24 }, (_, h) => `<i data-h="${di * 24 + h}" style="animation-delay:${0.2 + (di * 24 + h) * 0.004}s"></i>`).join('')}</div>
+        <div class="down">${Array.from({ length: 24 }, (_, h) => `<i data-h="${di * 24 + h}"></i>`).join('')}</div>
+        <div class="dl"><b>${d} ${n}</b></div></div>`).join('')}</div>
+      <div class="legend" style="margin-top:10px"><span><i style="background:var(--accent)"></i>${cap(f.words.c)}</span><span><i style="background:var(--red)"></i>${cap(f.words.x)}</span><span style="margin-left:auto;color:var(--ink3)">Each bar is one hour</span></div>
+      <div class="mist" id="mist"></div>
+    </div>
+    <div class="foot">
+      <div id="ba"></div>
+      <div class="go-box">
+        <button class="btn accent" data-act="watch">${f.go ?? 'Start watching'}</button>
+        <p>New rules start in watch mode. Lumni records what it would have done and changes nothing until you protect.</p>
+      </div>
+    </div>`;
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Re-reads the back-test for the chosen words and moves everything to match. */
+function update(first) {
+  const f = LIST[SEL];
+  const { caught, wrong, m } = backtest(f);
+  tick($('#bC'), caught, fmtN, first ? 1200 : 700);
+  tick($('#bX'), wrong, fmtN, first ? 1200 : 700);
+  $('#bXw').classList.toggle('zero', wrong === 0);
+
+  // Bars: violet up for what it would catch, red down for the mistakes.
+  const def = f.week;
+  const top = def * Math.max(...f.sh) * Math.min(maxMult(f), 1.5);
+  const ups = $$('#chart .up i');
+  const hot = Math.max(...f.sh) * 0.62;
+  ups.forEach((el, j) => {
+    const v = caught * f.sh[j];
+    el.style.height = Math.min(100, Math.max(0.8, Math.pow(v / top, 0.72) * 100)) + '%';
+    el.classList.toggle('hot', f.sh[j] >= hot);
+  });
+  const per = new Array(168).fill(0);
+  // A handful of hours, however many mistakes, so red stays rare to the eye.
+  const placed = Math.min(wrong, 3 + Math.round(Math.sqrt(wrong) * 1.2));
+  for (let k = 0; k < placed; k++) per[f.order[k]] += wrong / placed;
+  const capC = Math.max(1, (f.week * f.wrongRate) / 6);
+  $$('#chart .down i').forEach((el, j) => {
+    const c = per[j];
+    el.style.height = c > 0 ? 34 + 66 * Math.min(1, (c - 1) / capC) + '%' : '0%';
+  });
+
+  // Examples: the ones your words caused, first.
+  const pool = [];
+  for (const k in f.tokens) { const o = f.tokens[k][f.pick[k]]; if (o.mk && f.mk[o.mk]) pool.push(f.mk[o.mk]); }
+  pool.push(...f.mk.base);
+  const shown = Math.min(3, wrong);
+  const hrs = [...new Set(f.order.slice(0, placed))].slice(0, shown).sort((a, b) => a - b);
+  const r = rng(f.seed + 3);
+  const ex = pool.slice(0, shown).map((m, i) => {
+    const hh = hrs[i] ?? f.order[i];
+    const [dn, dd, , mo] = DAYS[Math.floor(hh / 24)];
+    return { ...m, when: `${dn} ${mo} ${dd}, ${clockAt(hh % 24, Math.floor(r() * 60))}`, h: hh, who: NAMES[(f.seed + i * 3) % NAMES.length] };
+  });
+  const chev = '<svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  $('#mist').innerHTML = `<div class="mist-h">${wrong === 0 ? `No ${f.words.mist} last week` : wrong <= 3 ? `The ${wrong === 1 ? f.words.mist.replace(/s( |$)/, '$1') : `${wrong} ${f.words.mist}`}, to inspect` : `${shown} of ${fmtN(wrong)} ${f.words.mist}, to inspect`}
+      <span>${wrong === 0 ? '' : wrong > 3 ? `and ${fmtN(wrong - 3)} more like these` : f.words.red ? 'read back from the app' : 'open one to see why'}</span></div>` +
+    (wrong === 0
+      ? `<div class="mi none"><div>${f.words.red ? 'Every email it could read was really sent.' : `The rule would not have got in the way once. Widen a word above to see where it starts to.`}</div></div>`
+      : ex.map((m, i) => `<div class="mi ${i === OPEN ? 'open' : ''}" data-h="${m.h}"><button data-i="${i}"><span class="dot"></span><time>${m.when}</time><span class="t">${m.t}</span>${chev}</button>
+        <div class="more"><div><div class="cols"><div><small>What the rule saw</small>${m.saw(m.who)}</div><div><small>What was true</small>${m.was}</div><div><small>${f.words.red ? 'What Lumni would do' : 'How to avoid it'}</small><span class="tip">${m.tip}</span></div></div></div></div></div>`).join(''));
+  markBar();
+
+  // Before and after, as two flowing bars.
+  const before = Math.round(f.week / 0.97);
+  const after = Math.round(before * Math.max(0.004, 1 - 0.97 * Math.min(1, m.c)));
+  const drop = 1 - after / Math.max(1, before);
+  $('#ba').innerHTML = `
+    <div class="ba-h">${f.words.ba} <span class="delta">${drop > 0 ? '−' + pct(drop, 0) : 'no change'}</span></div>
+    <div class="ba"><span>Today</span><span class="pipe"><i style="width:100%;background-color:${KC[f.kind]}"></i></span><b>${fmtN(before)}</b></div>
+    <div class="ba"><span>With this rule</span><span class="pipe"><i id="baAfter" style="width:${Math.max(1.2, (after / Math.max(1, before)) * 100)}%;background-color:var(--accent)"></i></span><b>${fmtN(after)}</b></div>`;
+}
+
+function markBar() {
+  const open = $$('.mi')[OPEN];
+  const h = open ? Number(open.dataset.h) : -1;
+  $$('#chart .down i').forEach((el) => el.classList.toggle('mark', Number(el.dataset.h) === h));
+}
+
+// ─── watching: the card flips ────────────────────────
+
+function startState(f, elapsed = 0) {
+  const { caught } = backtest(f);
+  const rate = f.sees;
+  const wrate = caught / (WEEK * 86400);
+  const st = { mode: 'watch', since: elapsed ? clockAt(Math.floor((nowMin() - Math.round(elapsed / 60)) / 60), (nowMin() - Math.round(elapsed / 60)) % 60) : W.timeLabel, fresh: !elapsed, seenF: rate * elapsed, wouldF: wrate * elapsed, rate, wrate, stream: [], r: rng(f.seed + 11) };
+  const k = Math.min(4, Math.floor(st.wouldF));
+  // The most recent would-haves first, spaced the way they'd really arrive.
+  for (let i = 0; i < k; i++) {
+    const ago = Math.min(elapsed, Math.round((i + 0.3 + st.r() * 0.6) / Math.max(1e-9, wrate)));
+    st.stream.push({ t: secsAgo(ago), text: f.would(st.r) });
+  }
+  return st;
+}
+const secsAgo = (s) => { const t = Math.round(W.nowH * 3600) + 30 - s; const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60; return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; };
+
+function back(f, st) {
+  const prot = st.mode === 'protect';
+  const ai = f.ais[0];
+  const bt = backtest(f);
+  return `
+    <div class="s-top"><span class="tag ${prot ? '' : 'accent'}" style="${prot ? 'background:var(--ink);color:#fff' : ''}">${prot ? 'Protecting' : '<span class="pulse" style="margin-right:4px"></span>Watch mode'}</span>
+      <span class="tag">${prot ? `Since ${st.since}` : `Watching since ${st.fresh ? 'now' : st.since}`}</span>
+      <span class="r">${f.fix}</span></div>
+    <h2 class="s-h">${prot ? 'Protecting. Lumni steps in for real now.' : 'Watching. Nothing changes until you protect.'}</h2>
+    <div class="rule" style="background:#fff"><div class="lab">The rule</div><div class="sentence" style="font-size:22px">${sentence(f, true)}</div></div>
+    <div class="watch">
+      <div>
+        <div class="ring">
+          <svg viewBox="0 0 250 250"><circle cx="125" cy="125" r="108" fill="none" stroke="var(--accent-soft)" stroke-width="16"/>
+            <circle class="arc" id="arc" cx="125" cy="125" r="108" fill="none" stroke="var(--accent)" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(2 * Math.PI * 108).toFixed(1)}" stroke-dashoffset="${(2 * Math.PI * 108).toFixed(1)}"/></svg>
+          <div class="mid"><b><span id="seen" class="num">0</span><small> / 500</small></b><span id="ringlab">clean decisions seen</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="ring-cap">${prot ? 'Protecting every decision now' : (f.ring ?? 'Protect when 500 clean decisions are seen')}<span id="eta"></span></div>
+        <div class="wstats" style="margin-top:16px">
+          <div><small>${prot ? 'Stopped for real' : cap(f.words.c)}</small><b class="v num" id="wW">0</b><em>since ${st.since}</em></div>
+          <div><small>${cap(f.words.x)}</small><b class="z num" id="wX">0</b><em>so far, none</em></div>
+        </div>
+        <div class="stream"><h4>What it ${prot ? 'did' : 'would have done'} <span>${ai.name}</span></h4><div id="stream"></div></div>
+      </div>
+    </div>
+    <div class="road"><span>${prot ? 'Watched' : 'Watching'} since ${st.since}</span><div class="trk"><i id="roadI"></i><b id="roadB"></b></div><span id="roadEnd"></span></div>
+    <div class="expect">
+      <div><small>Last week’s back-test expects</small><b>${fmtN(bt.caught / 7)} a day</b> ${f.words.unit}, and ${bt.wrong / 7 < 1 ? 'under 1' : fmtN(bt.wrong / 7)} ${f.words.red ? 'never sent' : 'mistakes'} a day</div>
+      <div><small>If watching drifts from that</small><b>Lumni tells you</b> before you protect, with the actions that differ</div>
+      <div><small>Every would-have is kept</small><b>As a receipt</b> you can open, marked as watch only</div>
+    </div>
+    <div class="back-foot">
+      <p>${prot ? 'Lumni writes a receipt each time it steps in. You can move it back to watch at any time.' : 'Lumni tells you when the ring is full. It never moves a rule to protect on its own.'}</p>
+      ${prot ? `<button class="btn" data-act="unprotect">Back to watching</button>` : `<button class="btn" data-act="stop">Stop watching</button><button class="btn accent" id="protectBtn" data-act="protect">${f.protect ?? 'Protect now'}</button>`}
+    </div>`;
+}
+
+function paintBack(f, st, first) {
+  const seen = Math.min(500, Math.floor(st.seenF));
+  const prot = st.mode === 'protect';
+  const C = 2 * Math.PI * 108;
+  const p = prot ? 1 : Math.max(0.006, seen / 500);
+  const arc = $('#arc');
+  if (!arc) return;
+  const set = () => (arc.style.strokeDashoffset = (C * (1 - p)).toFixed(1));
+  if (first) setTimeout(set, 520); else set();
+  const seenEl = $('#seen');
+  if (first) tick(seenEl, prot ? 500 : seen, (v) => Math.round(v).toLocaleString('en-US'), 1400);
+  else { seenEl._run = (seenEl._run ?? 0) + 1; seenEl.textContent = (prot ? 500 : seen).toLocaleString('en-US'); seenEl.dataset.v = seen; }
+  const ready = !prot && seen >= 500;
+  $('#ringlab').innerHTML = prot ? '<span class="ready">protecting</span>' : ready ? '<span class="ready">ready to protect</span>' : 'clean decisions seen';
+  $('#protectBtn')?.classList.toggle('ready', ready);
+  const left = Math.max(0, 500 - seen) / Math.max(1e-9, st.rate);
+  $('#eta').textContent = prot ? 'Lumni steps in on every match and writes a receipt for each one.' :
+    ready ? 'Clean all the way. You can protect whenever you’re ready.' : `About ${dur(left)} to go at today’s pace, ${rateWords(st.rate)}`;
+  const pp = prot ? 1 : Math.min(1, seen / 500);
+  const setRoad = () => { $('#roadI').style.width = pp * 100 + '%'; $('#roadB').style.left = pp * 100 + '%'; };
+  if (first) setTimeout(setRoad, 520); else setRoad();
+  $('#roadEnd').textContent = prot ? `Protecting since ${st.since}` : ready ? 'Ready to protect' : left < 3 * 3600 ? `Ready about ${clockIn(left)}` : `Ready in about ${dur(left)}`;
+  const would = Math.floor(st.wouldF);
+  const wW = $('#wW');
+  if (first) tick(wW, would, fmtN, 1200); else { wW._run = (wW._run ?? 0) + 1; wW.textContent = fmtN(would); wW.dataset.v = would; }
+  $('#stream').innerHTML = st.stream.length
+    ? st.stream.map((s) => `<div class="wh"><time>${s.t}</time><span class="ai">${short(f.ais[0].name)}</span><span>${prot ? s.text.replace('Would have ', '').replace(/^./, (c) => c.toUpperCase()) : s.text}</span></div>`).join('')
+    : `<div class="wh-empty">Nothing matched yet. Last week it matched about ${fmtN(backtest(f).caught / 7)} a day, so expect the first ${dur(1 / Math.max(1e-9, st.wrate))} or so in.</div>`;
+}
+const clockIn = (s) => { const t = nowMin() + Math.ceil(s / 60); const h = Math.floor(t / 60) % 24, m = t % 60; return clockAt(h, m); };
+const dur = (s) => (s < 90 ? `${Math.max(1, Math.round(s))} seconds` : s < 5400 ? `${Math.round(s / 60)} minutes` : s < 172800 ? `${Math.round(s / 3600)} hours` : `${Math.round(s / 86400)} days`);
+const rateWords = (r) => (r >= 1 ? `${fmtN(r)} a second` : r * 60 >= 1 ? `${fmtN(r * 60)} a minute` : `${fmtN(r * 3600)} an hour`);
+
+function action(a) {
+  const f = LIST[SEL];
+  const flip = $('#flip');
+  if (a === 'watch') {
+    STATE[f.id] = startState(f, 0);
+    $('#back').innerHTML = back(f, STATE[f.id]);
+    flip.classList.remove('lift'); void flip.offsetWidth; flip.classList.add('lift');
+    flip.classList.add('on');
+    paintBack(f, STATE[f.id], true);
+    list();
+  } else if (a === 'stop') {
+    delete STATE[f.id];
+    flip.classList.remove('lift'); void flip.offsetWidth; flip.classList.add('lift');
+    flip.classList.remove('on');
+    list();
+  } else if (a === 'protect' || a === 'unprotect') {
+    const st = STATE[f.id];
+    st.mode = a === 'protect' ? 'protect' : 'watch';
+    if (a === 'protect') { st.since = W.timeLabel; st.fresh = false; }
+    $('#back').innerHTML = back(f, st);
+    paintBack(f, st, true);
+    list();
+  }
+}
+
+// Each second, every watching rule sees more decisions.
+function live() {
+  for (const f of LIST) {
+    const st = STATE[f.id];
+    if (!st) continue;
+    st.seenF += st.rate;
+    const before = Math.floor(st.wouldF);
+    st.wouldF += st.wrate;
+    if (Math.floor(st.wouldF) > before) {
+      st.stream.unshift({ t: secsAgo(-Math.round((performance.now() - LOADED) / 1000)), text: f.would(st.r) });
+      st.stream = st.stream.slice(0, 4);
+    }
+    if (f === LIST[SEL]) paintBack(f, st, false);
+  }
+}
+
+// ─── fixes already running ───────────────────────────
+
+function sparkRun(before, after, at, watch, seed) {
+  const r = rng(seed);
+  const N = 14, Wd = 300, H = 56;
+  const vals = Array.from({ length: N }, (_, i) => {
+    const base = i < at ? before : i === at ? (before + after) / 2 : after;
+    return Math.max(0, base * (0.84 + r() * 0.32));
+  });
+  const max = Math.max(...vals) * 1.08;
+  const x = (i) => (i / (N - 1)) * Wd;
+  const y = (v) => H - 3 - (v / max) * (H - 8);
+  const pre = vals.slice(0, at + 1).map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+  const post = vals.slice(at).map((v, i) => `${x(i + at).toFixed(1)},${y(v).toFixed(1)}`).join(' L');
+  return `<svg viewBox="0 0 ${Wd} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <rect x="${x(at)}" y="0" width="${Wd - x(at)}" height="${H}" fill="var(--accent-soft)" rx="6"/>
+    <line x1="${x(at)}" x2="${x(at)}" y1="0" y2="${H}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 3"/>
+    <path d="M${pre}" fill="none" stroke="var(--ink3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M${post}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" ${watch ? 'stroke-dasharray="4 4"' : ''}/>
+    <circle cx="${Wd}" cy="${y(vals[N - 1])}" r="3.5" fill="var(--accent)"/></svg>`;
+}
+
+function running(w) {
+  const dF = w.scale.actions / Math.max(1, w.total);
+  const F = (id) => w.fleet.find((f) => f.id === id);
+  const items = [
+    { at: 0, ai: F('dunning'), rate: 0.006, drop: 0.99, mode: 'prot', text: () => `Since ${dayAgo(14)}, renewals for cancelled customers fell <em>99%</em>`, rule: 'Check the plan is still active before renewing' },
+    { at: 2, ai: F('triage'), rate: 0.012, drop: 0.81, mode: 'prot', text: () => `Since ${dayAgo(10)}, two AIs answering the same ticket fell <em>81%</em>`, rule: 'One AI holds a ticket while it replies' },
+    { at: 9, ai: F('quote'), rate: 0.021, drop: 0.58, mode: 'watch', text: () => `Since ${dayAgo(3)}, quotes on old prices would have fallen <em>58%</em>`, rule: 'Re-read the price list before quoting' },
+    { at: 10, ai: F('invoice'), rate: 0.021, drop: 0.94, mode: 'prot', text: () => `Since ${dayAgo(2)}, repeats from Invoice sender fell <em>94%</em>`, rule: 'Check the ledger before sending an invoice' },
+  ];
+  const saved = items.filter((it) => it.mode === 'prot').reduce((s, it) => s + it.ai.n * dF * it.rate * it.drop * w.money.unit * 4.5, 0) * WEEK;
+  const pos = [3, 31, 66, 74];
+  return `<div class="running-h"><h2>Fixes already running</h2><p>${items.length} rules on, measured against the week before each one started. Saving about ${money(saved)} a week.</p></div>
+    <div class="rail">${items.map((it, i) => `<span class="pin ${it.mode === 'watch' ? 'w' : ''}" style="left:calc(${i} * (100% - 60px) / 4 + ${i * 20 + 20}px)"></span>`).join('')}<span class="now">Today</span></div>
+    <div class="runs">${items.map((it, i) => {
+      const b = Math.max(1, it.ai.n * dF * it.rate);
+      const a = b * (1 - it.drop);
+      const seen = Math.round(380 + (i * 37) % 90);
+      return `<article class="card run" style="animation-delay:${0.3 + i * 0.07}s">
+        <div class="top1"><span class="ai" style="width:22px;height:22px;font-size:9.5px;border-radius:6px">${short(it.ai.name)}</span>${it.ai.name}
+          <span class="state ${it.mode === 'prot' ? 'prot' : ''}">${it.mode === 'prot' ? 'Protecting' : `Watching, ${seen} of 500`}</span></div>
+        <p class="big">${it.text(b, a)}</p>
+        ${sparkRun(b, a, it.at, it.mode === 'watch', (w.scale.seed ?? 1) * 7 + i)}
+        <div class="ft"><span>Before <b>${fmtN(b)} a day</b></span><span>${it.mode === 'watch' ? 'Would be' : 'Now'} <b>${a < 1 ? 'under 1' : fmtN(a)} a day</b></span></div>
+        <div class="rl">Rule: <b>${it.rule}</b></div>
+      </article>`;
+    }).join('')}</div>`;
+}
+
+// ─── your workspace ──────────────────────────────────
+// Real findings come only from today's real records and your rules. Nothing
+// here is projected: no weekly savings, no synthetic back-test. Where the API
+// has a count, it's shown; where it doesn't, the page says so.
+
+const safe = (s) => Shell.esc(s);
+const clip = (s, n = 96) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const journey = (id) => `/journey?id=${encodeURIComponent(id)}`;
+const hourLabel = (h) => hourName(Math.floor(h));
+let REAL = { list: [], sel: null, rv: null, flipped: null, rules: null, audit: null, try: {}, pv: 0 };
+let READ = 0;
+
+/** The AI behind a pattern: named when exactly one fits its team and app. */
+function aiFor(w, team, app) {
+  const fits = w.fleet.filter((f) => f.team === team && (!app || f.app === app));
+  if (fits.length === 1) return fits[0];
+  const t = w.team(team);
+  return { name: t.id === 'ai:unknown' ? 'An AI' : String(t.id).startsWith('team:') ? `${t.name} AIs` : t.name, initials: t.ai, copies: 1, id: null };
+}
+
+function realFindings(w, rv) {
+  const out = [];
+  const apps = new Set(w.apps.map((a) => a.id));
+  // Apps Lumni can't read back: the fix is a real write.
+  for (const a of w.apps.filter((x) => x.blind)) {
+    out.push({
+      id: `blind-${a.id}`, kind: 'blind', state: 'fix', chip: `${fmtN(a.n)} unproven`,
+      problem: `${a.name} can’t be checked`,
+      detail: `${fmtN(a.n)} ${plural(a.n, 'action', 'actions')} today in ${a.name}. No checker is on, so Lumni can’t read ${a.name} back to prove they happened.`,
+      ai: aiFor(w, w.fleet.find((f) => f.app === a.id)?.team, a.id), app: a,
+    });
+  }
+  // Rules that only watch: protect is a real write.
+  for (const r of (rv?.rules ?? []).filter((x) => x.mode === 'SHADOW')) {
+    const today = r.today.did + r.today.would;
+    out.push({
+      id: `rule-${r.id}`, kind: r.verdict.kind === 'ask' ? 'ask' : r.verb === 'waited' ? 'wait' : 'stop', state: 'watching', chip: `${fmtN(today)} today`,
+      problem: `“${r.text}” is only watching`,
+      detail: `It matched ${fmtN(today)} ${plural(today, 'action', 'actions')} today and ${fmtN(r.lastWeek)} last week. Lumni only notes what it would have done.`,
+      ai: null, rule: r,
+    });
+  }
+  // AIs that slip more than their peers.
+  for (const f of w.fleet.filter((x) => x.demote)) {
+    const slips = f.stale + f.bad;
+    out.push({
+      id: `slip-${f.id}`, kind: 'recheck', state: 'fix', chip: `${fmtN(slips)} ${plural(slips, 'slip', 'slips')}`,
+      problem: `${f.name} slips more than its peers`,
+      detail: `${pct(slips / Math.max(1, f.n))} of its ${fmtN(f.n)} actions today used old info or never happened. It runs on ${f.levelName}.`,
+      ai: f, fleet: f,
+    });
+  }
+  // A retry loop running now.
+  const looping = w.fleet.find((f) => f.loop);
+  if (looping) {
+    const p = w.patterns.stop.find((x) => x.team === looping.team && x.app === looping.app);
+    out.push({
+      id: `loop-${looping.id}`, kind: 'stop', state: 'advice', chip: `${fmtN(w.money.waste.loops.n)} today`,
+      problem: `${looping.name} is in a retry loop right now`,
+      detail: `It tried the same thing 5 or more times within 10 minutes. ${fmtN(w.money.waste.loops.n)} ${plural(w.money.waste.loops.n, 'loop', 'loops')} like that ran today across every AI.`,
+      ai: looping, fleet: looping, pattern: p,
+    });
+  }
+  // The top looked-again pattern: advice, Lumni already caught each one.
+  const rp = w.patterns.recheck[0];
+  if (rp) {
+    out.push({
+      id: 'recheck', kind: 'recheck', state: 'advice', chip: `${fmtN(rp.n)} looked again`,
+      problem: clip(rp.t), detail: `${fmtN(rp.n)} ${plural(rp.n, 'time', 'times')} today Lumni sent it back to read the latest before it acted.`,
+      ai: aiFor(w, rp.team, rp.app), pattern: rp,
+    });
+  }
+  // The top stop pattern: already handled by Lumni's own repeat check.
+  const sp = w.patterns.stop.find((p) => !looping || p.team !== looping.team || p.app !== looping.app) ?? (looping ? null : w.patterns.stop[0]);
+  if (sp) {
+    out.push({
+      id: 'stop', kind: 'stop', state: 'handled', chip: sp.kept ? `${fmtMoney(sp.kept)} kept` : `${fmtN(sp.n)} stopped`,
+      problem: clip(sp.t), detail: `${fmtN(sp.n)} ${plural(sp.n, 'time', 'times')} today Lumni saw it was already done or under way, and stopped it.`,
+      ai: aiFor(w, sp.team, sp.app), pattern: sp,
+    });
+  }
+  // Rules Lumni can add from a template, the ones for your apps first.
+  const open = (rv?.templates ?? []).filter((t) => !t.added);
+  if (open.length) {
+    const yours = open.filter((t) => apps.has(t.area.split(' ')[0].toLowerCase()));
+    out.push({
+      id: 'templates', kind: 'ask', state: 'fix', chip: `${open.length} ready`,
+      problem: yours.length ? `${yours.length} ready-made ${plural(yours.length, 'rule fits', 'rules fit')} apps your AIs use` : 'Ready-made rules you can add',
+      detail: 'Each one is a real rule. It starts by only watching, so nothing changes until you protect it.',
+      ai: null, templates: [...yours, ...open.filter((t) => !yours.includes(t))],
+    });
+  }
+  return out;
+}
+
+const STATE_TAG = { fix: ['Fix', ''], watching: ['Watching', ''], advice: ['Advice', 'adv'], handled: ['Handled', 'done'] };
+
+function realList() {
+  const el = $('#list');
+  const l = REAL.list;
+  el.innerHTML = `<div class="list-h">Findings, from today <span>${l.length} found</span></div>` + (l.length ? l.map((f, i) => {
+    const ai = f.ai;
+    const [tag, cls] = STATE_TAG[f.state];
+    const who = ai ? `<span class="ai" style="${f.kind === 'blind' ? 'background:var(--k-blind)' : ''}">${safe(ai.initials ?? short(ai.name))}</span><span class="who">${safe(ai.name)} <small>${ai.copies > 1 ? `${fmtN(ai.copies)} copies` : ai.id ? '1 copy' : ''}</small></span>`
+      : f.rule ? `<span class="who"><small>${safe(f.rule.area)}</small></span>` : `<span class="who"><small>From Lumni’s rule templates</small></span>`;
+    return `<button class="find ${f.id === REAL.sel ? 'on' : ''}" data-f="${safe(f.id)}" style="animation-delay:${0.08 + i * 0.05}s">
+      <span class="sev ${f.state === 'fix' || f.state === 'watching' ? 'hi' : ''}" style="background:${KC[f.kind]};color:${KC[f.kind]}" title="${KNAME[f.kind] ?? ''}"></span>
+      <span class="p">${safe(f.problem)}</span>
+      <span class="cost num">${safe(f.chip)}</span>
+      <span class="d">${safe(f.detail)}</span>
+      <span class="meta">${who}${f.state === 'fix' || f.state === 'watching' ? `<span class="btn go">${f.state === 'watching' ? 'Protect' : 'Fix'}</span>` : `<span class="state ${cls}">${tag}</span>`}</span>
+    </button>`;
+  }).join('') : `<div class="calm"><b>Nothing to fix today</b>Lumni looks at today’s actions for repeats, old reads, loops and apps it can’t check. None stood out. Add a rule below, or come back once your AIs have done more.</div>`);
+}
+
+/** Last week, one bar a day, from the rules view's own counts. */
+function weekBars(days, today) {
+  const max = Math.max(1, ...days, today);
+  const labels = days.map((_, i) => dateOf(W.dayStart - (7 - i) * 86400e3 + 43200e3, { weekday: 'short' }));
+  return `<div class="wk7">${[...days.map((n, i) => [labels[i], n, false]), ['Today', today, true]].map(([l, n, t]) => `
+    <div class="wd ${t ? 'today' : ''}"><div class="wb"><i style="height:${n ? Math.max(4, (n / max) * 100) : 0}%"></i></div><b class="num">${fmtN(n)}</b><span>${l}</span></div>`).join('')}</div>`;
+}
+
+function realStudio() {
+  const f = REAL.list.find((x) => x.id === REAL.sel);
+  const front = $('#front');
+  if (!f) {
+    front.innerHTML = `<div class="s-top"><span class="tag">Today</span></div><h2 class="s-h">Nothing needs a fix right now</h2>
+      <p class="s-sub">Lumni still runs its own checks on every action. Rules you add start by watching, so you can see what they’d do first.</p>`;
+    return;
+  }
+  const ai = f.ai;
+  const tag = (t, c = '') => `<span class="tag ${c}">${t}</span>`;
+  const kindTag = `<span class="tag" style="gap:7px"><i style="width:8px;height:8px;border-radius:50%;background:${KC[f.kind]}"></i>${KNAME[f.kind]}</span>`;
+  let html = '';
+  if (f.kind === 'blind') {
+    const a = f.app;
+    html = `<div class="s-top">${tag('Fix', 'solid')}${kindTag}<span class="r">${fmtN(a.n)} ${plural(a.n, 'action', 'actions')} today</span></div>
+      <h2 class="s-h">Switch on ${safe(a.name)}’s checker</h2>
+      <p class="s-sub">${safe(f.problem)}. With its checker on, Lumni reads ${safe(a.name)} back after each action and marks it proven, or didn’t happen.</p>
+      <div class="bignums"><span class="c">Unproven today <b class="num">${fmtN(a.n)}</b>.</span><span class="x zero">Share of today <b class="num">${pct(a.n / Math.max(1, W.total), 0)}</b>.</span></div>
+      <div class="note2">If Lumni has no checker for ${safe(a.name)} yet, the API says so and nothing changes.</div>
+      <div class="foot"><div><div class="ba-h">What switching it on does</div><ul class="does"><li>Lumni reads ${safe(a.name)} back after each action</li><li>Each one is marked proven, or didn’t happen</li><li>Receipts show what ${safe(a.name)} itself says</li></ul></div><div class="go-box">
+        <button class="btn accent" data-real="checker">Switch on the checker</button>
+        <p>New ${safe(a.name)} actions get read back from now on. Today’s stay as they are.</p></div></div>`;
+  } else if (f.rule) {
+    const r = f.rule;
+    const today = r.today.did + r.today.would;
+    const pr = policyOf(r.id);
+    const old = W.source === 'snapshots';
+    const canEdit = !!(pr && pr.argument_pointer && pr.numeric_threshold != null);
+    const off = (why) => `disabled title="${safe(why)}"`;
+    html = `<div class="s-top">${tag('<span class="pulse" style="margin-right:4px"></span>Only watching', 'accent')}${kindTag}<span class="r">${safe(r.area)}</span></div>
+      <h2 class="s-h">Protect this rule</h2>
+      <p class="s-sub">It only notes what it would have done. Protect it, and Lumni ${r.verb === 'asked' ? 'asks a person' : r.verb === 'waited' ? 'makes the AI wait' : 'stops the action'} for real.</p>
+      <div class="rule"><div class="lab">The rule, in plain words <span>${canEdit && !old ? 'Click a highlighted word to back-test another' : 'One of your rules'}</span></div><div class="sentence" id="rsent">${realSentence(r, old || !pr)}&#8288;.</div>
+        <div class="edit" id="edit" hidden></div></div>
+      <div class="bt" id="bt">${old || !pr ? oldBacktest(r, today) : btLoading()}</div>
+      <div class="foot"><div>${r.ais?.length ? `<div class="ba-h">AIs it matched</div><div class="aiset">${r.ais.map((id) => W.fleet.find((x) => x.id === id)).filter(Boolean).map((x) => `<span class="ai">${safe(x.initials ?? short(x.name))}</span>${safe(x.name)}`).join('')}</div>` : '<div class="ba-h">No AI has matched it yet</div>'}</div>
+        <div class="go-box"><button class="btn accent" data-real="protect">Protect</button>
+          <div class="row" id="ruleActs"><button class="btn" data-real="edit" ${old ? off(OLD_API) : !canEdit ? off('This rule has no threshold to edit') : ''}>Edit threshold</button><button class="btn" data-real="remove" ${old ? off(OLD_API) : !pr ? off('This rule couldn’t be read just now') : ''}>Remove rule</button></div>
+          <p>You can move it back to watching at any time.</p></div></div>`;
+  } else if (f.templates) {
+    html = `<div class="s-top">${tag('Add a rule', 'solid')}<span class="r">${f.templates.length} ready-made</span></div>
+      <h2 class="s-h">Start a rule from a template</h2>
+      <p class="s-sub">Each one becomes a real rule in your workspace. It starts by only watching, so you see what it would do before it does anything.</p>
+      <div class="tpls">${f.templates.map((t) => {
+        const used = W.apps.some((a) => a.id === t.area.split(' ')[0].toLowerCase());
+        return `<div class="tpl"><span class="sev" style="background:${KC[t.verdict.kind === 'ask' ? 'ask' : 'stop']}"></span><div><b>${safe(t.text)}.</b><small>${safe(t.area)}${used ? ', and your AIs use this app today' : ''}</small></div><button class="btn" data-real="template" data-t="${safe(t.id)}">Add, watching first</button></div>`;
+      }).join('')}</div>`;
+  } else if (f.fleet && f.id.startsWith('slip-')) {
+    const x = f.fleet;
+    html = `<div class="s-top">${tag('Fix', 'solid')}${kindTag}<span class="r">On ${safe(x.levelName)} today</span></div>
+      <h2 class="s-h">Decide its level on Autonomy</h2>
+      <p class="s-sub">${safe(f.problem)}. On ${safe(x.levelName)}, ${x.level < 2 ? 'Lumni lets its slips through. On Enforce it would send it back to read the latest.' : 'Lumni already steps in on its slips. The fix is in how it reads.'}</p>
+      <div class="bignums"><span class="x">Old reads <b class="num">${fmtN(x.stale)}</b>.</span><span class="x ${x.bad ? '' : 'zero'}">Never happened <b class="num">${fmtN(x.bad)}</b>.</span><span class="c">Actions <b class="num">${fmtN(x.n)}</b>.</span></div>
+      <div class="note2">Compared with the median AI in your fleet today. Lumni flags an AI once it has 20 actions and slips more than 3 times the median.</div>
+      <div class="foot"><div></div><div class="go-box"><a class="btn accent" href="/autonomy?ai=${encodeURIComponent(x.id)}">Open its case on Autonomy</a><p>Moving it changes how strictly Lumni enforces ${safe(x.op)}.</p></div></div>`;
+  } else {
+    // Advice and handled: the pattern, its numbers, and where to look.
+    const p = f.pattern;
+    const handled = f.state === 'handled';
+    const loop = f.id.startsWith('loop-');
+    html = `<div class="s-top">${tag(handled ? 'Already handled' : 'Advice', handled ? '' : 'accent')}${kindTag}<span class="r">${p?.spike != null ? `Busiest around ${hourLabel(p.spike)}` : 'Today'}</span></div>
+      <h2 class="s-h">${handled ? 'Lumni’s repeat check is already protecting' : loop ? 'Find what it keeps retrying' : 'Re-read before acting'}</h2>
+      <p class="s-sub">${safe(f.problem)}. ${handled ? 'It stopped every one of these. Nothing to switch on.' : loop ? 'Lumni stops each repeat it sees, so nothing goes out twice. The fix is in the AI: a retry that never changes won’t start working.' : 'Lumni caught each one in time. The fix is in the AI: have it read the record again right before it writes.'}</p>
+      <div class="bignums">${loop
+        ? `<span class="c">Loops today <b class="num">${fmtN(W.money.waste.loops.n)}</b>.</span><span class="c">Its repeats stopped <b class="num">${fmtN(f.fleet.repeats)}</b>.</span>`
+        : `<span class="c">${handled ? 'Stopped' : 'Looked again'} today <b class="num">${fmtN(p.n)}</b>.</span>${p.kept ? `<span class="c">Kept <b class="num">${fmtMoney(p.kept)}</b>.</span>` : ''}`}</div>
+      ${p?.sample ? `<div class="sample"><small>One of them, as Lumni recorded it</small>${safe(p.sample)}</div>` : ''}
+      ${!handled && !loop && W.facts.some((x) => x.caught) ? `<div class="mist"><div class="mist-h">Records where AIs were caught with old info<span>today</span></div>${W.facts.filter((x) => x.caught).slice(0, 3).map((x) => `<div class="mi none"><div><b>${safe(x.thing)}</b>, ${safe(x.value)}: read ${fmtN(x.reads)} ${plural(x.reads, 'time', 'times')} by ${fmtN(x.readers)} ${plural(x.readers, 'AI', 'AIs')}, ${fmtN(x.caught)} caught out of date</div></div>`).join('')}</div>` : ''}
+      <div class="foot"><div></div><div class="go-box">
+        ${p?.story ? `<a class="btn ${handled ? '' : 'accent'}" href="${journey(p.story)}">Replay one, check by check</a>` : ''}
+        <a class="btn" href="${loop ? '/runtime' : handled ? '/flow' : '/context'}">${loop ? 'See it on Runtime' : handled ? 'See it on the flow' : 'See what each AI believes'}</a></div></div>`;
+  }
+  front.innerHTML = html;
+  if (f.rule && policyOf(f.rule.id) && W.source !== 'snapshots') runPreview(f.rule);
+}
+
+// ─── your workspace: back-test, edit and remove a rule ──
+
+const OLD_API = 'Needs a newer Lumni API';
+const DAY = 86400e3;
+/** The stored policy rule behind a rules-view rule: operation, pointer, threshold, version. */
+const policyOf = (id) => REAL.rules?.find((x) => x.id === id) ?? null;
+const isMoneyPtr = (p) => /amount|price|total|cost|usd|value|refund|charge/i.test(p ?? '');
+/** The value being tried for a rule's threshold: what you picked, or what it is. */
+const tried = (id) => REAL.try[id] ?? policyOf(id)?.numeric_threshold ?? null;
+function thresholdLabel(r, v) {
+  const o = r.tokens?.[0]?.options?.find((x) => Number(x.value) === Number(v));
+  if (o) return o.label;
+  const pr = policyOf(r.id);
+  const n = Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return isMoneyPtr(pr?.argument_pointer) ? '$' + n : n;
+}
+
+/** The rule's sentence, its threshold a highlighted word you can click. */
+function realSentence(r, ro) {
+  return (r.parts ?? [r.text]).map((p) => typeof p === 'string' ? safe(p)
+    : `<button class="tok ${ro ? 'ro' : ''}" data-rtok="${safe(p.token)}" ${ro ? 'tabindex="-1"' : 'title="Click to back-test another"'}>${safe(thresholdLabel(r, tried(r.id) ?? r.tokens?.[0]?.value))}</button>`).join('');
+}
+
+/** Before a back-test exists: the rules view's own counts, as before. */
+function oldBacktest(r, today) {
+  return `<div class="bt-h"><h3>Last week, and today</h3><small>Its matches, counted from the step-ins Lumni’s API lists</small></div>
+    <div class="bignums"><span class="c">Last week <b class="num">${fmtN(r.lastWeek)}</b>.</span><span class="x zero">Today so far <b class="num">${fmtN(today)}</b>.</span></div>
+    ${weekBars(r.days, today)}
+    <div class="note2">${W.source === 'snapshots' ? 'Back-testing a rule on past days needs a newer Lumni API, so these are its real matches only.' : 'Your rule couldn’t be read just now, so there’s no back-test. Use “Read it again” above.'}</div>`;
+}
+
+const btLoading = () => `<div class="bt-h"><h3>Back-test on the last 7 days</h3><small>Replaying each action against the rule</small></div>
+  <div class="bignums"><span class="c">Would have matched <b class="num">…</b></span></div><div class="pv-wait">Back-testing…</div>`;
+
+/** The back-test window: the seven days before today, and today so far. */
+function window7() {
+  return { from: new Date(W.dayStart - 7 * DAY).toISOString(), to: new Date(W.now).toISOString(), tz: W.zone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' };
+}
+
+/** Back-tests the rule as it would be with the threshold you're trying. */
+async function runPreview(r) {
+  const pr = policyOf(r.id);
+  if (!pr || W.source === 'snapshots') return;
+  const v = tried(r.id);
+  const rule = { operation: pr.operation, resource_type: pr.resource_type || '*', outcome: pr.outcome, reason_code: pr.reason_code };
+  if (pr.minimum_risk) rule.minimum_risk = pr.minimum_risk;
+  if (pr.argument_pointer && v != null) { rule.argument_pointer = pr.argument_pointer; rule.numeric_threshold = Number(v); }
+  const ask = ++REAL.pv;
+  const bt = $('#bt');
+  bt?.classList.add('busy');
+  let pv = null, err = null;
+  try { pv = await Shell.api.post('/v1/config/policy-rules/preview', { rule, ...window7(), examples: 3 }); } catch (e) { err = e; }
+  if (ask !== REAL.pv || REAL.sel !== `rule-${r.id}` || !$('#bt')) return;
+  $('#bt').classList.remove('busy');
+  $('#bt').innerHTML = err ? `<div class="bt-h"><h3>Back-test on the last 7 days</h3></div><div class="note2">The back-test couldn’t run: ${safe(err.message)}</div>` : previewHTML(r, pv, v);
+}
+let pvTimer = null;
+const previewSoon = (r) => { clearTimeout(pvTimer); pvTimer = setTimeout(() => runPreview(r), 380); };
+
+function previewHTML(r, pv, v) {
+  const pr = policyOf(r.id);
+  const held = r.verb === 'asked' ? 'held for a person' : r.verb === 'waited' ? 'made to wait' : 'stopped';
+  const changed = Number(v) !== Number(pr?.numeric_threshold);
+  const fp = pv.false_positive_estimate ?? 0;
+  const days = pv.by_day ?? [];
+  const dmax = Math.max(1, ...days.map((d) => d.matched));
+  const todayKey = new Date(W.now).toLocaleDateString('en-CA', { timeZone: W.zone || undefined });
+  const hours = pv.by_hour ?? [];
+  const hmax = Math.max(1, ...hours);
+  const verb = (d) => ({ ALLOW: 'went through', REQUIRE_APPROVAL: 'asked a person', WOULD_REQUIRE_APPROVAL: 'only noted', REJECT: 'was stopped', DEDUPLICATE: 'was stopped as a repeat', WAIT: 'waited', REPLAN: 'looked again' }[d] ?? String(d ?? '').toLowerCase().replace(/_/g, ' '));
+  const notes = [];
+  if (pv.unavailable_arguments) notes.push(`${fmtN(pv.unavailable_arguments)} ${plural(pv.unavailable_arguments, 'action', 'actions')} didn’t keep ${pr?.argument_pointer ? `<b>${safe(pr.argument_pointer)}</b>` : 'their arguments'}, so Lumni couldn’t test the threshold on ${plural(pv.unavailable_arguments, 'it', 'them')}.`);
+  if (pv.truncated) notes.push('Not every action could be replayed, so these counts are a floor.');
+  const dayLbl = (d) => d.date === todayKey ? 'Today' : new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  return `<div class="bt-h"><h3>Back-test on the last 7 days</h3><small>${changed ? `With ${safe(thresholdLabel(r, v))} instead of ${safe(thresholdLabel(r, pr.numeric_threshold))}, replayed on every action` : 'Replayed on every action, the last 7 days and today'}</small></div>
+    <div class="bignums"><span class="c">Would have matched <b class="num">${fmtN(pv.matched)}</b>.</span><span class="c">Would change <b class="num">${fmtN(pv.would_change)}</b>.</span><span class="x zero">Already handled <b class="num">${fmtN(pv.already_handled)}</b>.</span></div>
+    ${pv.matched ? `<p class="fp ${fp ? 'hot' : ''}">${fp ? `About <b>${fmtN(fp)}</b> would have been wrongly ${held}, from approvals people later granted.` : `No false alarms: none of the ${fmtN(pv.matched)} it matched were later approved by a person.`}</p>` : ''}
+    <div class="pv-charts">
+      <div><div class="ba-h">By day</div><div class="pv-days" style="grid-template-columns:repeat(${Math.max(1, days.length)}, 1fr)">${days.map((d) => `<div class="wd ${d.date === todayKey ? 'today' : ''}"><div class="wb"><i style="height:${d.matched ? Math.max(4, (d.matched / dmax) * 100) : 0}%"></i></div><b class="num">${fmtN(d.matched)}</b><span>${dayLbl(d)}</span></div>`).join('')}</div></div>
+      <div><div class="ba-h">By hour of day</div><div class="pv-hours">${hours.map((n, h) => `<i title="${hourName(h)}: ${fmtN(n)}" style="height:${n ? Math.max(5, (n / hmax) * 100) : 0}%"></i>`).join('')}</div><div class="pv-hl"><span>12 AM</span><span>6 AM</span><span>Noon</span><span>6 PM</span><span></span></div></div>
+    </div>
+    ${pv.examples?.length ? `<div class="mist"><div class="mist-h">${pv.examples.length === 1 ? 'The one it matched' : `${pv.examples.length} it matched`}, to inspect<span>${pv.matched > pv.examples.length ? `and ${fmtN(pv.matched - pv.examples.length)} more` : ''}</span></div>
+      ${pv.examples.map((x) => `<a class="pv-ex" href="${journey(x.action_id)}"><time>${safe(new Date(x.at).toLocaleString('en-US', { timeZone: W.zone || undefined, weekday: 'short', hour: 'numeric', minute: '2-digit' }))}</time><span class="t">${safe(clip(x.summary || x.action_id, 60))}</span><span class="dd">Then it ${verb(x.decision_then)}. With this rule it ${verb(x.decision_with_rule).replace(/^was /, 'would be ').replace(/^asked/, 'would ask').replace(/^went/, 'would go').replace(/^waited/, 'would wait').replace(/^only noted/, 'would only be noted')}.</span></a>`).join('')}</div>`
+      : `<div class="mist"><div class="mist-h">Nothing matched in the last 7 days</div><div class="mi none"><div>${changed ? 'Try a lower threshold to see where it starts to match.' : 'It wouldn’t have stepped in once. Try a lower threshold to see where it starts to.'}</div></div></div>`}
+    ${notes.map((n) => `<div class="note2">${n}</div>`).join('')}`;
+}
+
+/** Edit threshold: an inline editor that back-tests as you type and saves with the rule's version. */
+function openEdit(r) {
+  const pr = policyOf(r.id);
+  const ed = $('#edit');
+  if (!ed || !pr) return;
+  ed.hidden = false;
+  const money = isMoneyPtr(pr.argument_pointer);
+  ed.innerHTML = `<label>New threshold</label><span class="inp">${money ? '<i>$</i>' : ''}<input id="thr" type="number" min="0" step="any" value="${tried(r.id)}"></span>
+    <button class="btn accent" data-real="save">Save threshold</button><button class="btn" data-real="cancel">Cancel</button>
+    <small id="editNote">Now ${safe(thresholdLabel(r, pr.numeric_threshold))}, version ${fmtN(pr.version)}. The back-test below follows what you type.</small>`;
+  syncSave(r);
+  $('#thr').addEventListener('input', (e) => {
+    const v = Number(e.target.value);
+    if (!(v >= 0) || e.target.value === '') return syncSave(r);
+    REAL.try[r.id] = v;
+    const t = $('#rsent .tok'); if (t) t.textContent = thresholdLabel(r, v);
+    syncSave(r);
+    previewSoon(r);
+  });
+  $('#thr').focus();
+}
+function syncSave(r) {
+  const b = $('[data-real="save"]'); const pr = policyOf(r.id);
+  if (b) b.disabled = !pr || Number(tried(r.id)) === Number(pr.numeric_threshold) || $('#thr')?.value === '';
+}
+
+async function saveThreshold(r, el) {
+  const pr = policyOf(r.id);
+  const v = Number(tried(r.id));
+  el.disabled = true; el.textContent = 'Saving…';
+  const res = await Shell.write('PATCH', `/v1/config/policy-rules/${encodeURIComponent(r.id)}`, { numeric_threshold: v, version: pr.version },
+    { ok: `Saved. “${clip(r.area, 40)}” now uses ${thresholdLabel(r, v)}.`, reload: true });
+  if (res) { delete REAL.try[r.id]; return; }
+  const err = Shell.lastError;
+  // Anything but a stale version (409) or a missing rule (404): say why, and keep the edit to try again.
+  if (err && err.status !== 409 && err.status !== 404) {
+    el.disabled = false; el.textContent = 'Save threshold';
+    const note = $('#editNote');
+    if (note) note.innerHTML = `<b>Not saved.</b> ${safe(err.message)}`;
+    syncSave(r);
+    return;
+  }
+  // Someone changed or removed it since it was read: read it again and say what it is now.
+  let fresh = null;
+  try { fresh = (await Shell.api.get('/v1/config/policy-rules'))?.items ?? null; } catch {}
+  if (fresh) REAL.rules = fresh;
+  const now = policyOf(r.id);
+  el.disabled = false; el.textContent = 'Save threshold';
+  const note = $('#editNote');
+  if (!now) { if (note) note.textContent = 'This rule is gone. Someone removed it since the page read it.'; el.disabled = true; return; }
+  if (note) note.innerHTML = now.version !== pr.version
+    ? `<b>Someone changed this rule since you opened it.</b> It now uses ${safe(thresholdLabel(r, now.numeric_threshold))}, version ${fmtN(now.version)}. Save again to use yours.`
+    : `Now ${safe(thresholdLabel(r, now.numeric_threshold))}, version ${fmtN(now.version)}. Nothing was saved.`;
+  syncSave(r);
+}
+
+/** Remove rule: a second, deliberate click. */
+function askRemove(r) {
+  const row = $('#ruleActs');
+  if (!row) return;
+  row.classList.add('confirm');
+  row.dataset.was = row.innerHTML;
+  row.innerHTML = `<button class="btn" data-real="keep">Keep it</button><button class="btn danger" data-real="confirm-remove">Confirm remove</button>`;
+  row.insertAdjacentHTML('afterend', `<p class="rm-note" id="rmNote">Removes “${safe(clip(r.text, 60))}” from your workspace. Receipts it already wrote stay.</p>`);
+}
+async function removeRule(r, el) {
+  el.disabled = true; el.textContent = 'Removing…';
+  const res = await Shell.write('DELETE', `/v1/config/policy-rules/${encodeURIComponent(r.id)}`, undefined, { ok: `Removed “${clip(r.text, 60)}”.`, reload: true });
+  if (res) { REAL.sel = null; return; }
+  realStudio();
+}
+
+// ─── your workspace: when each rule started protecting ──
+
+/** The audit's start for a protecting rule: the last time its mode was set to Enforce, and its last edit. */
+function startOf(r) {
+  const pr = policyOf(r.id);
+  if (!pr || !REAL.audit) return { start: null, edit: null, added: pr?.created_at ? Date.parse(pr.created_at) : null };
+  const hits = (e) => {
+    const t = e.target ?? {};
+    return e.type === 'enforcement.set' && e.after?.mode === 'ENFORCE' && (t.operation === pr.operation || t.operation === '*') && ((t.rule ?? '*') === pr.reason_code || (t.rule ?? '*') === '*');
+  };
+  const start = REAL.audit.filter(hits).map((e) => ({ at: Date.parse(e.at), by: e.by })).sort((a, b) => b.at - a.at)[0] ?? null;
+  const edit = REAL.audit.filter((e) => e.type === 'policy_rule.updated' && e.target?.id === r.id).map((e) => ({ at: Date.parse(e.at), by: e.by, before: e.before, after: e.after })).sort((a, b) => b.at - a.at)[0] ?? null;
+  return { start, edit, added: pr.created_at ? Date.parse(pr.created_at) : null };
+}
+const shortWhen = (ms) => {
+  const o = { timeZone: W.zone || undefined };
+  if (ms >= W.dayStart) return new Date(ms).toLocaleTimeString('en-US', { ...o, hour: 'numeric', minute: '2-digit' }) + ' today';
+  return new Date(ms).toLocaleDateString('en-US', { ...o, ...(W.dayStart - ms < 6 * DAY ? { weekday: 'short' } : {}), month: 'short', day: 'numeric' });
+};
+/** Matches since a moment, from the rules view's daily counts: whole days from its start, and today. */
+function sinceCount(r, at) {
+  const first = W.dayStart - 7 * DAY;
+  if (at >= W.dayStart) return { n: r.today.did, scope: 'today' };
+  const i = Math.floor((at - first) / DAY);
+  if (i < 0) return { n: r.days.reduce((a, b) => a + b, 0) + r.today.did, scope: 'week' };
+  return { n: r.days.slice(i).reduce((a, b) => a + b, 0) + r.today.did, scope: 'since' };
+}
+
+function realBack(f) {
+  const r = f.rule;
+  return `<div class="s-top"><span class="tag" style="background:var(--ink);color:#fff">Protecting</span><span class="tag">Since ${safe(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}</span><span class="r">${safe(r.area)}</span></div>
+    <h2 class="s-h">Protecting. Lumni steps in for real now.</h2>
+    <div class="rule" style="background:#fff"><div class="lab">The rule</div><div class="sentence" style="font-size:22px">${safe(r.text)}.</div></div>
+    ${weekBars(r.days, r.today.did + r.today.would)}
+    <div class="expect">
+      <div><small>Last week it matched</small><b>${fmtN(r.lastWeek)}</b> ${plural(r.lastWeek, 'action', 'actions')}</div>
+      <div><small>From now on</small><b>Each match</b> is ${r.verb === 'asked' ? 'held for a person' : r.verb === 'waited' ? 'made to wait' : 'stopped'}</div>
+      <div><small>Changed your mind</small><b>Move it back</b> to watching at any time</div>
+    </div>
+    <div class="back-foot"><p>Reading your workspace again, so the page shows what Lumni says.</p></div>`;
+}
+
+async function realAction(kind, el) {
+  const f = REAL.list.find((x) => x.id === REAL.sel);
+  if (!f) return;
+  const busy = (t) => { el.disabled = true; el.textContent = t; };
+  if (kind === 'checker') {
+    busy('Switching on…');
+    const r = await Shell.write('POST', `/v1/console/apps/${encodeURIComponent(f.app.id)}/checker`, { on: true }, { ok: `${f.app.name}’s checker is on. New actions get read back.` });
+    if (!r) realStudio();
+  } else if (kind === 'protect') {
+    busy('Protecting…');
+    const r = await Shell.write('PUT', `/v1/console/rules/${encodeURIComponent(f.rule.id)}/mode`, { mode: 'ENFORCE' }, { ok: `Protecting. “${clip(f.rule.text, 60)}” steps in for real now.`, reload: false });
+    if (!r) return realStudio();
+    // The card flips to its protecting side, then the workspace is read again.
+    $('#back').innerHTML = realBack(f);
+    const flip = $('#flip');
+    flip.classList.remove('lift'); void flip.offsetWidth; flip.classList.add('lift', 'on');
+    REAL.flipped = f.rule.id;
+    setTimeout(() => Shell.refresh(), 2600);
+  } else if (kind === 'edit') {
+    openEdit(f.rule);
+  } else if (kind === 'cancel') {
+    delete REAL.try[f.rule.id];
+    const ed = $('#edit'); if (ed) { ed.hidden = true; ed.innerHTML = ''; }
+    const t = $('#rsent .tok'); if (t) t.textContent = thresholdLabel(f.rule, tried(f.rule.id));
+    runPreview(f.rule);
+  } else if (kind === 'save') {
+    saveThreshold(f.rule, el);
+  } else if (kind === 'remove') {
+    askRemove(f.rule);
+  } else if (kind === 'keep') {
+    $('#rmNote')?.remove();
+    const row = $('#ruleActs'); row.classList.remove('confirm');
+    row.innerHTML = row.dataset.was;
+  } else if (kind === 'confirm-remove') {
+    removeRule(f.rule, el);
+  } else if (kind === 'template') {
+    busy('Adding…');
+    const t = f.templates.find((x) => x.id === el.dataset.t);
+    const r = await Shell.write('POST', '/v1/console/rules', { template: el.dataset.t }, { ok: `Added. “${clip(t?.text ?? 'The rule', 60)}” is watching.` });
+    if (!r) realStudio();
+    else REAL.sel = null;
+  }
+}
+
+function realRunning(rv) {
+  if (!rv) return `<div class="running-h"><h2>Fixes already running</h2><p>Your rules couldn’t be read just now, so this is empty. Read it again in a moment.</p></div>`;
+  const on = rv.rules.filter((r) => r.mode === 'ENFORCE');
+  const spark = (days, today, startAt) => {
+    const v = [...days, today], max = Math.max(1, ...v), Wd = 300, H = 56;
+    const x = (i) => (i / (v.length - 1)) * Wd, y = (n) => H - 4 - (n / max) * (H - 10);
+    // Shade from the day it started protecting, when that's within the week; else today.
+    const si = startAt == null ? 6 : Math.max(0, Math.min(7, (startAt - (W.dayStart - 7 * DAY)) / DAY));
+    return `<svg viewBox="0 0 ${Wd} ${H}" preserveAspectRatio="none" aria-hidden="true"><rect x="${x(Math.min(6, si))}" y="0" width="${Wd - x(Math.min(6, si))}" height="${H}" fill="var(--accent-soft)" rx="6"/>${startAt != null && si > 0 ? `<line x1="${x(Math.min(6, si))}" x2="${x(Math.min(6, si))}" y1="0" y2="${H}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="2 3"/>` : ''}
+      <path d="M${v.map((n, i) => `${x(i).toFixed(1)},${y(n).toFixed(1)}`).join(' L')}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${Wd}" cy="${y(today)}" r="3.5" fill="var(--accent)"/></svg>`;
+  };
+  const built = `<article class="card run" style="animation-delay:.3s">
+      <div class="top1"><span class="ai lum" style="width:22px;height:22px;font-size:9.5px;border-radius:6px">L</span>Built in<span class="state prot">Protecting</span></div>
+      <p class="big">Lumni’s own checks stepped in <em>${fmtN(rv.today.lumni)}</em> ${plural(rv.today.lumni, 'time', 'times')} today</p>
+      <div class="rl">Repeats, old reads and turn-taking, on every action. Nothing to set up.</div></article>`;
+  const did = (r) => (r.verb === 'asked' ? 'Asked a person' : r.verb === 'waited' ? 'Made an AI wait' : 'Stopped');
+  const cards = on.map((r, i) => {
+    const fresh = REAL.flipped === r.id;
+    const { start, edit, added } = startOf(r);
+    // When it started protecting, from Lumni's record; else when the rule was added.
+    let big, since;
+    if (start) {
+      const c = sinceCount(r, start.at);
+      since = `Since ${shortWhen(start.at)}`;
+      big = `Protecting since ${safe(shortWhen(start.at))}. ${did(r)} <em>${fmtN(c.n)}</em> ${plural(c.n, 'time', 'times')} ${c.scope === 'today' ? 'today' : c.scope === 'week' ? 'in the last 7 days' : 'since then'}`;
+    } else {
+      since = added ? `Added ${shortWhen(added)}` : 'Protecting';
+      big = `${did(r)} <em>${fmtN(r.today.did)}</em> ${plural(r.today.did, 'time', 'times')} today, ${fmtN(r.lastWeek)} last week`;
+    }
+    const startAt = start?.at ?? null;
+    const by = (x) => (x.by === 'system' ? 'Lumni' : safe(x.by ?? 'someone'));
+    const edits = edit ? `Changed ${safe(shortWhen(edit.at))} by ${by(edit)}${edit.before?.numeric_threshold != null && edit.after?.numeric_threshold != null && edit.before.numeric_threshold !== edit.after.numeric_threshold ? `: ${safe(thresholdLabel(r, edit.before.numeric_threshold))} to ${safe(thresholdLabel(r, edit.after.numeric_threshold))}` : ''}.` : '';
+    return `<article class="card run ${fresh ? 'fresh' : ''}" style="animation-delay:${0.36 + i * 0.07}s">
+      <div class="top1"><span class="ar">${safe(r.area)}</span><span class="state prot">${fresh ? 'Protecting, just now' : 'Protecting'}</span></div>
+      <p class="big">${big}</p>
+      ${spark(r.days, r.today.did + r.today.would, startAt)}
+      <div class="ft"><span>Last 7 days</span><span>${start ? 'Today' : safe(since)}</span></div>
+      <div class="rl">Rule: <b>${safe(r.text)}</b>${start ? `<br>Set to protect by ${by(start)}.` : ''}${edits ? `<br>${edits}` : ''}${!start && REAL.audit ? '<br>Lumni’s record doesn’t say when it started protecting.' : ''}</div></article>`;
+  });
+  const n = on.length;
+  return `<div class="running-h"><h2>Fixes already running</h2><p>${n ? `${n} ${plural(n, 'rule is', 'rules are')} protecting, plus Lumni’s own checks. Start dates come from Lumni’s record of each change; counts are its real matches.` : 'No rule of yours is protecting yet. Lumni’s own checks always are.'}</p></div>
+    <div class="runs">${built}${cards.join('')}${n ? '' : `<div class="calm" style="grid-column:span 3;align-self:stretch;display:flex;flex-direction:column;justify-content:center"><b>Protect a rule to see it here</b>Pick a watching rule above and protect it, or add one from a template. Each one shows its matches, day by day.</div>`}</div>`;
+}
+
+async function renderReal(w, first) {
+  const my = ++READ;
+  const old = w.source === 'snapshots';
+  const [rv, rules, audit] = await Promise.all([
+    Shell.api.get('/v1/console/rules').catch(() => null),
+    old ? null : Shell.api.get('/v1/config/policy-rules').then((r) => r?.items ?? [], () => null),
+    old ? null : Shell.api.get('/v1/audit?type=enforcement.set,policy_rule.updated&limit=200').then((r) => r?.items ?? [], () => null),
+  ]);
+  if (my !== READ) return;
+  REAL.rv = rv;
+  REAL.rules = rules;
+  REAL.audit = audit;
+  REAL.list = realFindings(w, rv);
+  // Needs you links here with ?rule=<policy rule id>; ?pick= names a finding.
+  if (first) {
+    const q = new URLSearchParams(location.search);
+    const want = q.get('rule') ? `rule-${q.get('rule')}` : q.get('pick');
+    if (want && REAL.list.some((f) => f.id === want)) REAL.sel = want;
+  }
+  if (!REAL.list.some((f) => f.id === REAL.sel)) REAL.sel = REAL.list.find((f) => f.state === 'fix' || f.state === 'watching')?.id ?? REAL.list[0]?.id ?? null;
+  const handled = REAL.list.filter((f) => f.state === 'handled').length;
+  const todo = REAL.list.filter((f) => f.state === 'fix' || f.state === 'watching').length;
+  const n = REAL.list.length;
+  $('#main').innerHTML = `
+    <section class="head ${first ? 'rise' : ''}">
+      <div>
+        <div class="eyebrow">${safe(w.scale.org)}, ${safe(w.dayLabel)}</div>
+        <h1>${n ? `Lumni found ${n} ${plural(n, 'thing', 'things')} worth a look today.` : 'Nothing to fix today.'} <span class="soft">${n ? (todo ? `${todo} you can fix from here${handled ? `, ${handled} already handled` : ''}.` : 'All of it is handled or advice.') : 'Lumni keeps looking.'}</span></h1>
+        <p>Each finding comes from today’s ${fmtN(w.total)} ${plural(w.total, 'action', 'actions')} and your rules. New rules start by only watching, until you protect them.</p>
+      </div>
+      <div class="steps">
+        <div><b><i>1</i>${w.source === 'snapshots' ? 'Look back' : 'Back-test'}</b>${w.source === 'snapshots' ? 'Its real matches, last week and today' : 'Replays a rule on the last 7 days'}</div>
+        <div><b><i>2</i>Watch</b>Records what it would have done</div>
+        <div><b><i>3</i>Protect</b>Steps in for real, when you say so</div>
+      </div>
+    </section>
+    ${rv ? '' : '<div class="calm" style="margin-top:20px">Your rules couldn’t be read just now, so rule findings are missing. Use “Read it again” above.</div>'}
+    <section class="grid">
+      <div class="list" id="list"></div>
+      <div class="studio-wrap ${first ? 'rise' : ''}" style="animation-delay:.12s"><div class="flip" id="flip"><article class="card face front" id="front"></article><article class="card face back" id="back"></article></div></div>
+    </section>
+    <section class="running ${first ? '' : 'quiet'}" id="running">${realRunning(rv)}</section>`;
+  $('#list').classList.toggle('quiet', !first);
+  realList();
+  realStudio();
+  REAL.flipped = null;
+  if (first) realShot();
+}
+
+$('#main').addEventListener('click', (e) => {
+  if (!Shell.isReal) return;
+  const card = e.target.closest('.find[data-f]');
+  if (card) {
+    if (card.dataset.f === REAL.sel) return;
+    REAL.sel = card.dataset.f;
+    $('#flip').classList.remove('on');
+    realList(); realStudio();
+    return;
+  }
+  const tok = e.target.closest('[data-rtok]:not(.ro)');
+  if (tok) {
+    // Try the next threshold, and back-test it once the clicking settles.
+    const f = REAL.list.find((x) => x.id === REAL.sel);
+    const r = f?.rule, opts = r?.tokens?.[0]?.options ?? [];
+    if (!r || !opts.length) return;
+    const cur = Number(tried(r.id));
+    const i = opts.findIndex((o) => Number(o.value) === cur);
+    const next = Number(opts[(i + 1) % opts.length].value);
+    REAL.try[r.id] = next;
+    tok.textContent = thresholdLabel(r, next);
+    tok.classList.remove('moved'); void tok.offsetWidth; tok.classList.add('moved');
+    if ($('#thr')) $('#thr').value = next;
+    syncSave(r);
+    $('#bt')?.classList.add('busy');
+    previewSoon(r);
+    return;
+  }
+  const act = e.target.closest('[data-real]');
+  if (act) realAction(act.dataset.real, act);
+});
+
+// Real screenshot states: ?shot=protect, ?shot=checker, ?shot=template, ?shot=pick-<finding id>,
+// ?shot=preview (try another threshold), ?shot=edit (save one), ?shot=stale (save with an old
+// version, so the API answers 409), ?shot=remove-ask and ?shot=remove (remove a watching rule).
+async function realShot() {
+  const s = new URLSearchParams(location.search).get('shot');
+  if (!s) return;
+  const pick = (pre) => { const f = REAL.list.find((x) => x.id.startsWith(pre)); if (f) $(`.find[data-f="${CSS.escape(f.id)}"]`)?.click(); return f; };
+  await sleep(900);
+  if (s.startsWith('pick-')) pick(s.slice(5));
+  if (s === 'protect' && pick('rule-')) { await sleep(300); $('[data-real="protect"]')?.click(); }
+  if (s === 'checker' && pick('blind-')) { await sleep(300); $('[data-real="checker"]')?.click(); }
+  if (s === 'template' && pick('templates')) { await sleep(300); $('[data-real="template"]')?.click(); }
+  if (s === 'preview' && pick('rule-')) { await sleep(900); $('#rsent .tok')?.click(); await sleep(150); $('#rsent .tok')?.click(); }
+  if ((s === 'edit' || s === 'stale') && pick('rule-')) {
+    await sleep(700); $('[data-real="edit"]')?.click();
+    const r = REAL.list.find((x) => x.id === REAL.sel).rule;
+    const inp = $('#thr'); inp.value = String(Math.round(Number(inp.value) / 2)); inp.dispatchEvent(new Event('input'));
+    if (s === 'stale') policyOf(r.id).version -= 1;
+    await sleep(900); $('[data-real="save"]')?.click();
+  }
+  if ((s === 'remove' || s === 'remove-ask') && pick('rule-')) {
+    await sleep(700); $('[data-real="remove"]')?.click();
+    if (s === 'remove') { await sleep(400); $('[data-real="confirm-remove"]')?.click(); }
+  }
+}
+
+Shell.boot({ nav: 'Fixes', onWorld: render });
+</script>
+</body>
+</html>

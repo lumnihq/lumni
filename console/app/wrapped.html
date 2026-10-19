@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Wrapped</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --k-stop: var(--accent); --k-recheck: #f08a24; --k-wait: #3b9eff; --k-ask: var(--ink); --SW: 450px; --SH: 800px; }
+  .wrap { display: grid; grid-template-columns: 790px minmax(0, 1fr); gap: 40px; padding: 26px 40px 40px; }
+
+  /* ─── left: the player ─────────────────────────── */
+  .left { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .glow { position: absolute; left: 50%; top: 60px; width: 620px; height: 700px; margin-left: -310px; border-radius: 50%; filter: blur(90px); opacity: .5; transition: background-color .9s var(--ease); pointer-events: none; }
+  .player {
+    position: relative; width: var(--SW); height: var(--SH); border-radius: 28px; overflow: hidden;
+    box-shadow: 0 2px 4px rgba(10,15,28,.05), 0 40px 90px -30px rgba(40,28,140,.45), 0 0 0 1px rgba(13,14,20,.06);
+    user-select: none; -webkit-user-select: none; cursor: pointer; isolation: isolate; background: #fff;
+  }
+  .player:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+  .slides { position: absolute; inset: 0; }
+  .bars { position: absolute; z-index: 5; top: 14px; left: 16px; right: 16px; display: flex; gap: 4px; }
+  .bars span { flex: 1; height: 3px; border-radius: 2px; background: rgba(13,14,20,.14); overflow: hidden; }
+  .bars i { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 2px; }
+  .phead { position: absolute; z-index: 5; top: 28px; left: 16px; right: 16px; display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 650; }
+  .phead .lm { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 800; letter-spacing: -.04em; position: relative; }
+  .phead .lm::after { content: ''; position: absolute; top: 6px; left: 50%; width: 4px; height: 4px; margin-left: 2px; border-radius: 50%; background: var(--accent-2); }
+  .phead small { display: block; font-size: 12px; font-weight: 550; opacity: .62; margin-top: -1px; }
+  .phead .pp { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(13,14,20,.06); }
+  .player.dark .bars span { background: rgba(255,255,255,.28); }
+  .player.dark .bars i { background: #fff; }
+  .player.dark .phead { color: #fff; }
+  .player.dark .phead .lm { background: #fff; color: var(--ink); }
+  .player.dark .phead .pp { background: rgba(255,255,255,.14); color: #fff; }
+  .player.paused .slide, .player.paused .slide * { animation-play-state: paused !important; }
+  .pchip { position: absolute; z-index: 6; left: 50%; bottom: 22px; transform: translate(-50%, 10px); opacity: 0; padding: 7px 14px; border-radius: 999px; background: rgba(13,14,20,.78); color: #fff; font-size: 12.5px; font-weight: 650; backdrop-filter: blur(6px); transition: opacity .2s, transform .25s var(--ease); pointer-events: none; }
+  .player.held .pchip { opacity: 1; transform: translate(-50%, 0); }
+  .hint { margin-top: 16px; font-size: 13px; color: var(--ink2); font-weight: 550; display: flex; gap: 14px; position: relative; }
+  .hint kbd { font: 600 11.5px var(--sans); padding: 2px 6px; border-radius: 5px; background: #fff; box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); }
+
+  /* ─── a slide ─────────────────────────────────── */
+  .slide { position: absolute; left: 0; top: 0; width: var(--SW); height: var(--SH); overflow: hidden; padding: 92px 34px 34px; display: flex; flex-direction: column; color: var(--ink); }
+  .slide.enter { animation: slideIn .55s var(--ease) both; }
+  @keyframes slideIn { from { opacity: 0; transform: scale(1.04); filter: blur(6px); } }
+  .s-lav { background: radial-gradient(120% 75% at 85% 0%, #d9d2ff 0%, #ebe8ff 42%, #f7f6ff 100%); }
+  .s-white { background: radial-gradient(90% 60% at 100% 100%, #f1efff 0%, #ffffff 60%); }
+  .s-violet { background: radial-gradient(130% 85% at 15% 0%, #8f83ff 0%, #5b4bf5 46%, #3a2cd2 100%); color: #fff; }
+  .s-ink { background: radial-gradient(120% 70% at 75% 105%, #33288c 0%, #171436 42%, #0d0e14 75%); color: #fff; }
+
+  .kick { font-size: 17px; font-weight: 650; letter-spacing: -.01em; opacity: .66; }
+  .say { font-size: 34px; font-weight: 750; letter-spacing: -.035em; line-height: 1.08; text-wrap: balance; }
+  .say.sm { font-size: 30px; }
+  .say em { font-style: normal; color: var(--accent); }
+  .s-violet .say em, .s-ink .say em { color: #c9c2ff; }
+  .huge { display: block; width: 100%; white-space: nowrap; font-size: 132px; font-weight: 800; letter-spacing: -.065em; line-height: .9; margin: 6px 0 4px -6px; font-variant-numeric: proportional-nums; }
+  .huge.v { color: var(--accent); }
+  .huge.mid { font-size: 104px; }
+  .foot { margin-top: auto; font-size: 14.5px; font-weight: 550; line-height: 1.4; opacity: .72; }
+  .up { animation: up .7s var(--ease) both; }
+  @keyframes up { from { opacity: 0; transform: translateY(22px); } }
+  .pop { animation: popIn .7s var(--spring) both; }
+  @keyframes popIn { from { opacity: 0; transform: scale(.4); } }
+
+  /* 1. Volume: a field of dots. */
+  .field { position: relative; margin-top: 22px; }
+  .field canvas { display: block; width: 382px; height: 330px; }
+  .key { display: flex; gap: 16px; margin-top: 12px; font-size: 13px; font-weight: 600; opacity: .8; }
+  .key span { display: inline-flex; align-items: center; gap: 6px; }
+  .key i { width: 9px; height: 9px; border-radius: 50%; }
+
+  /* 2. Step-ins: a tower of kinds. */
+  .tower { position: relative; height: 380px; margin-top: 26px; }
+  .tower .blk { position: absolute; right: 0; width: 128px; border-radius: 12px; animation: drop .8s var(--spring) both; box-shadow: inset 0 -3px 0 rgba(0,0,0,.08); }
+  @keyframes drop { from { opacity: 0; transform: translateY(-460px) rotate(-6deg); } 60% { opacity: 1; } }
+  .tower .lbl { position: absolute; left: 0; right: 150px; transform: translateY(-50%); display: flex; align-items: center; gap: 10px; animation: up .6s var(--ease) both; }
+  .tower .lbl i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .tower .lbl > span { font-size: 15px; font-weight: 600; color: var(--ink2); white-space: nowrap; }
+  .tower .lbl b { margin-left: auto; font-size: 26px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .tower .lbl::after { content: ''; position: absolute; right: -18px; width: 14px; border-top: 1.5px dotted var(--ink3); }
+
+  /* 3. Most eager: a fan of slips. */
+  .who { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; font-weight: 650; }
+  .who .ai { width: 34px; height: 34px; border-radius: 10px; font-size: 12.5px; }
+  .s-violet .who .ai { background: #fff; color: var(--accent); }
+  .who small { display: block; font-size: 12.5px; font-weight: 550; opacity: .7; }
+  .fan { position: relative; height: 300px; margin-top: auto; left: 36px; }
+  .slp { position: absolute; left: 50%; top: 64px; width: 236px; height: 146px; margin-left: -118px; border-radius: 16px; background: linear-gradient(160deg, #fff 0%, #f5f4fb 100%); color: var(--ink); padding: 14px 16px; transform-origin: 50% 170%; box-shadow: 0 22px 40px -18px rgba(10,6,60,.55); animation: deal .75s var(--spring) both; }
+  @keyframes deal { from { opacity: 0; transform: translate(80px, 260px) rotate(24deg); } }
+  .slp .k { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 650; color: var(--ink2); white-space: nowrap; }
+  .slp .mk { width: 18px; height: 18px; border-radius: 5px; color: #fff; display: grid; place-items: center; font-size: 9.5px; font-weight: 800; }
+  .slp .amt { font-size: 36px; font-weight: 800; letter-spacing: -.045em; margin-top: 4px; line-height: 1; }
+  .slp .to { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .slp .perf { position: absolute; left: 0; right: 0; bottom: 34px; border-top: 2px dashed var(--line2); }
+  .slp .meta { position: absolute; left: 16px; right: 16px; bottom: 10px; font-size: 11.5px; color: var(--ink2); font-weight: 600; display: flex; justify-content: space-between; }
+  .stampx { position: absolute; z-index: 9; left: 50%; top: 150px; padding: 6px 16px; border-radius: 12px; background: rgba(255,255,255,.94); border: 3px solid var(--accent); color: var(--accent); font-size: 28px; font-weight: 850; line-height: 1.1; transform: translateX(-40%) rotate(-10deg); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4.5px var(--accent-line), 0 16px 30px -10px rgba(20,10,90,.5); animation: stamp .5s cubic-bezier(.2,1.6,.4,1) 1.5s both; white-space: nowrap; }
+  .stampx small { display: block; font-size: 12px; font-weight: 700; }
+  @keyframes stamp { from { opacity: 0; transform: translateX(-40%) rotate(-10deg) scale(2.6); } 60% { opacity: 1; } }
+  .chip { position: absolute; z-index: 10; right: 36px; top: 18px; background: var(--ink); color: #fff; border-radius: 16px; padding: 8px 14px 9px; font-size: 34px; font-weight: 800; letter-spacing: -.04em; line-height: 1; box-shadow: 0 16px 30px -12px rgba(0,0,0,.6); animation: chipIn .55s var(--spring) 1.9s both; }
+  .chip small { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: 0; opacity: .66; margin-top: 3px; }
+  @keyframes chipIn { from { opacity: 0; transform: scale(.4) rotate(-8deg); } }
+
+  /* 4. Most careful: a rosette. */
+  .badge { display: block; margin: auto auto 0; width: 300px; height: 330px; overflow: visible; }
+  .badge .tails { animation: tails .7s var(--ease) 1.05s both; }
+  @keyframes tails { from { opacity: 0; transform: translateY(-60px); } }
+  .badge .star { transform-origin: 150px 130px; animation: spinIn 1.1s var(--spring) .25s both; }
+  @keyframes spinIn { from { opacity: 0; transform: rotate(-120deg) scale(.2); } }
+  .badge .ring { stroke-dasharray: 440; stroke-dashoffset: 440; animation: dash 1.2s var(--ease) .9s forwards; }
+  @keyframes dash { to { stroke-dashoffset: 0; } }
+  .badge .in { animation: popIn .6s var(--spring) 1.2s both; transform-origin: 150px 130px; }
+  .badge .shine { transform-origin: 150px 130px; animation: shine 3s linear 1.4s infinite; }
+  @keyframes shine { to { transform: rotate(360deg); } }
+
+  /* 5. Incident: the spike. */
+  .spike { display: block; width: 382px; height: 300px; margin-top: 30px; overflow: visible; }
+  .spike .pop { transform-box: fill-box; transform-origin: center; }
+  .spike .ln { stroke-dasharray: 900; stroke-dashoffset: 900; animation: dash 1.8s var(--ease) .4s forwards; }
+  .spike .band { animation: bandIn .8s var(--ease) .2s both; transform-origin: center bottom; }
+  @keyframes bandIn { from { opacity: 0; transform: scaleY(0); } }
+  .stats { display: grid; grid-template-columns: .9fr 1.3fr .8fr; margin-top: auto; border-top: 1px solid rgba(255,255,255,.16); padding-top: 16px; }
+  .stats div + div { padding-left: 14px; border-left: 1px solid rgba(255,255,255,.16); }
+  .stats b { display: block; font-size: 40px; font-weight: 800; letter-spacing: -.04em; line-height: 1.05; white-space: nowrap; }
+  .stats small { display: block; font-size: 12.5px; font-weight: 550; opacity: .66; line-height: 1.3; margin-top: 4px; }
+
+  /* 6. Money: stacks of bills. */
+  .piles { display: flex; align-items: flex-end; gap: 16px; height: 300px; margin-top: auto; }
+  .pile { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .pile .bills { display: flex; flex-direction: column-reverse; gap: 3px; width: 100%; }
+  .bill { height: 15px; border-radius: 4px; background: linear-gradient(90deg, #fff 0%, #ece9ff 100%); box-shadow: 0 2px 0 rgba(20,10,90,.25); position: relative; animation: billIn .5s var(--spring) both; }
+  .bill::after { content: ''; position: absolute; left: 50%; top: 4px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; border: 1.5px solid #a99fff; }
+  @keyframes billIn { from { opacity: 0; transform: translateY(-120px) rotate(4deg); } }
+  .pile b { font-size: 20px; font-weight: 800; letter-spacing: -.03em; margin-top: 10px; white-space: nowrap; }
+  .pile small { font-size: 12px; font-weight: 600; opacity: .72; text-align: center; line-height: 1.25; margin-top: 2px; }
+
+  /* 7. Hours: a clock sweeping. */
+  .clockwrap { position: relative; margin: auto 0 6px; height: 330px; display: grid; place-items: end center; }
+  .clock { display: block; width: 290px; height: 290px; margin: 0 auto; overflow: visible; }
+  .clock .sweep { stroke-dasharray: 377; stroke-dashoffset: 377; animation: dash 2.4s cubic-bezier(.5,0,.2,1) .35s forwards; }
+  .clock .hand { transform-origin: 130px 130px; animation: turn 2.4s cubic-bezier(.5,0,.2,1) .35s both; }
+  @keyframes turn { from { transform: rotate(-1080deg); } }
+  .clock .mh { transform-origin: 130px 130px; animation: turn2 2.4s cubic-bezier(.5,0,.2,1) .35s both; }
+  @keyframes turn2 { from { transform: rotate(-90deg); } }
+
+  /* 8. Personality: a pentagon. */
+  .arch { font-size: 40px; font-weight: 800; letter-spacing: -.045em; line-height: 1.02; margin-top: 10px; color: var(--accent); text-wrap: balance; }
+  .radar { display: block; width: 382px; height: 380px; margin: auto auto 0; overflow: visible; }
+  .radar .shape { transform-origin: 191px 196px; animation: popIn 1s var(--spring) .5s both; }
+  .radar .grid { animation: up .6s var(--ease) both; }
+
+  /* 9. Outro. */
+  .bigwm { font-size: 92px; font-weight: 800; letter-spacing: -.065em; line-height: .9; margin-top: 30px; position: relative; display: inline-block; }
+  .bigwm i { font-style: normal; position: relative; display: inline-block; }
+  .bigwm i::after { content: ''; position: absolute; left: 50%; top: .08em; width: .2em; height: .2em; margin-left: -.1em; background: #c9c2ff; border-radius: 50%; animation: popIn .6s var(--spring) .9s both; }
+  .proof { margin-top: 20px; }
+  .proof div { display: flex; justify-content: space-between; align-items: baseline; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.2); font-size: 15px; font-weight: 600; }
+  .proof b { font-size: 26px; font-weight: 800; letter-spacing: -.035em; }
+  .cta { margin-top: auto; height: 54px; border-radius: 999px; background: #fff; color: var(--ink); font-size: 16px; font-weight: 750; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 16px 30px -12px rgba(10,6,60,.6); animation: popIn .6s var(--spring) 1.2s both; }
+  .cta:hover { transform: translateY(-1px); }
+  .sig { margin-top: 12px; text-align: center; font-size: 12.5px; font-weight: 550; opacity: .66; }
+
+  /* Real: two slips. */
+  .two { position: relative; height: 330px; margin-top: auto; }
+  .two .slp { animation: none; }
+  .two .slp.a { transform: translate(-46px, 0) rotate(-6deg); animation: deal .8s var(--spring) .2s both; }
+  .two .slp.b { transform: translate(40px, 92px) rotate(4deg); animation: deal .8s var(--spring) .5s both; }
+  .two .stampx { top: 220px; }
+
+  /* ─── right: about the story ───────────────────── */
+  .right { padding-top: 22px; min-width: 0; }
+  .right .eyebrow { display: flex; align-items: center; gap: 8px; }
+  .right h1 { font-size: 54px; font-weight: 800; letter-spacing: -.05em; line-height: 1; margin-top: 10px; }
+  .right h1 span { color: var(--accent); }
+  .right .lede { font-size: 16.5px; color: var(--ink2); margin-top: 14px; line-height: 1.5; max-width: 500px; }
+  .right .lede b { color: var(--ink); font-weight: 650; }
+  .thumbs { display: grid; grid-template-columns: repeat(5, 90px); gap: 18px 13px; margin-top: 26px; }
+  .th { position: relative; display: flex; flex-direction: column; gap: 7px; text-align: left; }
+  .th .box { position: relative; width: 90px; height: 160px; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(13,14,20,.07), 0 10px 22px -14px rgba(30,20,90,.4); transition: transform .25s var(--ease), box-shadow .2s; }
+  .th .box .slide { transform: scale(.2); transform-origin: 0 0; pointer-events: none; }
+  .th .box .slide, .th .box .slide * { animation: none !important; }
+  .th:hover .box { transform: translateY(-3px); }
+  .th.on .box { box-shadow: 0 0 0 2.5px var(--ink), 0 14px 26px -12px rgba(30,20,90,.5); }
+  .th .t { font-size: 12px; font-weight: 650; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .th.on .t { color: var(--ink); }
+  .th .n { position: absolute; z-index: 2; top: 6px; left: 6px; width: 18px; height: 18px; border-radius: 6px; background: rgba(13,14,20,.72); color: #fff; font-size: 10.5px; font-weight: 750; display: grid; place-items: center; }
+
+  .src { margin-top: 24px; padding: 16px 18px; display: flex; gap: 14px; align-items: center; }
+  .src .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+  .src .tx { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink2); line-height: 1.4; }
+  .src .tx b { display: block; color: var(--ink); font-size: 14px; }
+  .src .btn { height: 34px; font-size: 13px; padding: 0 12px; flex: none; }
+  .acts { display: flex; gap: 10px; margin-top: 16px; }
+  .acts .btn { height: 44px; padding: 0 18px; font-size: 14.5px; border-radius: 12px; }
+  .slack { margin-top: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+  .slack .sl { width: 34px; height: 34px; border-radius: 10px; background: var(--wash); display: grid; place-items: center; flex: none; }
+  .slack .tx { flex: 1; font-size: 14px; font-weight: 650; }
+  .slack .tx small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .sw { width: 46px; height: 28px; border-radius: 999px; background: var(--line2); position: relative; transition: background .25s; flex: none; }
+  .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .3s var(--spring); }
+  .sw[aria-checked='true'] { background: var(--accent); }
+  .slack .tx small a { color: var(--accent); font-weight: 650; }
+  .slack.busy .sw { opacity: .6; }
+  .piles.week { gap: 10px; }
+  .piles.week .pile b { font-size: 15px; }
+  .weekbars { margin-top: 26px; width: 100%; height: auto; overflow: visible; }
+  .weekbars .bar { transform-box: fill-box; transform-origin: bottom; animation: grow .9s var(--spring) both; }
+  @keyframes grow { from { transform: scaleY(0); } }
+  .sw[aria-checked='true']::after { transform: translateX(18px); }
+  .btn:disabled, .sw:disabled { opacity: .45; cursor: not-allowed; }
+  a.cta { text-decoration: none; }
+
+  .toast { position: fixed; z-index: 60; left: 50%; bottom: 30px; transform: translate(-50%, 20px); opacity: 0; padding: 12px 18px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 20px 40px -12px rgba(13,14,20,.5); transition: opacity .25s, transform .35s var(--spring); pointer-events: none; display: flex; align-items: center; gap: 10px; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .toast i { width: 8px; height: 8px; border-radius: 50%; background: var(--pop); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+<div class="toast" id="toast"><i></i><span></span></div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// A week is about 6.4 of today's days: every week number is today's, times
+// 6.4, rounded. The story is read from the World; only the archetype names
+// and slip wording are written by hand.
+const WEEK = 6.4;
+const DUR = 4500;
+const wk = (n) => Math.round(n * WEEK);
+const sum = (a) => a.reduce((s, v) => s + v, 0);
+const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
+const FMT = { n: fmtN, m: fmtMoney, plain: (v) => Math.round(v).toLocaleString('en-US') };
+// A number that counts up when its slide plays. Thumbnails show the end value.
+const num = (v, f = 'n') => `<span data-to="${v}" data-f="${f}">${FMT[f](v)}</span>`;
+const NOUN = { refund: 'refunds', invoice: 'invoices', triage: 'tickets', dunning: 'reminders', quote: 'quotes', router: 'leads', deploy: 'deploys', accounts: 'account updates', ledger: 'entries', recon: 'matches', pricer: 'price changes', misc: 'actions' };
+const KINDS = [
+  ['stop', 'Stopped a repeat', 'var(--k-stop)'],
+  ['recheck', 'Looked again', 'var(--k-recheck)'],
+  ['wait', 'Waited its turn', 'var(--k-wait)'],
+  ['ask', 'Asked a person', 'var(--k-ask)'],
+];
+const NAMES = ['Omar H.', 'Lee P.', 'Dana R.', 'Kai M.', 'Ruth A.', 'Zoe L.', 'Theo G.'];
+const ICON = {
+  pause: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="1.5" width="2.6" height="9" rx="1" fill="currentColor"/><rect x="7.4" y="1.5" width="2.6" height="9" rx="1" fill="currentColor"/></svg>',
+  play: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 1.8v8.4c0 .5.5.8 1 .5l6.6-4.2a.6.6 0 000-1L4 1.3c-.5-.3-1 0-1 .5z" fill="currentColor"/></svg>',
+};
+
+/** Five traits from the day's rates, and the archetype they add up to. */
+function persona(w) {
+  const fl = w.fleet;
+  const all = sum(fl.map((f) => f.n)) || 1;
+  const rep = sum(fl.map((f) => f.repeats)) / all;
+  const stale = sum(fl.map((f) => f.stale)) / all;
+  const traits = [
+    ['Eager', clamp(rep / 0.015)],
+    ['Careful', clamp(1 - (w.kinds.bad / Math.max(1, w.total)) / 0.0022)],
+    ['Fresh', clamp(1 - stale / 0.022)],
+    ['Proven', clamp((w.proven - 0.8) / 0.2)],
+    ['Frugal', clamp(1 - (w.money.wasted / Math.max(1, w.spend)) * 4.5)],
+  ];
+  const t = Object.fromEntries(traits.map(([k, v]) => [k, v]));
+  const arch = t.Eager >= 0.6 && t.Eager >= t.Fresh
+    ? ['The enthusiastic sprinter', 'Fast, keen and a little quick to hit send twice. Lumni is the friend holding the car keys.']
+    : t.Fresh < 0.45 ? ['The speed reader', 'Acts on what it read a minute ago. Lumni keeps handing it the latest page.']
+    : t.Careful > 0.8 && t.Proven > 0.8 ? ['The steady hand', 'Rarely repeats, rarely stale, nearly always proven. Ready for more say.']
+    : ['The quiet pro', 'Balanced on every trait. The kind of fleet you can forget about.'];
+  return { traits, arch };
+}
+
+/** Everything the demo's slides say, computed once per world. */
+function facts(w) {
+  const fl = w.fleet;
+  const eager = [...fl].sort((a, b) => b.repeats - a.repeats)[0];
+  const careful = [...fl].sort((a, b) => b.streak - a.streak)[0];
+  const { traits, arch } = persona(w);
+  // Stops with money on them, as piles.
+  const piles = w.patterns.stop.filter((p) => p.kept > 0).map((p) => ({ ...p, wkKept: wk(p.kept) }));
+  const lbl = { 'p-refund2': 'Second refunds', 'p-invoice2': 'Repeat invoices', 'p-cancelled': 'Renewals after cancelling' };
+  const inc = w.incident;
+  return {
+    org: w.scale.org, ais: w.scale.ais, N: wk(w.total), steps: wk(w.steps),
+    kinds: Object.fromEntries(Object.entries(w.kinds).map(([k, v]) => [k, wk(v)])),
+    eager: { ...eager, ai: w.team(eager.team).ai, app: w.app(eager.app), wkRep: wk(eager.repeats), noun: NOUN[eager.id] ?? 'actions', avg: Math.round((w.patterns.stop[0]?.money) ?? 60) },
+    careful: { ...careful, ai: w.team(careful.team).ai, run: Math.min(wk(careful.streak), Math.round(wk(careful.n) * 0.94)) },
+    kept: wk(w.kept), piles: piles.map((p) => ({ ...p, label: lbl[p.id] ?? p.t })),
+    hours: wk(w.money.hoursSaved), traits, arch, inc,
+  };
+}
+
+/** The Monday of the demo's week, from its own day. */
+function weekOf(w) {
+  // The weekday the world says it is, so the week matches its own label.
+  const said = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(String(w.dayLabel).split(',')[0]);
+  const back = ((said >= 0 ? said : new Date(w.dayStart).getUTCDay()) + 6) % 7;
+  return new Date(w.dayStart - back * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/* ─── slides ─────────────────────────────────────────── */
+
+function mockSlides(w, F) {
+  const s = [];
+  // 1. Volume.
+  s.push({ id: 'volume', label: 'Volume', bg: 's-lav', glow: '#c6bdff',
+    src: ['Every action your AIs sent through Lumni', `${fmtN(F.N)} actions across ${fmtN(F.ais)} AIs and ${w.scale.apps} apps.`, 'Flow', '/flow'],
+    html: () => `<div class="kick">This week</div>
+      <div class="say up" style="margin-top:12px">Your ${num(F.ais, 'plain')} AIs did</div>
+      <span class="huge v fit">${num(F.N)}</span>
+      <div class="say up" style="animation-delay:.15s">things.</div>
+      <div class="field" style="margin-top:auto"><canvas width="764" height="660"></canvas></div>
+      <div class="key"><span><i style="background:var(--accent)"></i>About ${fmtN(Math.max(1, F.N / 504))} things each</span><span><i style="background:var(--ink)"></i>Lumni stepped in</span></div>`,
+    draw: (el, live) => dots(el.querySelector('canvas'), { filled: 504, dark: Math.max(1, Math.round((504 * w.steps) / w.total)) }, live),
+  });
+  // 2. Step-ins, by kind.
+  s.push({ id: 'steps', label: 'Step-ins', bg: 's-white', glow: '#dcd7ff',
+    src: ['Every time Lumni stepped in', 'By kind, before the action reached the app.', 'Today', '/today'],
+    html: () => {
+      const H = 380, gap = 6, min = 52;
+      const ks = KINDS.map(([k, t, c]) => ({ k, t, c, n: F.kinds[k] })).sort((a, b) => b.n - a.n);
+      const tot = sum(ks.map((k) => k.n)) || 1;
+      let hs = ks.map((k) => Math.max(min, ((H - gap * 3) * k.n) / tot));
+      const over = sum(hs) - (H - gap * 3);
+      const big = hs.filter((h) => h > min);
+      hs = hs.map((h) => (h > min ? h - (over * h) / sum(big) : h));
+      let y = H;
+      const parts = ks.map((k, i) => { y -= hs[i]; const top = y; y -= gap; return { ...k, top, h: hs[i] }; });
+      return `<div class="kick">Lumni stepped in</div>
+      <span class="huge fit">${num(F.steps)}</span>
+      <div class="say up" style="animation-delay:.15s">times. <em>1 in ${Math.round(F.N / Math.max(1, F.steps))}</em> things.</div>
+      <div class="tower">${parts.map((p, i) => `
+        <div class="blk" style="top:${p.top}px;height:${p.h}px;background:${p.c};animation-delay:${0.3 + i * 0.22}s"></div>
+        <div class="lbl" style="top:${p.top + p.h / 2}px;animation-delay:${0.55 + i * 0.22}s"><i style="background:${p.c}"></i><span>${p.t}</span><b>${num(p.n)}</b></div>`).join('')}
+      </div>
+      <div class="foot">And ${fmtN(F.kinds.bad)} said done when the app showed nothing. Lumni caught those too.</div>`;
+    },
+  });
+  // 3. Most eager.
+  const E = F.eager;
+  s.push({ id: 'eager', label: 'Most eager', bg: 's-violet', glow: '#7c6dff', dark: true,
+    src: [`${E.name}, this week`, `${fmtN(E.wkRep)} repeats stopped at the gate. None reached ${E.app.name}.`, 'Autonomy', '/autonomy'],
+    html: () => {
+      const K = 6;
+      const slips = Array.from({ length: K }, (_, i) => {
+        const top = i === K - 1;
+        const amt = '$' + Math.round((E.avg * (0.6 + ((i * 37) % 10) / 11)) / 5) * 5;
+        return `<div class="slp" style="transform:translate(${(i - K + 1) * 14}px, ${(K - 1 - i) * 2}px) rotate(${top ? 4 : -18 + i * 4}deg);z-index:${i};animation-delay:${0.35 + i * 0.1}s">
+          <div class="k">${top ? `<span class="ai" style="width:18px;height:18px;font-size:8.5px;border-radius:5px">${E.ai}</span>Refund, again` : `<span class="mk" style="background:${E.app.color}">${E.app.mark}</span>Refund`}</div>
+          <div class="amt">${amt}</div><div class="to">to ${NAMES[(i * 3 + 1) % NAMES.length]}</div>
+          <div class="perf"></div><div class="meta"><span>${E.name}</span><span>${top ? 'Asked again' : 'Sent'}</span></div></div>`;
+      }).join('');
+      return `<div class="kick">Your most eager AI</div>
+        <div class="who up" style="animation-delay:.1s"><span class="ai">${E.ai}</span><span>${E.name}<small>${fmtN(E.copies)} ${E.copies === 1 ? 'copy' : 'copies'} running</small></span></div>
+        <div class="say up" style="margin-top:20px;animation-delay:.2s">${E.name} tried</div>
+        <span class="huge mid fit">${num(E.wkRep)}</span>
+        <div class="say up" style="animation-delay:.3s">${E.noun} twice. <em>Lumni caught every one.</em></div>
+        <div class="fan">${slips}<div class="stampx">Stopped<small>already refunded</small></div><div class="chip">×${fmtN(E.wkRep)}<small>none reached ${E.app.name}</small></div></div>`;
+    },
+  });
+  // 4. Most careful.
+  const C = F.careful;
+  s.push({ id: 'careful', label: 'Most careful', bg: 's-lav', glow: '#cfc7ff',
+    src: [`${C.name}'s clean run`, 'Actions in a row with no repeat, no stale read and proof in the app.', 'Autonomy', '/autonomy'],
+    html: () => `<div class="kick">Your most careful AI</div>
+      <div class="say up" style="margin-top:12px;animation-delay:.1s">${C.name} went</div>
+      <span class="huge v fit">${num(C.run)}</span>
+      <div class="say up" style="animation-delay:.2s">actions without a single slip.</div>
+      ${rosette(C)}`,
+  });
+  // 5. The incident.
+  const I = F.inc;
+  s.push({ id: 'incident', label: 'Scariest 11 min', bg: 's-ink', glow: '#3b2fa0', dark: true,
+    src: ['The 11:36 Stripe timeout', `${fmtN(I.burst)} repeat refunds stopped, ${fmtN(I.customers)} customers refunded once.`, 'Incident', '/incident'],
+    html: () => `<div class="kick">The scariest 11 minutes</div>
+      <div class="say up" style="margin-top:12px;font-size:38px">Stripe went down Thursday at 11:36.</div>
+      <div class="say up" style="font-size:38px;animation-delay:.2s"><em>Nobody got paged.</em></div>
+      ${spikeSvg(I)}
+      <div class="stats up" style="animation-delay:1.4s">
+        <div><b>${num(I.burst)}</b><small>repeat refunds stopped</small></div>
+        <div><b>${num(I.kept, 'm')}</b><small>never went out twice</small></div>
+        <div><b>0</b><small>people paged</small></div>
+      </div>`,
+  });
+  // 6. Money.
+  s.push({ id: 'kept', label: 'Money kept', bg: 's-violet', glow: '#7466ff', dark: true,
+    src: ['Repeats with money on them', 'Held before they reached the app, then proven by reading it back.', 'Money', '/money'],
+    html: () => {
+      const max = Math.max(...F.piles.map((p) => p.wkKept));
+      return `<div class="kick">Money that never went out twice</div>
+      <span class="huge fit" style="margin-top:18px">${num(F.kept, 'm')}</span>
+      <div class="say sm up" style="margin-top:10px;animation-delay:.2s">stayed in your accounts this week.</div>
+      <div class="piles">${F.piles.map((p, j) => {
+        const n = Math.max(2, Math.round(Math.sqrt(p.wkKept / max) * 12));
+        return `<div class="pile"><div class="bills">${Array.from({ length: n }, (_, i) => `<i class="bill" style="animation-delay:${0.5 + j * 0.25 + i * 0.06}s"></i>`).join('')}</div>
+          <b>${fmtMoney(p.wkKept)}</b><small>${p.label}</small></div>`;
+      }).join('')}</div>`;
+    },
+  });
+  // 7. Hours.
+  const hrs = F.hours;
+  const one = (v) => v.toFixed(1).replace(/\.0$/, '');
+  const said = hrs >= 2000 ? [one(hrs / 2000), 'work years', '2,000 hours to a year'] : hrs >= 40 ? [one(hrs / 40), 'work weeks', '40 hours to a week'] : [one(Math.max(1, hrs / 8)), 'working days', '8 hours to a day'];
+  s.push({ id: 'hours', label: 'Hours back', bg: 's-white', glow: '#d8d2ff',
+    src: ['Cleanup nobody had to do', 'Reversing repeats, chasing actions that never happened, answering asks.', 'Money', '/money'],
+    html: () => `<div class="kick">Cleanup you skipped</div>
+      <span class="huge v fit" style="margin-top:14px">${num(hrs)}<span style="font-size:.42em;letter-spacing:-.03em;margin-left:.22em">hours</span></span>
+      <div class="say up" style="margin-top:6px;animation-delay:.15s">your team didn't spend cleaning up after AIs.</div>
+      <div class="clockwrap">${clockSvg()}<div class="chip" style="right:-4px;top:6px;font-size:26px;animation-delay:2.6s">${said[0]} ${said[1]}<small>at ${said[2]}</small></div></div>`,
+  });
+  // 8. Personality.
+  s.push({ id: 'persona', label: 'Personality', bg: 's-lav', glow: '#cbc3ff',
+    src: ['Five traits from this week\'s rates', 'Repeats, slips, stale reads, proof in the app, and waste.', 'Fixes', '/fixes'],
+    html: () => `<div class="kick">Your fleet's personality</div>
+      <div class="arch up" style="animation-delay:.1s">${F.arch[0]}</div>
+      <div class="up" style="margin-top:10px;font-size:15.5px;font-weight:550;line-height:1.4;color:var(--ink2);animation-delay:.25s">${F.arch[1]}</div>
+      ${radarSvg(F.traits)}`,
+  });
+  // 9. Outro.
+  s.push({ id: 'outro', label: 'Share', bg: 's-violet', glow: '#6d5eff', dark: true,
+    src: ['A public page with these numbers', 'Each number links to the receipts behind it.', 'Share', '/share'],
+    html: () => `<div class="kick">${F.org}, this week</div>
+      <div class="up" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:8px">Proven by</div>
+      <div class="bigwm up" style="animation-delay:.15s">lum<i>n</i>i</div>
+      <div class="proof up" style="animation-delay:.4s">
+        <div><span>Things done</span><b>${fmtN(F.N)}</b></div>
+        <div><span>Times Lumni stepped in</span><b>${fmtN(F.steps)}</b></div>
+        <div><span>Never went out twice</span><b>${fmtMoney(F.kept)}</b></div>
+        <div><span>Proven in the app itself</span><b>${pct(w.proven)}</b></div>
+      </div>
+      <button class="cta" data-act="share">Share your week</button>
+      <div class="sig">${F.org}'s ${fmtN(F.ais)} AIs, checked before every action</div>`,
+  });
+  return s;
+}
+
+/* ─── your workspace ─────────────────────────────────────
+   With w.week (eight days), volume, step-ins and money wrap the last seven;
+   the slides about each AI read today. Without it, the whole story wraps
+   today. Every slide is skipped when there's nothing to say for it. */
+
+const E = (s) => Shell.esc(s);
+const clip = (s, n) => { s = String(s ?? ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
+const many = (n, one, more = one + 's') => (n === 1 ? one : more);
+const orgOf = (w) => Shell.session?.tenant?.name ?? w.scale.org ?? 'Your workspace';
+/** "Refund agent’s stripe refund: it was already done" in two halves. */
+const halves = (t) => { const i = String(t).indexOf(': '); return i < 0 ? [String(t), ''] : [t.slice(0, i), t.slice(i + 2)]; };
+const opName = (op) => cap(String(op ?? '').split('.').slice(1).join(' ').replace(/[_-]+/g, ' ').trim() || 'Action');
+
+/** The last seven days from w.week (eight days, oldest first, today last), or null. */
+function weekOf7(w) {
+  const days = (w.week?.days ?? []).slice(-7);
+  if (days.length < 2) return null;
+  const add = (k) => sum(days.map((d) => Number(d[k]) || 0));
+  return { days, total: add('total'), steps: add('steps'), kept: add('kept'), spend: add('spend'), verified: add('verified') };
+}
+const dayName = (date, short = true) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: short ? 'short' : 'long', timeZone: 'UTC' });
+const dayShort = (date) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const rangeOf = (W) => `${dayShort(W.days[0].date)} to ${dayShort(W.days.at(-1).date)}`;
+
+/** Step-ins a day for the week, today's bar marked "so far". */
+function weekSvg(W) {
+  const n = W.days.length, Wd = 382, H = 300, top = 34, bot = 250;
+  const peak = Math.max(1, ...W.days.map((d) => d.steps));
+  const bw = Wd / n;
+  return `<svg class="weekbars" viewBox="0 0 ${Wd} ${H}" aria-hidden="true">
+    <line x1="0" x2="${Wd}" y1="${bot}" y2="${bot}" stroke="var(--line2)"/>
+    ${W.days.map((d, i) => {
+      const today = i === n - 1;
+      const bh = Math.max(3, (d.steps / peak) * (bot - top));
+      const x = i * bw + bw * 0.16, wd = bw * 0.68;
+      return `<rect class="bar" x="${x.toFixed(1)}" y="${(bot - bh).toFixed(1)}" width="${wd.toFixed(1)}" height="${bh.toFixed(1)}" rx="8" fill="${today ? 'var(--accent)' : '#cfc8ff'}" style="animation-delay:${0.3 + i * 0.08}s"/>
+        <text x="${(x + wd / 2).toFixed(1)}" y="${(bot - bh - 8).toFixed(1)}" text-anchor="middle" font-family="var(--sans)" font-size="13" font-weight="750" fill="#0d0e14">${fmtN(d.steps)}</text>
+        <text x="${(x + wd / 2).toFixed(1)}" y="${bot + 20}" text-anchor="middle" font-family="var(--sans)" font-size="12.5" font-weight="${today ? 750 : 600}" fill="${today ? '#5b4bf5' : '#6a6f7d'}">${today ? 'Today' : dayName(d.date)}</text>`;
+    }).join('')}
+    <text x="0" y="${H - 6}" font-family="var(--sans)" font-size="12.5" font-weight="650" fill="#6a6f7d">Step-ins a day. Today is so far.</text>
+  </svg>`;
+}
+
+function realSlides(w) {
+  const s = [];
+  const org = E(orgOf(w));
+  const W = weekOf7(w);
+  const total = W ? W.total : w.total;
+  const ais = w.scale.ais;
+  const fl = w.fleet ?? [];
+
+  if (!total) {
+    s.push({ id: 'start', label: 'Today', bg: 's-lav', glow: '#c6bdff',
+      src: ['Nothing yet today', 'Every action your AIs send through Lumni fills this in.', 'Today', '/today'],
+      html: () => `<div class="kick">Today, by ${E(w.timeLabel)}</div>
+        <div class="say up" style="margin-top:12px;font-size:44px">Your day hasn’t started yet.</div>
+        <div class="up" style="margin-top:14px;font-size:16px;font-weight:550;color:var(--ink2);animation-delay:.2s">No actions have come through Lumni today. Each dot is room for one.</div>
+        <div class="field" style="margin-top:auto"><canvas width="764" height="660"></canvas></div>`,
+      draw: (el, live) => dots(el.querySelector('canvas'), { filled: 0, dark: 0 }, live) });
+    s.push({ id: 'next', label: 'What fills it', bg: 's-white', glow: '#dcd7ff',
+      src: ['What this story shows', 'Volume, step-ins, your most eager and most careful AI, money kept and hours back.', 'Today', '/today'],
+      html: () => `<div class="kick">Once your AIs are busy</div>
+        <div class="say up" style="margin-top:12px">This story tells you</div>
+        <div class="proof up" style="margin-top:22px;animation-delay:.2s;color:var(--ink)">
+          ${['How much your AIs did', 'How often Lumni stepped in', 'Which AI repeats itself most', 'Which AI runs cleanest', 'Money that never went out twice'].map((t) => `<div style="border-color:var(--line)"><span>${t}</span></div>`).join('')}
+        </div>` });
+  } else {
+    // 1. Volume: one dot per action, or a share of them when there are many.
+    const steps = W ? W.steps : w.steps;
+    const filled = Math.min(504, total);
+    const per = total / filled;
+    const dark = steps ? Math.max(1, Math.round((filled * steps) / total)) : 0;
+    s.push({ id: 'volume', label: 'Volume', bg: 's-lav', glow: '#c6bdff',
+      src: W
+        ? ['Every action your AIs sent through Lumni, last 7 days', `${fmtN(total)} ${many(total, 'action')} from ${rangeOf(W)}, with ${fmtMoney(W.spend)} of AI spend. Today counts up to ${w.timeLabel}.`, 'Flow', '/flow']
+        : ['Every action your AIs sent through Lumni today', `${fmtN(total)} ${many(total, 'action')} across ${fmtN(ais)} ${many(ais, 'AI')} and ${fmtN(w.scale.apps)} ${many(w.scale.apps, 'app')}, by ${w.timeLabel}.`, 'Flow', '/flow'],
+      html: () => `<div class="kick">${W ? `The last 7 days, ${E(rangeOf(W))}` : `Today, by ${E(w.timeLabel)}`}</div>
+        <div class="say up" style="margin-top:12px">Your ${num(ais, 'plain')} ${many(ais, 'AI')} did</div>
+        <span class="huge v fit">${num(total)}</span>
+        <div class="say up" style="animation-delay:.15s">${many(total, 'thing', 'things')}.</div>
+        <div class="field" style="margin-top:auto"><canvas width="764" height="660"></canvas></div>
+        <div class="key"><span><i style="background:var(--accent)"></i>${per <= 1 ? 'One dot, one action' : `About ${fmtN(per)} actions a dot`}</span>${dark ? '<span><i style="background:var(--ink)"></i>Lumni stepped in</span>' : ''}</div>`,
+      draw: (el, live) => dots(el.querySelector('canvas'), { filled, dark }, live) });
+
+    // 2. Step-ins: the week day by day, or today by kind.
+    if (W && W.steps > 0) {
+      const ks = KINDS.map(([k, t]) => [w.kinds[k] ?? 0, t.toLowerCase()]).filter(([n]) => n > 0).sort((a, b) => b[0] - a[0]);
+      const todayMix = ks.length ? `Today so far: ${ks.map(([n, t]) => `${fmtN(n)} ${t}`).join(', ')}.` : '';
+      s.push({ id: 'steps', label: 'Step-ins', bg: 's-white', glow: '#dcd7ff',
+        src: ['Every time Lumni stepped in, last 7 days', 'Day by day, before the action reached the app.', 'Today', '/today'],
+        html: () => `<div class="kick">Lumni stepped in</div>
+          <span class="huge fit">${num(W.steps)}</span>
+          <div class="say up" style="animation-delay:.15s">${many(W.steps, 'time')} this week. ${total / W.steps < 1.5 ? `<em>${pct(W.steps / total, 0)}</em> of everything.` : `<em>1 in ${fmtN(Math.round(total / W.steps))}</em> things.`}</div>
+          ${weekSvg(W)}
+          ${todayMix ? `<div class="foot">${todayMix}</div>` : ''}` });
+    } else if (w.steps > 0) {
+      const ks = KINDS.map(([k, t, c]) => ({ k, t, c, n: w.kinds[k] ?? 0 })).filter((k) => k.n > 0).sort((a, b) => b.n - a.n);
+      const watched = sum(Object.values(w.would ?? {}));
+      const foot = [w.kinds.bad ? `${fmtN(w.kinds.bad)} said done when the app showed nothing. Lumni caught those too.` : '', watched ? `${fmtN(watched)} more ${watched === 1 ? 'was' : 'were'} only watched, by rules that aren’t protecting yet.` : ''].filter(Boolean).join(' ');
+      s.push({ id: 'steps', label: 'Step-ins', bg: 's-white', glow: '#dcd7ff',
+        src: ['Every time Lumni stepped in today', 'By kind, before the action reached the app.', 'Today', '/today'],
+        html: () => `<div class="kick">Lumni stepped in</div>
+          <span class="huge fit">${num(w.steps)}</span>
+          <div class="say up" style="animation-delay:.15s">${many(w.steps, 'time')}. ${total / w.steps < 1.5 ? `<em>${pct(w.steps / total, 0)}</em> of everything.` : `<em>1 in ${fmtN(Math.round(total / w.steps))}</em> things.`}</div>
+          ${tower(ks)}
+          ${foot ? `<div class="foot">${foot}</div>` : ''}` });
+    }
+
+    // 3. Most eager: the AI with the most repeats, if any.
+    const eager = [...fl].sort((a, b) => b.repeats - a.repeats)[0];
+    if (eager?.repeats > 0) {
+      const app = w.app(eager.app);
+      const pat = (w.patterns.stop ?? []).find((p) => p.t.startsWith(`${eager.name}’s`)) ?? null;
+      const why = clip(halves(pat?.t ?? '')[1] || 'a repeat', 24);
+      const N = eager.repeats;
+      const op = E(opName(eager.op));
+      const K = Math.min(6, N);
+      s.push({ id: 'eager', label: 'Most eager', bg: 's-violet', glow: '#7c6dff', dark: true,
+        src: [`${eager.name}, today`, `${fmtN(N)} ${many(N, 'repeat')} stopped before ${many(N, 'it', 'they')} reached ${app.name}.`, pat?.story ? 'its journey' : 'Autonomy', pat?.story ? `/journey?id=${encodeURIComponent(pat.story)}` : '/autonomy'],
+        html: () => {
+          const slips = Array.from({ length: K }, (_, i) => {
+            const top = i === K - 1;
+            return `<div class="slp" style="transform:translate(${(i - K + 1) * 14}px, ${(K - 1 - i) * 2}px) rotate(${top ? 4 : -18 + i * 4}deg);z-index:${i};animation-delay:${0.35 + i * 0.1}s">
+              <div class="k">${top ? `<span class="ai" style="width:18px;height:18px;font-size:8.5px;border-radius:5px">${E(eager.initials)}</span>${op}, again` : `<span class="mk" style="background:${E(app.color)}">${E(app.mark)}</span>${E(app.name)}`}</div>
+              <div class="amt" style="font-size:28px">${op}</div><div class="to">${top ? 'asked again' : `repeat ${fmtN(Math.max(1, N - (K - 1 - i)))} of ${fmtN(N)}`}</div>
+              <div class="perf"></div><div class="meta"><span>${E(clip(eager.name, 18))}</span><span>Stopped</span></div></div>`;
+          }).join('');
+          return `<div class="kick">Your most eager AI</div>
+            <div class="who up" style="animation-delay:.1s"><span class="ai">${E(eager.initials)}</span><span>${E(eager.name)}<small>${fmtN(eager.copies)} ${many(eager.copies, 'copy', 'copies')} running</small></span></div>
+            <div class="say up" style="margin-top:20px;animation-delay:.2s">${E(clip(eager.name, 22))} tried</div>
+            <span class="huge mid fit">${num(N)}</span>
+            <div class="say up" style="animation-delay:.3s">${many(N, 'repeat')}. <em>Lumni stopped ${N === 1 ? 'it' : 'every one'}.</em></div>
+            <div class="fan">${slips}<div class="stampx">Stopped<small>${E(why)}</small></div><div class="chip">×${fmtN(N)}<small>none reached ${E(app.name)}</small></div></div>`;
+        } });
+    }
+
+    // 4. Most careful: the longest clean run, if there is one.
+    const careful = [...fl].sort((a, b) => b.streak - a.streak)[0];
+    if (careful?.streak >= 3) {
+      const C = { ai: E(careful.initials), name: E(clip(careful.name, 16)), levelName: E(careful.levelName) };
+      s.push({ id: 'careful', label: 'Most careful', bg: 's-lav', glow: '#cfc7ff',
+        src: [`${careful.name}’s clean run`, 'Its latest actions in a row, with no step-in and nothing missing in the app.', 'Autonomy', '/autonomy'],
+        html: () => `<div class="kick">Your most careful AI</div>
+          <div class="say up" style="margin-top:12px;animation-delay:.1s">${E(clip(careful.name, 22))} went</div>
+          <span class="huge v fit">${num(careful.streak)}</span>
+          <div class="say up" style="animation-delay:.2s">actions in a row with nothing to catch.</div>
+          ${rosette(C)}` });
+    }
+
+    // 5. The busiest stretch, only when one stood out.
+    const I = w.incident;
+    if (I) {
+      s.push({ id: 'incident', label: 'Busiest minutes', bg: 's-ink', glow: '#3b2fa0', dark: true,
+        src: ['The busiest stretch of the day', `${I.start} to ${I.end}: ${fmtN(I.burst)} ${many(I.burst, 'repeat')} stopped.`, 'Incident', '/incident'],
+        html: () => `<div class="kick">The busiest minutes</div>
+          <div class="say up" style="margin-top:12px">${E(I.title)}.</div>
+          <div class="say up" style="animation-delay:.2s"><em>From ${E(I.start)} to ${E(I.end)}.</em></div>
+          ${hoursSvg(w, I)}
+          <div class="stats up" style="animation-delay:1.4s">
+            <div><b>${num(I.burst)}</b><small>${many(I.burst, 'repeat')} stopped</small></div>
+            ${I.kept > 0 ? `<div><b>${num(I.kept, 'm')}</b><small>never went out twice</small></div>` : `<div><b>${num(I.customers)}</b><small>${many(I.customers, 'customer')} involved</small></div>`}
+            <div><b>${num(I.ais)}</b><small>${many(I.ais, 'AI')} involved</small></div>
+          </div>` });
+    }
+
+    // 6. Money that never went out twice.
+    if (W && W.kept > 0) {
+      const max = Math.max(1, ...W.days.map((d) => d.kept));
+      s.push({ id: 'kept', label: 'Money kept', bg: 's-violet', glow: '#7466ff', dark: true,
+        src: ['Repeats with money on them, last 7 days', `Held before they reached the app. Your AIs spent ${fmtMoney(W.spend)} in the same days.`, 'Money', '/money'],
+        html: () => `<div class="kick">Money that never went out twice</div>
+          <span class="huge fit" style="margin-top:18px">${num(W.kept, 'm')}</span>
+          <div class="say sm up" style="margin-top:10px;animation-delay:.2s">stayed in your accounts this week, against ${fmtMoney(W.spend)} of AI spend.</div>
+          <div class="piles week">${W.days.map((d, j) => {
+            const n = d.kept > 0 ? Math.max(1, Math.round(Math.sqrt(d.kept / max) * 12)) : 0;
+            return `<div class="pile"><div class="bills">${Array.from({ length: n }, (_, i) => `<i class="bill" style="animation-delay:${0.5 + j * 0.12 + i * 0.05}s"></i>`).join('')}</div>
+              <b>${d.kept > 0 ? fmtMoney(d.kept) : '$0'}</b><small>${j === W.days.length - 1 ? 'Today' : dayName(d.date)}</small></div>`;
+          }).join('')}</div>` });
+    } else if (w.kept > 0) {
+      const piles = (w.patterns.stop ?? []).filter((p) => p.kept > 0).slice(0, 3);
+      const max = Math.max(1, ...piles.map((p) => p.kept));
+      s.push({ id: 'kept', label: 'Money kept', bg: 's-violet', glow: '#7466ff', dark: true,
+        src: ['Repeats with money on them', 'Held before they reached the app.', 'Money', '/money'],
+        html: () => `<div class="kick">Money that never went out twice</div>
+          <span class="huge fit" style="margin-top:18px">${num(w.kept, 'm')}</span>
+          <div class="say sm up" style="margin-top:10px;animation-delay:.2s">stayed in your accounts today.</div>
+          <div class="piles">${piles.map((p, j) => {
+            const n = Math.max(2, Math.round(Math.sqrt(p.kept / max) * 12));
+            return `<div class="pile"><div class="bills">${Array.from({ length: n }, (_, i) => `<i class="bill" style="animation-delay:${0.5 + j * 0.25 + i * 0.06}s"></i>`).join('')}</div>
+              <b>${fmtMoney(p.kept)}</b><small>${E(clip(cap(halves(p.t)[0]), 34))}</small></div>`;
+          }).join('')}</div>` });
+    }
+
+    // 7. Hours back, as the console estimates them.
+    const hrs = w.money?.hoursSaved ?? 0;
+    if (hrs > 0) s.push(hoursSlide(hrs, 'today', 'Estimated from today’s step-ins: repeats not reversed, missing actions caught early, asks answered in one place.'));
+
+    // 8. Personality, from today's rates.
+    if (fl.length) {
+      const { traits, arch } = persona(w);
+      s.push({ id: 'persona', label: 'Personality', bg: 's-lav', glow: '#cbc3ff',
+        src: ['Five traits from today’s rates', 'Repeats, slips, stale reads, proof in the app, and waste.', 'Fixes', '/fixes'],
+        html: () => `<div class="kick">Your fleet’s personality today</div>
+          <div class="arch up" style="animation-delay:.1s">${arch[0]}</div>
+          <div class="up" style="margin-top:10px;font-size:15.5px;font-weight:550;line-height:1.4;color:var(--ink2);animation-delay:.25s">${arch[1]}</div>
+          ${radarSvg(traits)}` });
+    }
+  }
+
+  // 9. Outro.
+  const O = W ? { steps: W.steps, kept: W.kept, spend: W.spend, proven: W.total ? W.verified / W.total : 0 } : { steps: w.steps, kept: w.kept, spend: null, proven: w.proven };
+  s.push({ id: 'outro', label: 'Share', bg: 's-violet', glow: '#6d5eff', dark: true,
+    src: total ? ['Share proof of one action', 'A public link to one action: what happened and how Lumni checked it.', 'Share', '/share'] : ['Connect your first agent', 'Its actions show up here as they happen.', 'Today', '/today'],
+    html: () => `<div class="kick">${org}, ${W ? 'the last 7 days' : 'today so far'}</div>
+      <div class="up" style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:8px">Proven by</div>
+      <div class="bigwm up" style="animation-delay:.15s">lum<i>n</i>i</div>
+      <div class="proof up" style="animation-delay:.4s">
+        <div><span>Things done</span><b>${fmtN(total)}</b></div>
+        ${total ? `<div><span>Times Lumni stepped in</span><b>${fmtN(O.steps)}</b></div>` : ''}
+        ${O.kept > 0 ? `<div><span>Never went out twice</span><b>${fmtMoney(O.kept)}</b></div>` : ''}
+        ${O.spend > 0 ? `<div><span>AI spend</span><b>${fmtMoney(O.spend)}</b></div>` : ''}
+        ${total ? `<div><span>Proven in the app itself</span><b>${pct(O.proven)}</b></div>` : ''}
+      </div>
+      ${total ? '<a class="cta" href="/share">Share proof of one action</a>' : '<a class="cta" href="/today">Open Today</a>'}
+      <div class="sig">${total ? `${org}’s ${fmtN(ais)} ${many(ais, 'AI')}, checked before every action` : 'Every action is checked before it reaches an app'}</div>` });
+  s.week = W;
+  return s;
+}
+
+/** Step-ins by kind, stacked like blocks. */
+function tower(ks) {
+  if (!ks.length) return '';
+  const H = 380, gap = 6, min = 52;
+  const room = H - gap * (ks.length - 1);
+  const tot = sum(ks.map((k) => k.n)) || 1;
+  let hs = ks.map((k) => Math.max(min, (room * k.n) / tot));
+  const over = sum(hs) - room;
+  const big = hs.filter((h) => h > min);
+  if (over > 0 && big.length) hs = hs.map((h) => (h > min ? h - (over * h) / sum(big) : h));
+  let y = H;
+  const parts = ks.map((k, i) => { y -= hs[i]; const top = y; y -= gap; return { ...k, top, h: hs[i] }; });
+  return `<div class="tower">${parts.map((p, i) => `
+    <div class="blk" style="top:${p.top}px;height:${p.h}px;background:${p.c};animation-delay:${0.3 + i * 0.22}s"></div>
+    <div class="lbl" style="top:${p.top + p.h / 2}px;animation-delay:${0.55 + i * 0.22}s"><i style="background:${p.c}"></i><span>${p.t}</span><b>${num(p.n)}</b></div>`).join('')}
+  </div>`;
+}
+
+/** Hours back, demo or real: the same clock, with the work-time chip once it's a day or more. */
+function hoursSlide(hrs, when, note) {
+  const one = (v) => v.toFixed(1).replace(/\.0$/, '');
+  const said = hrs >= 2000 ? [one(hrs / 2000), 'work years', '2,000 hours to a year'] : hrs >= 40 ? [one(hrs / 40), 'work weeks', '40 hours to a week'] : hrs >= 8 ? [one(hrs / 8), one(hrs / 8) === '1' ? 'working day' : 'working days', '8 hours to a day'] : null;
+  return { id: 'hours', label: 'Hours back', bg: 's-white', glow: '#d8d2ff',
+    src: ['Cleanup nobody had to do', note, 'Money', '/money'],
+    html: () => `<div class="kick">Cleanup you skipped</div>
+      <span class="huge v fit" style="margin-top:14px">${num(hrs)}<span style="font-size:.42em;letter-spacing:-.03em;margin-left:.22em">${hrs === 1 ? 'hour' : 'hours'}</span></span>
+      <div class="say up" style="margin-top:6px;animation-delay:.15s">your team didn’t spend cleaning up after AIs ${when}.</div>
+      <div class="clockwrap">${clockSvg()}${said ? `<div class="chip" style="right:-4px;top:6px;font-size:26px;animation-delay:2.6s">${said[0]} ${said[1]}<small>at ${said[2]}</small></div>` : ''}</div>` };
+}
+
+/** Step-ins hour by hour, with the busiest stretch lit. */
+function hoursSvg(w, I) {
+  const W = 382, H = 300, top = 30, bot = 230;
+  const last = Math.max(1, Math.min(24, Math.ceil(w.nowH)));
+  const xs = w.stepHourly.slice(0, last);
+  const peak = Math.max(1, ...xs);
+  const bw = W / last;
+  const hourOf = (at) => Math.floor((at - w.dayStart) / 3600e3);
+  const h0 = hourOf(I.startAt), h1 = hourOf(I.endAt);
+  const tick = (h) => { const hh = ((h + 11) % 12) + 1; return `${hh} ${h < 12 ? 'AM' : 'PM'}`; };
+  return `<svg class="spike" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <line x1="0" x2="${W}" y1="${bot}" y2="${bot}" stroke="rgba(255,255,255,.18)"/>
+    ${xs.map((v, h) => {
+      const on = h >= h0 && h <= h1;
+      const bh = Math.max(2, (v / peak) * (bot - top));
+      return `<rect class="band" x="${(h * bw + bw * 0.18).toFixed(1)}" y="${(bot - bh).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${bh.toFixed(1)}" rx="${Math.min(4, bw * 0.2).toFixed(1)}" fill="${on ? '#c9c2ff' : 'rgba(255,255,255,.22)'}" style="animation-delay:${0.2 + h * 0.03}s"/>`;
+    }).join('')}
+    <text x="0" y="${bot + 22}" font-family="var(--sans)" font-size="12" font-weight="600" fill="rgba(255,255,255,.5)">12 AM</text>
+    <text x="${((h0 + 0.5) * bw).toFixed(1)}" y="${bot + 22}" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="#fff">${E(I.start)}</text>
+    <text x="${W}" y="${bot + 22}" text-anchor="end" font-family="var(--sans)" font-size="12" font-weight="600" fill="rgba(255,255,255,.5)">${tick(last - 1)}</text>
+    <g class="pop" style="animation-delay:1.6s"><rect x="0" y="${H - 18}" width="12" height="12" rx="3" fill="#c9c2ff"/>
+    <text x="20" y="${H - 8}" font-family="var(--sans)" font-size="12.5" font-weight="650" fill="rgba(255,255,255,.75)">Step-ins an hour, today</text></g>
+  </svg>`;
+}
+
+/* ─── visuals ────────────────────────────────────────── */
+
+// A field of dots that fills from the bottom like a glass, so volume reads as a mass.
+function dots(cv, { filled, dark, ghost = false }, live) {
+  if (!cv) return;
+  const g = cv.getContext('2d');
+  const cols = 24, rows = Math.round(24 * cv.height / cv.width), W = cv.width, H = cv.height;
+  const px = W / cols, py = H / rows, r = Math.min(px, py) * 0.3;
+  const all = [];
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) all.push({ x, y, k: rows - y + rnd() * 5 });
+  all.sort((a, b) => a.k - b.k);
+  // Real mode fills the two dots at the bottom-left corner.
+  if (ghost) all.sort((a, b) => (b.y - a.y) * 100 + (a.x - b.x));
+  const darkSet = new Set();
+  const pick = all.slice(0, filled);
+  for (let i = 0; i < dark; i++) darkSet.add(pick[Math.floor((i + 0.5) * (pick.length / dark)) % pick.length]);
+  if (ghost) { darkSet.clear(); darkSet.add(pick[1]); }
+  const paint = (p) => {
+    g.clearRect(0, 0, W, H);
+    all.forEach((d) => {
+      g.beginPath(); g.arc((d.x + 0.5) * px, (d.y + 0.5) * py, r * (ghost ? 0.9 : 0.86), 0, Math.PI * 2);
+      g.fillStyle = 'rgba(91,75,245,.09)'; g.fill();
+    });
+    const shown = Math.floor(pick.length * p);
+    pick.forEach((d, i) => {
+      if (i >= shown && p < 1) return;
+      const age = p >= 1 ? 1 : clamp((shown - i) / 30);
+      g.beginPath(); g.arc((d.x + 0.5) * px, (d.y + 0.5) * py, r * (ghost ? 1.25 : 1) * (0.4 + 0.6 * age), 0, Math.PI * 2);
+      g.fillStyle = darkSet.has(d) ? '#0d0e14' : '#5b4bf5';
+      g.fill();
+    });
+  };
+  if (!live) return paint(1);
+  const t0 = performance.now(), ms = ghost ? 900 : 2200, tok = token;
+  const step = (t) => {
+    if (tok !== token) return;
+    if (state.frozen) { requestAnimationFrame(step); return; }
+    const p = clamp((t - t0 - 300) / ms);
+    paint(1 - Math.pow(1 - p, 2));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  paint(0);
+  requestAnimationFrame(step);
+}
+
+function rosette(C) {
+  const cx = 150, cy = 130, n = 28;
+  const pts = Array.from({ length: n * 2 }, (_, i) => {
+    const a = (Math.PI * i) / n - Math.PI / 2, rr = i % 2 ? 98 : 110;
+    return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="badge" viewBox="0 0 300 330" aria-hidden="true">
+    <g class="tails">
+      <path d="M104 190 L72 318 L100 300 L120 326 L140 214Z" fill="#0d0e14"/>
+      <path d="M196 190 L228 318 L200 300 L180 326 L160 214Z" fill="#3a2cd2"/>
+    </g>
+    <g class="star"><polygon points="${pts}" fill="#5b4bf5"/></g>
+    <circle cx="${cx}" cy="${cy}" r="86" fill="#fff"/>
+    <circle class="ring" cx="${cx}" cy="${cy}" r="72" fill="none" stroke="#dcd7ff" stroke-width="2.5" stroke-dasharray="4 5"/>
+    <g class="shine"><path d="M${cx} ${cy - 86} A86 86 0 0 1 ${cx + 60} ${cy - 61}" stroke="#8578ff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/></g>
+    <g class="in">
+      <rect x="${cx - 24}" y="${cy - 52}" width="48" height="48" rx="13" fill="#0d0e14"/>
+      <text x="${cx}" y="${cy - 21}" text-anchor="middle" font-family="var(--sans)" font-size="17" font-weight="750" fill="#fff">${C.ai}</text>
+      <text x="${cx}" y="${cy + 22}" text-anchor="middle" font-family="var(--sans)" font-size="19" font-weight="750" fill="#0d0e14" letter-spacing="-.4">${C.name}</text>
+      <rect x="${cx - 46}" y="${cy + 34}" width="92" height="24" rx="12" fill="#f0eeff"/>
+      <text x="${cx}" y="${cy + 50.5}" text-anchor="middle" font-family="var(--sans)" font-size="12.5" font-weight="700" fill="#5b4bf5">${C.levelName}</text>
+    </g>
+  </svg>`;
+}
+
+function spikeSvg(I) {
+  // Retries a minute, 11:30 to 11:56. The burst rises at 11:37 and drains by 11:47.
+  const W = 382, H = 300, top = 30, bot = 230;
+  const M = 27;
+  const shape = Array.from({ length: M }, (_, m) => {
+    if (m < 7) return 0.02 + (m % 2) * 0.01;
+    if (m <= 17) { const x = m - 7; return 0.05 + Math.pow(x / 3, 1.6) * Math.exp(-x / 2.4) * 1.9; }
+    return 0.03 + ((m * 7) % 3) * 0.008;
+  });
+  const tot = sum(shape.slice(7, 18));
+  const peak = Math.max(...shape);
+  const peakN = Math.round((I.burst * peak) / tot);
+  const x = (m) => (m / (M - 1)) * W;
+  const y = (v) => bot - (v / peak) * (bot - top);
+  const d = shape.map((v, m) => `${m ? 'L' : 'M'}${x(m).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const pm = shape.indexOf(peak);
+  return `<svg class="spike" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <defs><linearGradient id="spg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8578ff" stop-opacity=".45"/><stop offset="1" stop-color="#8578ff" stop-opacity="0"/></linearGradient></defs>
+    <rect class="band" x="${x(6)}" y="${top - 18}" width="${x(17) - x(6)}" height="${bot - top + 18}" rx="8" fill="rgba(255,255,255,.06)"/>
+    <line x1="0" x2="${W}" y1="${bot}" y2="${bot}" stroke="rgba(255,255,255,.18)"/>
+    <path d="${d} L${W},${bot} L0,${bot}Z" fill="url(#spg)" opacity=".9" class="band"/>
+    <path class="ln" d="${d}" fill="none" stroke="#c9c2ff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(pm)}" cy="${y(peak)}" r="6" fill="#fff" class="pop" style="animation-delay:1.3s"/>
+    <g class="pop" style="animation-delay:1.45s">
+      <rect x="${x(pm) + 14}" y="${y(peak) - 14}" width="150" height="28" rx="9" fill="#fff"/>
+      <text x="${x(pm) + 26}" y="${y(peak) + 5}" font-family="var(--sans)" font-size="13" font-weight="700" fill="#0d0e14">${fmtN(Math.max(1, peakN))} ${peakN > 1 ? 'retries' : 'retry'} a minute</text>
+    </g>
+    <line x1="0" x2="${W}" y1="${bot + 0.5}" y2="${bot + 0.5}" stroke="#5b4bf5" stroke-width="3" stroke-linecap="round" class="ln" style="animation-delay:1s"/>
+    <text x="0" y="${bot + 22}" font-family="var(--sans)" font-size="12" font-weight="600" fill="rgba(255,255,255,.5)">11:30</text>
+    <text x="${x(6)}" y="${bot + 22}" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="#fff">11:36 down</text>
+    <text x="${x(17)}" y="${bot + 22}" text-anchor="middle" font-family="var(--sans)" font-size="12" font-weight="700" fill="#fff">11:47 back</text>
+    <text x="${W}" y="${bot + 22}" text-anchor="end" font-family="var(--sans)" font-size="12" font-weight="600" fill="rgba(255,255,255,.5)">11:56</text>
+    <g class="pop" style="animation-delay:1.8s"><line x1="0" x2="18" y1="${H - 6}" y2="${H - 6}" stroke="#5b4bf5" stroke-width="3" stroke-linecap="round"/>
+    <text x="26" y="${H - 2}" font-family="var(--sans)" font-size="12.5" font-weight="650" fill="rgba(255,255,255,.75)">Refunds that reached Stripe twice: <tspan fill="#fff" font-weight="800">0</tspan></text>
+</g>
+  </svg>`;
+}
+
+function clockSvg() {
+  const c = 130, R = 112;
+  const ticks = Array.from({ length: 60 }, (_, i) => {
+    const a = (i / 60) * Math.PI * 2, big = i % 5 === 0;
+    const r1 = R - (big ? 14 : 7), r2 = R - 3;
+    return `<line x1="${c + Math.sin(a) * r1}" y1="${c - Math.cos(a) * r1}" x2="${c + Math.sin(a) * r2}" y2="${c - Math.cos(a) * r2}" stroke="${big ? '#0d0e14' : '#c9cbd6'}" stroke-width="${big ? 3 : 1.5}" stroke-linecap="round"/>`;
+  }).join('');
+  return `<svg class="clock" viewBox="0 0 260 260" aria-hidden="true">
+    <circle cx="${c}" cy="${c}" r="${R + 10}" fill="#fff" stroke="#0d0e14" stroke-width="4"/>
+    <circle class="sweep" cx="${c}" cy="${c}" r="60" fill="none" stroke="#5b4bf5" stroke-opacity=".2" stroke-width="120" transform="rotate(-90 ${c} ${c})"/>
+    ${ticks}
+    <line class="mh" x1="${c}" y1="${c}" x2="${c}" y2="${c - 62}" stroke="#0d0e14" stroke-width="6" stroke-linecap="round"/>
+    <line class="hand" x1="${c}" y1="${c + 14}" x2="${c}" y2="${c - 92}" stroke="#5b4bf5" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="${c}" cy="${c}" r="8" fill="#5b4bf5" stroke="#fff" stroke-width="3"/>
+  </svg>`;
+}
+
+function radarSvg(traits) {
+  const cx = 191, cy = 196, R = 128;
+  const pt = (i, r) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+  const poly = (r) => traits.map((_, i) => pt(i, r).map((v) => v.toFixed(1)).join(',')).join(' ');
+  const shape = traits.map(([, v], i) => pt(i, R * (0.12 + 0.88 * v)).map((q) => q.toFixed(1)).join(',')).join(' ');
+  const labs = traits.map(([k, v], i) => {
+    const [x, y] = pt(i, R + 30);
+    const anchor = Math.abs(x - cx) < 10 ? 'middle' : x > cx ? 'start' : 'end';
+    const dx = anchor === 'start' ? -10 : anchor === 'end' ? 10 : 0;
+    return `<text x="${x + dx}" y="${y - (i === 0 ? 8 : 0)}" text-anchor="${anchor}" font-family="var(--sans)"><tspan font-size="14" font-weight="650" fill="#6a6f7d">${k}</tspan><tspan x="${x + dx}" dy="22" font-size="22" font-weight="800" fill="#0d0e14" letter-spacing="-.5">${Math.round(v * 100)}</tspan></text>`;
+  }).join('');
+  return `<svg class="radar" viewBox="0 0 382 380" aria-hidden="true">
+    <g class="grid">
+      ${[0.25, 0.5, 0.75, 1].map((f) => `<polygon points="${poly(R * f)}" fill="${f === 1 ? '#fff' : 'none'}" fill-opacity=".6" stroke="#d9d4ff" stroke-width="1.2"/>`).join('')}
+      ${traits.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e3dfff"/>`; }).join('')}
+    </g>
+    <g class="shape">
+      <polygon points="${shape}" fill="#5b4bf5" fill-opacity=".26" stroke="#5b4bf5" stroke-width="3" stroke-linejoin="round"/>
+      ${traits.map(([, v], i) => { const [x, y] = pt(i, R * (0.12 + 0.88 * v)); return `<circle cx="${x}" cy="${y}" r="5" fill="#5b4bf5" stroke="#fff" stroke-width="2"/>`; }).join('')}
+    </g>
+    ${labs}
+  </svg>`;
+}
+
+/* ─── the player ─────────────────────────────────────── */
+
+const state = { i: 0, elapsed: 0, paused: false, frozen: false, ended: false, held: false, last: 0 };
+let SLIDES = [], token = 0, raf = 0;
+
+function fit(root) {
+  root.querySelectorAll('.fit').forEach((el) => {
+    // The global reduced-motion rule gives every property a tiny transition,
+    // which would hide each new size (and its children's) from the measure below.
+    [el, ...el.querySelectorAll('*')].forEach((n) => (n.style.transition = 'none'));
+    let s = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && s > 44) { s -= 3; el.style.fontSize = s + 'px'; }
+  });
+}
+
+function slideEl(sl, live) {
+  const el = document.createElement('div');
+  el.className = `slide ${sl.bg}${live ? ' enter' : ''}`;
+  el.innerHTML = sl.html();
+  return el;
+}
+
+function show(i, { live = true } = {}) {
+  token++;
+  state.i = i; state.elapsed = 0; state.ended = false;
+  const sl = SLIDES[i];
+  const host = $('#slides');
+  const el = slideEl(sl, live);
+  host.replaceChildren(el);
+  fit(el);
+  sl.draw?.(el, live);
+  if (live) {
+    el.querySelectorAll('[data-to]').forEach((n) => {
+      const to = Number(n.dataset.to), f = FMT[n.dataset.f], t0 = performance.now() + 250, tok = token;
+      n.textContent = f(0);
+      const step = (t) => {
+        if (tok !== token) return;
+        const p = clamp((t - t0) / 1500);
+        n.textContent = f(to * (1 - Math.pow(1 - p, 4)));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+  const p = $('#player');
+  p.classList.toggle('dark', !!sl.dark);
+  $('.glow').style.backgroundColor = sl.glow;
+  $$('.th').forEach((t, j) => t.classList.toggle('on', j === i));
+  const [h, d, link, href] = sl.src;
+  $('#src').innerHTML = `<span class="ic"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 2.5h7l3 3v8H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.5 8h5M5.5 10.8h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+    <span class="tx"><b>Slide ${i + 1} of ${SLIDES.length}: ${h}</b>${d}</span><a class="btn" href="${href}">Open ${link}</a>`;
+  paintBars();
+}
+
+function paintBars() {
+  $$('#bars i').forEach((b, j) => { b.style.width = (j < state.i ? 100 : j > state.i ? 0 : (state.elapsed / DUR) * 100) + '%'; });
+}
+
+function go(i) {
+  if (i < 0) i = 0;
+  if (i >= SLIDES.length) i = 0;
+  show(i);
+}
+
+// A screenshot pause (?slide=N) stops the clock but lets the slide finish
+// arriving; a person's pause freezes everything mid-motion.
+function setPaused(v, freeze = true) {
+  state.paused = v;
+  state.frozen = v && freeze;
+  $('#player').classList.toggle('paused', state.frozen);
+  $('#pp').innerHTML = v ? ICON.play : ICON.pause;
+  $('#pp').setAttribute('aria-label', v ? 'Play' : 'Pause');
+}
+
+function loop(t) {
+  const dt = state.last ? t - state.last : 0;
+  state.last = t;
+  if (!state.paused && !state.ended) {
+    state.elapsed += dt;
+    if (state.elapsed >= DUR) {
+      if (state.i < SLIDES.length - 1) show(state.i + 1);
+      else { state.elapsed = DUR; state.ended = true; }
+    }
+    paintBars();
+  }
+  raf = requestAnimationFrame(loop);
+}
+
+let toastT;
+function toast(msg) {
+  const t = $('#toast');
+  t.querySelector('span').textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+function render(w) {
+  cancelAnimationFrame(raf);
+  token++;
+  const real = w.key === 'real';
+  const F = real ? null : facts(w);
+  SLIDES = real ? realSlides(w) : mockSlides(w, F);
+  const W = real ? SLIDES.week : null;
+  const week = !real || !!W;
+  const org = real ? E(orgOf(w)) : F.org;
+  const lede = !real
+    ? `${F.org}'s week in ${SLIDES.length} slides: <b>${fmtN(F.N)} things</b>, <b>${fmtN(F.steps)} step-ins</b>, <b>${fmtMoney(F.kept)} kept</b>. Every number comes from this week's receipts, so it holds up when someone asks.`
+    : W
+      ? `${org}’s last 7 days in ${SLIDES.length} slides: <b>${fmtN(W.total)} ${many(W.total, 'thing')}</b>, <b>${fmtN(W.steps)} ${many(W.steps, 'step-in')}</b>${W.kept > 0 ? `, <b>${fmtMoney(W.kept)} kept</b>` : ''}${W.spend > 0 ? `, <b>${fmtMoney(W.spend)} of AI spend</b>` : ''}. Volume, step-ins and money cover the week, today up to ${E(w.timeLabel)}. The slides about each AI read today.`
+    : w.total
+      ? `${org}'s day in ${SLIDES.length} slides, by ${E(w.timeLabel)}: <b>${fmtN(w.total)} ${many(w.total, 'thing')}</b>, <b>${fmtN(w.steps)} ${many(w.steps, 'step-in')}</b>${w.kept > 0 ? `, <b>${fmtMoney(w.kept)} kept</b>` : ''}. Every number is read from today’s records. Lumni’s API reads one day at a time, so this wraps today, not a week.`
+      : `Nothing has come through Lumni today yet. Once your AIs send actions, this story fills itself in from today’s records.`;
+  const off = 'Posting to LinkedIn from Lumni isn’t built yet';
+
+  $('#main').innerHTML = `
+    <section class="left">
+      <div class="glow"></div>
+      <div class="player" id="player" tabindex="0" aria-label="${week ? 'Your week' : 'Your day so far'}, as a story" role="region">
+        <div class="slides" id="slides"></div>
+        <div class="bars" id="bars">${SLIDES.map(() => '<span><i></i></span>').join('')}</div>
+        <div class="phead"><span class="lm">l</span><span>${org}<small>${week ? 'This week, wrapped' : 'Today so far, wrapped'}</small></span><button class="pp" id="pp" aria-label="Pause">${ICON.pause}</button></div>
+        <div class="pchip">Paused. Let go to play.</div>
+      </div>
+      <div class="hint"><span>Tap the right side for next, the left to go back. Hold to pause.</span><span><kbd>←</kbd> <kbd>→</kbd> <kbd>Space</kbd></span></div>
+    </section>
+    <aside class="right">
+      <div class="eyebrow">${!real ? `${w.scale.org}, week of ${weekOf(w)}` : W ? `${org}, ${E(rangeOf(W))}` : `${org}, ${E(w.dayLabel)}`}<span class="tag accent">${!real ? 'New every Monday' : W ? 'Last 7 days' : 'Today so far'}</span></div>
+      <h1>${week ? 'Your week,' : 'Your day,'} <span>wrapped</span></h1>
+      <p class="lede">${lede}</p>
+      <div class="thumbs" id="thumbs">${SLIDES.map((sl, j) => `<button class="th" data-i="${j}" aria-label="Slide ${j + 1}, ${sl.label}"><span class="box"><span class="n">${j + 1}</span></span><span class="t">${sl.label}</span></button>`).join('')}</div>
+      <div class="card src" id="src"></div>
+      <div class="acts">
+        <button class="btn primary" data-act="download" ${real ? `disabled title="Saving slides as images isn’t built yet"` : ''}><svg width="15" height="15" viewBox="0 0 15 15"><path d="M7.5 2v7.5M4.5 6.8l3 3 3-3M2.5 12.5h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Download all as images</button>
+        <button class="btn" data-act="linkedin" ${real ? `disabled title="${off}"` : ''}><span style="width:18px;height:18px;border-radius:4px;background:#0a66c2;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center">in</span>Share to LinkedIn</button>
+      </div>
+      <div class="card slack" id="slackcard">
+        <span class="sl"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="7" y="1.5" width="3.2" height="8" rx="1.6" fill="#36c5f0"/><rect x="8.5" y="7" width="8" height="3.2" rx="1.6" fill="#2eb67d"/><rect x="7.8" y="8.5" width="3.2" height="8" rx="1.6" fill="#ecb22e"/><rect x="1.5" y="7.8" width="8" height="3.2" rx="1.6" fill="#e01e5a"/></svg></span>
+        <span class="tx">Post to Slack every Monday<small id="slacknote">${real ? 'Checking your Slack settings…' : 'To #ai-ops at 9 AM, as images and a link'}</small></span>
+        <button class="sw" role="switch" aria-checked="false" id="slack" aria-label="Post to Slack every Monday" ${real ? 'disabled' : ''}></button>
+      </div>
+    </aside>`;
+
+  // Thumbnails are the real slides, scaled down, at their final frame.
+  $$('.th .box').forEach((box, j) => {
+    const el = slideEl(SLIDES[j], false);
+    box.prepend(el);
+    fit(el);
+    SLIDES[j].draw?.(el, false);
+  });
+
+  wire(real);
+  if (real) slack(w);
+  const q = new URLSearchParams(location.search);
+  const asked = parseInt(q.get('slide') ?? (q.get('shot') ?? '').replace('slide-', ''), 10);
+  state.last = 0;
+  if (resumeAt != null) {
+    // Re-read after a write: carry on from the same slide.
+    show(Math.min(SLIDES.length - 1, resumeAt), { live: false });
+    resumeAt = null;
+    setPaused(false);
+  } else if (asked >= 1) {
+    show(Math.min(SLIDES.length, asked) - 1);
+    state.elapsed = DUR * 0.45;
+    setPaused(true, false);
+    paintBars();
+  } else {
+    setPaused(false);
+    show(0);
+  }
+  raf = requestAnimationFrame(loop);
+}
+
+function wire(real) {
+  const p = $('#player');
+  let holdT = 0, downX = null;
+  p.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, a')) return;
+    downX = e.clientX;
+    holdT = setTimeout(() => { state.held = true; p.classList.add('held'); setPaused(true); }, 220);
+  });
+  const end = (e, cancel) => {
+    clearTimeout(holdT);
+    if (downX === null) return;
+    if (state.held) { state.held = false; p.classList.remove('held'); setPaused(false); }
+    else if (!cancel) {
+      const r = p.getBoundingClientRect();
+      go(state.i + (e.clientX - r.left > r.width / 2 ? 1 : -1));
+    }
+    downX = null;
+  };
+  p.addEventListener('pointerup', (e) => end(e, false));
+  p.addEventListener('pointerleave', (e) => end(e, true));
+  p.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'pp') setPaused(!state.paused);
+    if (b.dataset.act === 'share') toast('Share card ready: a public page with these numbers and their receipts');
+  });
+  $('#thumbs').addEventListener('click', (e) => {
+    const t = e.target.closest('.th');
+    if (t) { setPaused(false); show(Number(t.dataset.i)); }
+  });
+  // The demo pretends. Your workspace's Slack switch is wired in slack(); images and LinkedIn stay disabled.
+  if (real) return;
+  $('[data-act="download"]').addEventListener('click', () => toast(`${SLIDES.length} images saved, 1080 by 1920 each`));
+  $('[data-act="linkedin"]').addEventListener('click', () => toast('LinkedIn post drafted with your first slide and a link to the proof'));
+  $('#slack').addEventListener('click', (e) => {
+    const on = e.currentTarget.getAttribute('aria-checked') !== 'true';
+    e.currentTarget.setAttribute('aria-checked', String(on));
+    toast(on ? 'Every Monday at 9 AM in #ai-ops' : 'Monday posts are off');
+  });
+}
+
+/* ─── your workspace: the Monday post, from GET /v1/config/notifications ─── */
+
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const DIGEST = 'digest.weekly';
+let notif;          // the config last read; null when it can't be read
+let resumeAt = null;
+
+const slackOf = (c) => c?.channels?.find((x) => x.kind === 'slack') ?? null;
+const posting = (c, ch) => !!ch && !!c?.routes?.some((r) => r.event === DIGEST && (r.channels ?? []).includes(ch.id));
+
+function paintSlack() {
+  const sw = $('#slack'), note = $('#slacknote');
+  if (!sw) return;
+  const ch = slackOf(notif);
+  const on = posting(notif, ch);
+  sw.setAttribute('aria-checked', String(on));
+  sw.removeAttribute('title');
+  if (Shell.world?.source === 'snapshots') {
+    sw.disabled = true;
+    sw.title = 'Needs a newer Lumni API';
+    note.textContent = 'Needs a newer Lumni API';
+  } else if (notif === undefined) {
+    sw.disabled = true;
+    note.textContent = 'Checking your Slack settings…';
+  } else if (notif === null) {
+    sw.disabled = true;
+    note.textContent = 'Lumni couldn’t read your notification settings. Read it again in a moment.';
+  } else if (!ch) {
+    sw.disabled = true;
+    sw.title = 'Connect Slack first';
+    note.innerHTML = 'Slack isn’t connected to Lumni yet. <a href="/settings">Connect it in Settings</a>, then switch this on.';
+  } else {
+    sw.disabled = false;
+    const sched = notif.routes.find((r) => r.event === DIGEST && (r.channels ?? []).includes(ch.id))?.schedule;
+    const [, hm, zone] = String(sched ?? '').split(' ');
+    const [h, m] = (hm ?? '09:00').split(':').map(Number);
+    const at = `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
+    note.textContent = on
+      ? `On. Posts to ${clip(ch.target, 24)} at ${at} on Mondays${zone ? `, ${zone.replace(/_/g, ' ')} time` : ''}`
+      : `Off. It would post to ${clip(ch.target, 24)} at 9 AM on Mondays, your time`;
+  }
+}
+
+async function slack(w) {
+  paintSlack();
+  if (w.source === 'snapshots') return;
+  try {
+    const c = await Shell.api.get('/v1/config/notifications');
+    notif = { channels: c?.channels ?? [], routes: c?.routes ?? [] };
+  } catch {
+    notif = null;
+  }
+  paintSlack();
+  $('#slack').onclick = toggleSlack;
+}
+
+async function toggleSlack(e) {
+  const sw = e.currentTarget;
+  const ch = slackOf(notif);
+  if (!ch || sw.disabled) return;
+  const on = !posting(notif, ch);
+  // Change only the weekly digest's Slack channel; every other channel and route stays as it is.
+  const cfg = JSON.parse(JSON.stringify(notif));
+  const route = cfg.routes.find((r) => r.event === DIGEST);
+  const schedule = `MON 09:00 ${tz}`;
+  if (on) {
+    if (route) { route.channels = [...new Set([...(route.channels ?? []), ch.id])]; route.schedule = schedule; }
+    else cfg.routes.push({ event: DIGEST, channels: [ch.id], schedule });
+  } else if (route) {
+    route.channels = (route.channels ?? []).filter((x) => x !== ch.id);
+    if (!route.channels.length) cfg.routes = cfg.routes.filter((r) => r !== route);
+  }
+  sw.disabled = true;
+  $('#slackcard').classList.add('busy');
+  const r = await Shell.write('PUT', '/v1/config/notifications', cfg, { ok: on ? `Every Monday at 9 AM, your week goes to ${ch.target}.` : `Monday posts to ${ch.target} are off.`, reload: false });
+  $('#slackcard').classList.remove('busy');
+  if (r) notif = { channels: r.channels ?? cfg.channels, routes: r.routes ?? cfg.routes };
+  paintSlack();
+  if (r) {
+    resumeAt = state.i;
+    setTimeout(() => Shell.refresh(), 600);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!SLIDES.length || e.target.closest?.('input, textarea')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); go(state.i + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); go(state.i - 1); }
+  if (e.key === ' ') { e.preventDefault(); setPaused(!state.paused); }
+});
+
+Shell.boot({
+  nav: 'Wrapped',
+  async onWorld(w, first) {
+    render(w);
+    if (!first || !Shell.isReal) return;
+    const shot = new URLSearchParams(location.search).get('shot');
+    if (shot === 'slack-on') slackShot();
+  },
+});
+
+// ?shot=slack-on switches the Monday post on. The capture's fake API starts
+// with a Slack connection but no channel, so on the capture host only, it adds
+// one first; on any other host it uses the channel you have, or shows why not.
+async function slackShot() {
+  const until = async (f, ms = 4000) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < ms) await sleep(60); return f(); };
+  if (!(await until(() => notif !== undefined))) return;
+  if (location.hostname === 'console.test' && notif && !slackOf(notif)) {
+    try {
+      notif = await Shell.api.put('/v1/config/notifications', { channels: [...notif.channels, { id: 'slack-ai-ops', kind: 'slack', target: '#ai-ops', connection_id: 'ca_slack_1' }], routes: notif.routes });
+    } catch {}
+    paintSlack();
+  }
+  if (!$('#slack').disabled) $('#slack').click();
+}
+</script>
+</body>
+</html>

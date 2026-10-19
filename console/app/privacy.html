@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy policy · Lumni</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  body { min-width: 0; padding: 56px 24px 80px; }
+  main { max-width: 760px; margin: 0 auto; }
+  .wm { display: inline-block; margin-bottom: 40px; color: var(--ink); }
+  h1 { font-size: 40px; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; }
+  .meta { color: var(--ink2); margin-top: 10px; font-size: 14.5px; }
+  h2 { font-size: 21px; font-weight: 750; letter-spacing: -.02em; margin: 40px 0 10px; }
+  p, li { font-size: 16px; line-height: 1.65; color: var(--ink); }
+  p + p { margin-top: 12px; }
+  ul { margin: 10px 0 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  b { font-weight: 650; }
+  a { color: var(--accent); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink2); font-weight: 650; }
+  .summary { margin-top: 28px; padding: 18px 22px; border-radius: 16px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .summary p { font-size: 15.5px; }
+  footer { margin-top: 56px; color: var(--ink2); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="wm" href="/today" aria-label="Lumni">lum<i>n</i>i</a>
+  <h1>Privacy policy</h1>
+  <p class="meta">Lumni Cloud (app.lumniverse.com and api.lumniverse.com) · Effective October 19, 2026</p>
+
+  <div class="summary">
+    <p><b>In short:</b> we keep what we need to run your workspace and nothing more. We don’t sell your data, we don’t use it to train AI models, and we don’t use advertising or analytics cookies. What your agents send to Lumni belongs to you, and you can ask us to delete it at any time.</p>
+  </div>
+
+  <h2>Who we are</h2>
+  <p>Lumni is provided by <b>Chainslice Inc</b> (“we”, “us”). This policy covers Lumni Cloud, the service we run. If you run Lumni on your own servers, your data stays with you and this policy doesn’t apply to it.</p>
+  <p>Questions or requests: <a href="mailto:privacy@lumniverse.com">privacy@lumniverse.com</a>.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><b>Your account.</b> Your name and email address. If you sign up with a password, we store only a one-way hash of it (argon2id). If you sign in with Google or GitHub, we receive your name, email address and an account identifier from them, and nothing else.</li>
+    <li><b>Your workspace.</b> Its name, its members and their roles, and invitations you send (the invitee’s email address).</li>
+    <li><b>What your agents send.</b> When your agents use Lumni’s API or SDKs, they send the actions they’re about to take: operation names, the arguments and resource identifiers you choose to include, work items, results and evidence, and costs. Lumni stores these, its decisions about them and an audit log, so it can coordinate your agents and show you what happened. This may include personal data about your own customers if you put it in those fields; you decide what to send.</li>
+    <li><b>API keys.</b> Stored as one-way hashes. Your workspace’s administrative key is stored encrypted.</li>
+    <li><b>Technical data.</b> IP addresses and request details (time, path, request ID) in server logs, used for security, rate limits and debugging.</li>
+  </ul>
+
+  <h2>Cookies</h2>
+  <p>We use only cookies that are strictly necessary to sign you in and protect your account. There are no advertising, tracking or analytics cookies.</p>
+  <table>
+    <tr><th>Cookie</th><th>Why</th><th>How long</th></tr>
+    <tr><td><code>lumni_user</code></td><td>Keeps you signed in to the console</td><td>30 days</td></tr>
+    <tr><td><code>lumni_session</code>, <code>lumni_csrf</code>, <code>lumni_ws</code></td><td>Your session with Lumni’s API, protection against cross-site requests, and which workspace you’re in</td><td>Up to 24 hours</td></tr>
+    <tr><td><code>lumni_oauth</code></td><td>Completes a Google or GitHub sign-in safely</td><td>10 minutes</td></tr>
+  </table>
+
+  <h2>How we use it</h2>
+  <ul>
+    <li>To provide Lumni: run your workspace, check and record your agents’ actions, and show you the results.</li>
+    <li>To keep it secure and available: authentication, rate limits and usage limits, preventing abuse, and fixing problems.</li>
+    <li>To talk to you about your account and the service (for example, a security notice or a change to this policy). We won’t send marketing emails without your consent.</li>
+    <li>To improve Lumni, using aggregated information that doesn’t identify you or your workspace.</li>
+  </ul>
+  <p>We don’t sell or rent personal data, and we don’t use your workspace data to train AI models.</p>
+
+  <h2>Who processes it for us</h2>
+  <ul>
+    <li><b>Amazon Web Services</b> hosts Lumni Cloud, in the United States (N. Virginia).</li>
+    <li><b>Google</b> and <b>GitHub</b>, only if you choose to sign in with them.</li>
+    <li>Integrations you connect yourself, such as Slack through Composio, receive what’s needed to deliver the messages you set up.</li>
+  </ul>
+  <p>We may also disclose information if required by law, or to protect the rights and safety of our users and the service. If Chainslice Inc is involved in a merger or acquisition, this policy continues to apply to your data.</p>
+
+  <h2>Your agents’ data and your customers</h2>
+  <p>For the data your agents send, you are in control: we process it on your behalf, only to provide Lumni to you. If you need a data processing agreement, write to us.</p>
+
+  <h2>How long we keep it</h2>
+  <ul>
+    <li>Account and workspace data: for as long as your account or workspace exists.</li>
+    <li>When you ask us to delete your account or workspace, we delete it from the service within 30 days. Copies in backups are removed as those backups expire.</li>
+    <li>Server logs: up to 30 days.</li>
+  </ul>
+
+  <h2>Security</h2>
+  <p>Traffic is encrypted with TLS. Passwords and API keys are hashed, and stored secrets are encrypted. Each workspace’s data is kept separate from every other workspace’s, and access to production systems is limited to the people who run Lumni. No system is perfectly secure; if we learn of a breach affecting your data, we’ll tell you without undue delay.</p>
+
+  <h2>Your rights</h2>
+  <p>You can ask us to access, correct, export or delete your personal data, or object to how we use it. Depending on where you live (for example, under the GDPR in the EU and UK, or the CCPA in California) you may have further rights, including complaining to your local data protection authority. Write to <a href="mailto:privacy@lumniverse.com">privacy@lumniverse.com</a>; we answer within 30 days. Workspace owners can also remove members, revoke keys and change data from the console.</p>
+
+  <h2>International transfers</h2>
+  <p>Lumni Cloud runs in the United States. If you use it from elsewhere, your data is transferred to and processed in the United States, with the protections described here.</p>
+
+  <h2>Children</h2>
+  <p>Lumni is a tool for businesses and developers, and isn’t meant for anyone under 16.</p>
+
+  <h2>Changes</h2>
+  <p>If we change this policy, we’ll update the date above, and for significant changes we’ll let account owners know before they take effect.</p>
+
+  <footer>Chainslice Inc · <a href="mailto:privacy@lumniverse.com">privacy@lumniverse.com</a></footer>
+</main>
+</body>
+</html>

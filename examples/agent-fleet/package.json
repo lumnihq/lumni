@@ -1,0 +1,13 @@
+{
+  "name": "lumni-agent-fleet",
+  "private": true,
+  "type": "module",
+  "description": "Twelve scenarios, one per problem Lumni coordinates, acted out by small agents that check with Lumni before they change anything.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node run.mjs",
+    "forever": "node run.mjs --forever",
+    "test": "node --test"
+  },
+  "dependencies": {}
+}

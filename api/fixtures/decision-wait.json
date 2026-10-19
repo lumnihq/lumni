@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "action_id": "act_fixture",
+  "receipt_id": "receipt_fixture",
+  "decision": "WAIT",
+  "reason_code": "WRITE_WRITE_CONFLICT",
+  "enforced": true,
+  "confidence": 1,
+  "retry_after_ms": 1000,
+  "conflicting_action_ids": ["act_existing"],
+  "kernel_version": "coord-v1",
+  "resolver_version": "resolver-v1",
+  "policy_version": "policy-v1",
+  "created_at": "2026-08-28T10:00:00Z",
+  "future_additive_field": {"ignored": true}
+}

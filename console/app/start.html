@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni · Start</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  .wrap { padding: 38px 40px 60px; }
+  .hero h1 { font-size: 50px; font-weight: 750; letter-spacing: -.035em; line-height: 1.04; }
+  .hero h1 span { color: var(--ink3); }
+  .hero p { font-size: 17px; color: var(--ink2); margin-top: 12px; max-width: 760px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 470px; gap: 24px; margin-top: 34px; align-items: start; }
+
+  /* Steps on the left. */
+  .step { padding: 24px 26px; position: relative; }
+  .step + .step { margin-top: 18px; }
+  .step-h { display: flex; align-items: center; gap: 12px; }
+  .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 750; background: var(--wash); color: var(--ink2); flex: none; transition: all .35s var(--spring); }
+  .step.done .num { background: var(--accent); color: #fff; box-shadow: 0 0 0 5px var(--accent-soft); }
+  .step-h h2 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .step-h small { margin-left: auto; font-size: 13px; color: var(--ink3); font-weight: 600; }
+  .step .lead { color: var(--ink2); font-size: 14.5px; margin: 8px 0 0 42px; }
+  .step .body { margin: 16px 0 0 42px; }
+
+  .keyrow { display: flex; align-items: center; gap: 10px; }
+  .keyrow.login { justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; padding: 14px 16px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .keyrow .lg { display: inline-flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink2); }
+  .keyrow .lg b { color: var(--accent); }
+  .keyrow .lg i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(91,75,245,.18); }
+  .keyrow .alt { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink2); }
+  .keyrow .alt .btn { height: 32px; font-size: 13px; padding: 0 12px; }
+  .keybox { flex: 1; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 8px 0 14px; border-radius: 12px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); font: 600 13.5px var(--mono); min-width: 0; }
+  .keybox span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .keybox .btn { height: 32px; font: 650 12.5px var(--sans); padding: 0 10px; }
+  .keynote { font-size: 12.5px; color: var(--ink2); margin-top: 8px; }
+  .keynote b { color: var(--ink); }
+  .linky { font-size: 13px; font-weight: 650; color: var(--accent); }
+  .coderow { display: flex; align-items: center; gap: 16px; }
+  .codechip { font: 750 26px var(--mono); letter-spacing: .06em; padding: 10px 16px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent-line); animation: pop .5s var(--spring) both; }
+  .codechip.long { font-size: 17px; letter-spacing: .02em; padding: 13px 16px; }
+  .codechip.expired { color: var(--ink3); background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); text-decoration: line-through; }
+  .codemeta { flex: 1; min-width: 0; }
+  .codemeta b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .codemeta span { font-size: 12.5px; color: var(--ink2); }
+
+  /* The command. */
+  .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); width: fit-content; max-width: 100%; overflow-x: auto; }
+  .tabs button { height: 32px; padding: 0 12px; white-space: nowrap; border-radius: 9px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .tabs button[aria-pressed='true'] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(13,14,20,.12); }
+  .tabs .rec { font-size: 10.5px; font-weight: 750; color: var(--accent); margin-left: 4px; }
+
+  .term { position: relative; margin-top: 14px; border-radius: 16px; background: #0d0e14; color: #e8e8f0; overflow: hidden; box-shadow: 0 24px 50px -24px rgba(13,14,20,.55); }
+  .term-bar { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #2b2d38; }
+  .term-bar span { margin-left: 10px; font-size: 12px; color: #8b8fa3; font-weight: 600; }
+  .term-bar .copy { margin-left: auto; height: 26px; padding: 0 11px; border-radius: 8px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; font-weight: 650; }
+  .term-bar .copy:disabled { opacity: .4; cursor: not-allowed; }
+  .term-bar .copy.done { background: var(--accent); }
+  .term pre { margin: 0; padding: 18px 20px 20px; font: 500 13.5px/1.65 var(--mono); white-space: pre-wrap; word-break: break-all; }
+  .term pre.prose { word-break: normal; overflow-wrap: anywhere; font: 500 14px/1.6 var(--sans); }
+  .term .p { color: #8578ff; user-select: none; }
+  .term .k { color: #d4f56a; }
+  .term .dim { color: #6b6f82; }
+  .term .ok { color: #8578ff; }
+  .term .cur { display: inline-block; width: 8px; height: 15px; background: #e8e8f0; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .term .out { border-top: 1px solid rgba(255,255,255,.07); padding-top: 14px; margin-top: 4px; }
+  .term .line { animation: rise .35s var(--ease) both; }
+  .what { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px; margin-top: 16px; }
+  .what div { display: flex; gap: 10px; font-size: 13.5px; color: var(--ink2); line-height: 1.4; }
+  .what b { color: var(--ink); font-weight: 650; }
+  .what i { flex: none; width: 20px; height: 20px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-style: normal; font-size: 11px; font-weight: 750; display: grid; place-items: center; }
+  .snip-note { font-size: 13px; color: var(--ink2); margin-top: 12px; }
+
+  /* Listening, on the right. */
+  .listen { position: sticky; top: 20px; padding: 24px; overflow: hidden; }
+  .listen-h { display: flex; align-items: center; gap: 10px; }
+  .listen-h b { font-size: 15px; }
+  .listen-h small { margin-left: auto; font-size: 12.5px; color: var(--ink3); font-weight: 600; }
+  .radar { position: relative; height: 210px; margin: 10px 0 6px; display: grid; place-items: center; }
+  .radar .ring { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 2px solid var(--accent); opacity: 0; animation: ring 2.6s var(--ease) infinite; }
+  .radar .ring:nth-child(2) { animation-delay: .85s; }
+  .radar .ring:nth-child(3) { animation-delay: 1.7s; }
+  @keyframes ring { 0% { transform: scale(.6); opacity: .55; } 100% { transform: scale(2.3); opacity: 0; } }
+  .radar .core { position: relative; width: 84px; height: 84px; border-radius: 26px; background: var(--ink); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 21px; white-space: nowrap; letter-spacing: -.04em; box-shadow: 0 20px 40px -14px rgba(13,14,20,.6); transition: transform .5s var(--spring), background .4s; }
+  .radar .core i { font-style: normal; color: #8578ff; }
+  .radar .agent { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 15px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 750; font-size: 15px; opacity: 0; transform: translate(150px, -60px) scale(.6); transition: all .9s var(--spring); box-shadow: 0 14px 30px -10px rgba(91,75,245,.7); }
+  .listen.connected .radar .agent { opacity: 1; transform: translate(70px, -38px) scale(1); }
+  .listen.connected .radar .ring { border-color: var(--accent); }
+  .radar svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .radar .beam { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 4 6; fill: none; opacity: 0; transition: opacity .5s; animation: march 1s linear infinite; }
+  @keyframes march { to { stroke-dashoffset: -20; } }
+  .listen.connected .radar .beam { opacity: 1; }
+  .state { text-align: center; font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 26px; }
+  .state small { display: block; font-size: 13px; color: var(--ink2); font-weight: 500; margin-top: 2px; }
+
+  .checks { margin-top: 18px; border-top: 1px solid var(--line); }
+  .chk { display: flex; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .chk .dot { flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line2); display: grid; place-items: center; color: #fff; font-size: 11px; transition: all .4s var(--spring); margin-top: 1px; }
+  .chk.on .dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); transform: scale(1.08); }
+  .chk.wait .dot { box-shadow: inset 0 0 0 2px var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 5px var(--accent-soft); } }
+  .chk b { display: block; font-size: 14px; font-weight: 650; }
+  .chk span { font-size: 12.5px; color: var(--ink2); }
+  .chk time { margin-left: auto; font-size: 12px; color: var(--ink3); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .feed { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; min-height: 40px; }
+  .feed .row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 12px; background: var(--wash); font-size: 13px; animation: rise .4s var(--ease) both; }
+  .feed .row b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .feed .chip { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fff; color: var(--ink2); flex: none; }
+  .feed .chip.stop { background: var(--accent); color: #fff; }
+  .feed .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .feed .chip.wait { background: #d8ebff; color: #1d6fd1; }
+  .feed .chip.recheck { background: #fde7d1; color: #b45f12; }
+  .feed .chip.bad { background: var(--bad-bg); color: var(--bad); }
+  .feed .ai { width: 22px; height: 22px; font-size: 9px; border-radius: 6px; }
+
+  .live { display: none; margin-top: 16px; padding: 18px; border-radius: 16px; background: var(--accent); color: #fff; box-shadow: 0 20px 44px -14px rgba(91,75,245,.65); animation: pop .6s var(--spring) both; }
+  .listen.done .live { display: block; }
+  .live b { font-size: 22px; letter-spacing: -.02em; display: block; }
+  .live p { font-size: 13.5px; opacity: .9; margin-top: 4px; }
+  .live .row2 { display: flex; gap: 8px; margin-top: 14px; }
+  .live .btn { background: #fff; color: var(--accent); box-shadow: none; }
+  .live .btn.ghost { background: rgba(255,255,255,.16); color: #fff; }
+  @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+
+  /* Then. */
+  .then { margin-top: 40px; }
+  .then h3 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .then > p { color: var(--ink2); margin-top: 4px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }
+  .cards .card { padding: 20px 22px; }
+  .cards h4 { font-size: 16px; font-weight: 700; }
+  .cards p { font-size: 13.5px; color: var(--ink2); margin-top: 4px; min-height: 40px; }
+  .cards .seg { display: flex; gap: 4px; padding: 4px; border-radius: 11px; background: var(--wash); margin-top: 12px; }
+  .cards .seg button { flex: 1; height: 32px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .cards .seg button[aria-pressed='true'] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(13,14,20,.12); }
+  .cards .btn { margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Put Lumni in front of your agents.<br /><span>One command. About a minute.</span></h1>
+      <p id="sub">Run one line in your agent’s folder, confirm in your browser, and watch it connect here. Nothing changes how your agent behaves until you say so: Lumni starts by watching.</p>
+    </section>
+
+    <div class="grid">
+      <div>
+        <article class="card step" id="s1">
+          <div class="step-h"><span class="num">1</span><h2>Connect in your browser</h2><small id="s1-meta"></small></div>
+          <p class="lead">The command below opens this console and shows a short code; you check it matches and press Connect. Nothing to copy. The agent gets a key that can check actions and report results, and nothing else, and that keeps working until you revoke it in Settings.</p>
+          <div class="body" id="keybody"></div>
+        </article>
+
+        <article class="card step" id="s2">
+          <div class="step-h"><span class="num">2</span><h2>Run this in your agent’s folder</h2><small id="needs">Node 22 or newer</small></div>
+          <p class="lead">Pick how your agent works. The first one works for almost everything.</p>
+          <div class="body">
+            <div class="tabs" id="tabs"></div>
+            <div class="term" id="term">
+              <div class="term-bar"><i></i><i></i><i></i><span id="term-title">Terminal</span><button class="copy" id="copy">Copy</button></div>
+              <pre id="cmd"></pre>
+            </div>
+            <div id="tabnote"></div>
+          </div>
+        </article>
+      </div>
+
+      <aside class="card listen" id="listen">
+        <div class="listen-h"><span class="live-dot"></span><b id="listen-title">Listening for your agent</b><small id="listen-meta"></small></div>
+        <div class="radar">
+          <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+          <svg viewBox="0 0 470 210"><path class="beam" d="M235,105 C265,90 285,72 305,67" /></svg>
+          <div class="core"><span>lum<i>n</i>i</span></div>
+          <div class="agent" id="agent-mark">Ag</div>
+        </div>
+        <div class="state" id="state">Waiting for your agent<small>Run the command; this page finds it on its own.</small></div>
+        <div class="checks" id="checks"></div>
+        <div class="feed" id="feed"></div>
+        <div class="live" id="live"></div>
+      </aside>
+    </div>
+
+    <section class="then">
+      <h3>Then make it yours</h3>
+      <p>All optional, all reversible.</p>
+      <div class="cards">
+        <article class="card"><h4>Watch first, or protect now</h4><p id="mode-p">Watching records what Lumni would do without stopping anything. Protect when you trust it.</p>
+          <div class="seg" id="mode"><button data-m="SHADOW">Watch</button><button data-m="WARN">Warn</button><button data-m="ENFORCE">Protect</button></div></article>
+        <article class="card"><h4>Let Lumni check your apps</h4><p>So “done” means the app really shows it, not just that the agent said so.</p>
+          <a class="btn" href="/fixes">See which apps</a></article>
+        <article class="card"><h4>Watch it work</h4><p>Every action, step-in and proof, live, on one map.</p>
+          <a class="btn primary" href="/flow">Open Flow</a></article>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const E = (s) => Shell.esc(s);
+const Q = new URLSearchParams(location.search);
+const STEPS = [
+  { id: 'code', t: 'Ready to connect', wait: 'Make a code on the left' },
+  { id: 'ran', t: 'Command ran', wait: 'Run it in your agent’s folder, then confirm in the browser' },
+  { id: 'agent', t: 'Agent connected', wait: 'The command registers it' },
+  { id: 'check', t: 'First check', wait: 'Comes with the command’s hello' },
+  { id: 'proof', t: 'First step-in or proof', wait: 'On your agent’s first real action' },
+];
+const TABS = [
+  { id: 'one', t: 'One command', rec: true },
+  { id: 'agent', t: 'Coding agent' },
+  { id: 'cli', t: 'Lumni CLI' },
+  { id: 'mcp', t: 'MCP client' },
+  { id: 'py', t: 'Python' },
+  { id: 'ts', t: 'TypeScript' },
+  { id: 'look', t: 'Look first' },
+];
+
+const S = { tab: TABS.some((t) => t.id === Q.get('tab')) ? Q.get('tab') : 'one', code: null, codeId: null, codeExp: 0, key: null, prefix: null, done: {}, at: {}, feed: [], seen: new Set(), timers: [], baseline: null, since: Date.now(), cinematic: false };
+const clock = (t) => new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+
+// ─── the command for each way in ─────────────────────
+
+function apiUrl() {
+  return Shell.config.apiUrl || 'http://localhost:8080';
+}
+function keyText(mask = false) {
+  if (!S.key) return '<make a code first>';
+  return mask ? `${S.key.slice(0, 14)}••••••••` : S.key;
+}
+/** The one line. With a code, nothing secret is in it; with a key, the key is. */
+function initLine(extra = '') {
+  const base = `curl -fsSL ${location.origin}/init |`;
+  if (S.key) return `${base} LUMNI_API_KEY=${S.key} node --input-type=module -${extra}`;
+  // No code: the command logs in through the browser.
+  return `${base} node --input-type=module -${S.code ? ` --code ${S.code}` : ''}${extra}`;
+}
+function commands() {
+  const init = initLine();
+  return {
+    one: { title: 'Your agent’s folder', lines: [init], note: null },
+    agent: {
+      title: 'Paste into Claude Code, Codex or Cursor, in your agent’s project',
+      lines: [],
+      prompt: `Set up Lumni in this project, so every action our AI agents take is checked before it changes anything.\n\n1. Run: ${initLine()}\n2. Read ${location.origin}/init/guide.md and follow it: wrap every side effect our agents perform with a Lumni check, and handle each decision the way the guide says.\n3. Run the tests, then tell me which side effects you wrapped and which you didn’t.`,
+      note: `Your coding agent connects the project, then does the part a command can’t: it finds the places your agents change things and wraps each one. To let it ask Lumni why something was stopped, also run: claude mcp add --transport http lumni ${apiUrl()}/v1/mcp --header "Authorization: Bearer $LUMNI_API_KEY"`,
+    },
+    cli: { title: 'Your agent’s folder, no Node needed', lines: [S.key ? `LUMNI_API_KEY=${S.key} lumni init --url ${apiUrl()}` : `lumni init --url ${apiUrl()} --code ${S.code ?? '<make a code first>'}`],
+      note: S.madeBy === 'console' ? 'This code was made by the console, so only the one command above can use it. Make one against a newer Lumni API to use the CLI.' : 'The same setup, from the lumni binary in Lumni’s release archive. The gateway ships beside it, so MCP servers are wrapped too. The binary doesn’t do browser login yet, so make a one-time code above first.' },
+    mcp: { title: 'Your agent’s folder, or your home folder', lines: [initLine(' --gateway "$(which gateway)"')],
+      note: 'Finds Cursor, Claude Desktop and VS Code MCP configs, wraps each local server with Lumni’s gateway, and keeps a backup next to each config. Restart the client afterwards. Remote (URL) servers are left alone.' },
+    py: { title: 'Python', lines: [init, 'pip install lumni-sdk'],
+      code: `from lumni import Client, should_execute\nlumni = Client(os.environ["LUMNI_URL"], os.environ["LUMNI_API_KEY"])\n\nd = lumni.check_action({"actor_id": "my-agent", "work_id": run_id, "operation": "stripe.refund",\n    "resources": [{"type": "charge", "external_id": charge_id, "mode": "WRITE"}]})\nif should_execute(d):\n    stripe.Refund.create(charge=charge_id)`,
+      note: 'The command writes LUMNI_URL and LUMNI_API_KEY to .env.' },
+    ts: { title: 'TypeScript', lines: [init, 'npm install @lumniverse/sdk'],
+      code: `import { LumniClient, shouldExecute } from '@lumniverse/sdk';\nconst lumni = new LumniClient(process.env.LUMNI_URL!, process.env.LUMNI_API_KEY!);\n\nconst d = await lumni.checkAction({ actor_id: 'my-agent', work_id: runId, operation: 'stripe.refund',\n  resources: [{ type: 'charge', external_id: chargeId, mode: 'WRITE' }] });\nif (shouldExecute(d)) await stripe.refunds.create({ charge: chargeId });`,
+      note: 'The command writes LUMNI_URL and LUMNI_API_KEY to .env.' },
+    look: { title: 'A dry run', lines: [initLine(' --dry-run')], note: 'Prints everything it would do, and changes nothing: no files, no calls to Lumni, and the code stays unused.' },
+  };
+}
+
+const WHAT = [
+  ['1', 'Connects in your browser', 'you confirm a short code here; nothing secret is in the command'],
+  ['2', 'Reads your project', 'Python, TypeScript or Go, and the agent libraries in it'],
+  ['3', 'Adds two lines to .env', 'LUMNI_URL and LUMNI_API_KEY, and git-ignores .env'],
+  ['4', 'Wraps MCP servers', 'if it finds any, with a backup of each config'],
+  ['5', 'Says hello', 'registers your agent and sends one harmless check'],
+  ['6', 'Prints three lines', 'the check to add where your agent acts'],
+];
+
+function paintCommand() {
+  const c = commands()[S.tab];
+  $('#tabs').innerHTML = TABS.map((t) => `<button data-t="${t.id}" aria-pressed="${t.id === S.tab}">${t.t}${t.rec ? '<span class="rec">Best</span>' : ''}</button>`).join('');
+  $('#term-title').textContent = c.title;
+  $('#needs').textContent = S.tab === 'cli' ? 'The lumni binary' : S.tab === 'agent' ? 'Any coding agent' : 'Node 22 or newer';
+  const ready = true;
+  const hl = (line) => E(line)
+    .replace(/(--code )(\S+)/, (_, a, b) => `${a}<span class="${S.code ? 'k' : 'dim'}">${b}</span>`)
+    .replace(/(LUMNI_API_KEY=)(\S+)/, (_, a) => `${a}<span class="k">${E(keyText(true))}</span>`);
+  // A long code goes on its own line, after a shell line break; copying keeps one line.
+  const shown = (l) => (l.length > 84 && / --code /.test(l) ? l.replace(/ (--code .*)$/, ' \\\n    $1') : l);
+  $('#cmd').classList.toggle('prose', !!c.prompt);
+  if (!S.cinematic && c.prompt) $('#cmd').innerHTML = `<span class="dim"># A prompt, not a command</span>\n${hl(c.prompt)}`;
+  else if (!S.cinematic) $('#cmd').innerHTML = c.lines.map((l) => `<span class="p">$ </span>${hl(shown(l))}`).join('\n') + (c.code ? `\n\n<span class="dim"># Then, where your agent acts:</span>\n${E(c.code)}` : '');
+  $('#copy').disabled = !ready;
+  $('#copy').textContent = 'Copy';
+  $('#copy').classList.remove('done');
+  $('#tabnote').innerHTML = S.tab === 'one'
+    ? `<div class="what">${WHAT.map(([n, b, s]) => `<div><i>${n}</i><span><b>${b}</b>, ${s}</span></div>`).join('')}</div>`
+    : `<p class="snip-note">${E(c.note ?? 'Your agent shows up here on its first check.')}</p>`;
+}
+
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  S.tab = b.dataset.t;
+  S.cinematic = false;
+  paintCommand();
+});
+$('#copy').addEventListener('click', async () => {
+  const c = commands()[S.tab];
+  const text = c.prompt ?? c.lines.join('\n') + (c.code ? `\n\n${c.code}` : '');
+  try { await navigator.clipboard.writeText(text); } catch {}
+  $('#copy').textContent = 'Copied';
+  $('#copy').classList.add('done');
+});
+
+// ─── the code (or a key) ────────────────────────────
+
+function left() {
+  const ms = Math.max(0, S.codeExp - Date.now());
+  return `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+}
+
+function paintKey() {
+  clearInterval(S.tickTimer);
+  if (S.code) {
+    const expired = Date.now() > S.codeExp && !S.done.ran;
+    $('#keybody').innerHTML = `<div class="coderow"><div class="codechip ${expired ? 'expired' : ''} ${S.code.length > 16 ? 'long' : ''}" id="codechip">${E(S.code)}</div>
+        <div class="codemeta"><b id="codeleft">${S.done.ran ? 'Used' : expired ? 'Expired' : `Works once, for ${left()}`}</b>
+        <span>${S.done.ran ? E(S.done.ran) : expired ? (S.madeBy === 'api' ? 'Nobody used it, so no key was made. Make a new one.' : 'Its key was revoked. Make a new one.') : 'It becomes a key that doesn’t expire. No key goes in your shell.'}</span></div>
+        <button class="btn" id="newcode">${expired ? 'Make a new code' : 'New code'}</button></div>`;
+    $('#newcode').onclick = () => { S.code = null; S.codeId = null; delete S.done.code; delete S.at.code; delete S.done.ran; makeCode(); };
+    if (!S.done.ran && !expired) {
+      S.tickTimer = setInterval(() => {
+        const el = $('#codeleft');
+        if (!el) return clearInterval(S.tickTimer);
+        if (Date.now() > S.codeExp) { clearInterval(S.tickTimer); paintKey(); return; }
+        el.textContent = `Works once, for ${left()}`;
+      }, 1000);
+    }
+    $('#s1-meta').textContent = '';
+    return;
+  }
+  if (S.key) {
+    $('#keybody').innerHTML = `<div class="keyrow"><div class="keybox"><span id="keytxt">${E(keyText(true))}</span><button class="btn" id="reveal">Show</button><button class="btn" id="kcopy">Copy</button></div></div>
+      <p class="keynote"><b>This key is in the command below.</b> A code is safer: it keeps keys out of your shell history. <a class="linky" href="#" id="usecode">Use a code instead</a></p>`;
+    $('#reveal').onclick = () => { $('#keytxt').textContent = $('#keytxt').textContent.includes('•') ? S.key : keyText(true); };
+    $('#kcopy').onclick = async () => { try { await navigator.clipboard.writeText(S.key); } catch {} $('#kcopy').textContent = 'Copied'; };
+    $('#usecode').onclick = (e) => { e.preventDefault(); S.key = null; delete S.done.code; paintKey(); paintCommand(); paintChecks(); };
+    $('#s1-meta').textContent = S.prefix ? `${S.prefix}…` : '';
+    return;
+  }
+  $('#keybody').innerHTML = `<div class="keyrow login"><span class="lg"><i></i><span><b>Browser login</b>, nothing to set up first</span></span>
+      <span class="alt">No browser there, like CI? <button class="btn" id="mk">Make a one-time code</button> <a class="linky" href="#" id="have">or use an API key</a></span></div>`;
+  $('#mk').onclick = makeCode;
+  $('#have').onclick = (e) => {
+    e.preventDefault();
+    const k = prompt('Paste the API key your agent will use. It stays in this page and isn’t saved.');
+    if (k && k.trim()) { S.key = k.trim(); S.prefix = S.key.slice(0, 10); tick('code', 'Using your own API key'); tick('ran', 'Run the command; Lumni sees the agent next'); paintKey(); paintCommand(); }
+  };
+}
+
+async function makeCode() {
+  const btn = $('#mk');
+  if (btn) { btn.disabled = true; btn.textContent = 'Making it…'; }
+  if (!Shell.isReal) {
+    await sleep(450);
+    const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const pick = () => Array.from({ length: 4 }, () => A[Math.floor(Math.random() * A.length)]).join('');
+    S.code = `LUM-${pick()}-${pick()}`;
+    S.codeExp = Date.now() + 15 * 60_000;
+  } else {
+    const out = await Shell.write('POST', '/v1/console/onboarding/codes', {}, { ok: 'Code made. It works once, for 15 minutes.', reload: false });
+    if (!out?.code) { if (btn) { btn.disabled = false; btn.textContent = 'Make a code'; } return; }
+    S.code = out.code;
+    S.codeId = out.id;
+    S.codeExp = Date.parse(out.expires_at);
+    S.prefix = out.key_prefix;
+    S.madeBy = out.made_by ?? 'console';
+  }
+  tick('code', 'Works once, for 15 minutes');
+  paintKey();
+  paintCommand();
+  $('#s1').classList.add('done');
+}
+
+/** Your workspace: has the code been used yet, and where? */
+async function watchCode() {
+  if (S.done.ran) return;
+  // No code made here: a browser login (in this tab or another) says where it ran.
+  if (!S.codeId) {
+    if (S.key) return;
+    try {
+      const r = await Shell.api.get(`/v1/console/device?since=${S.since - 10 * 60_000}`);
+      const l = (r.items ?? []).at(-1);
+      if (l) S.login = { at: Date.parse(l.at), project: l.project };
+      if (l) tick('ran', `${l.host ? `On ${l.host}` : 'On your machine'}${l.project ? `, in ${l.project}` : ''}, connected in the browser`);
+    } catch {}
+    return;
+  }
+  try {
+    const st = await Shell.api.get(`/v1/console/onboarding/codes/${encodeURIComponent(S.codeId)}`);
+    if (st.used) {
+      tick('ran', `${st.host ? `On ${st.host}` : 'On your machine'}${st.project ? `, in ${st.project}` : ''}${st.actor_id && !st.project ? `, for ${st.actor_id}` : ''}`);
+      paintKey();
+    } else if (st.expired) paintKey();
+  } catch {}
+}
+
+// ─── listening ──────────────────────────────────────
+
+function paintChecks() {
+  const next = STEPS.find((s) => !S.done[s.id])?.id;
+  $('#checks').innerHTML = STEPS.map((s) => `<div class="chk ${S.done[s.id] ? 'on' : s.id === next ? 'wait' : ''}">
+    <span class="dot">${S.done[s.id] ? '✓' : ''}</span>
+    <div><b>${s.t}</b><span>${E(S.done[s.id] || s.wait)}</span></div>
+    ${S.at[s.id] ? `<time>${clock(S.at[s.id])}</time>` : ''}</div>`).join('');
+  const n = ['agent', 'check'].every((k) => S.done[k]);
+  $('#listen').classList.toggle('connected', !!S.done.agent);
+  $('#listen').classList.toggle('done', n);
+  $('#s2').classList.toggle('done', !!S.done.agent);
+  if (S.done.agent) {
+    $('#listen-title').textContent = n ? 'Connected' : 'Agent found';
+    $('#state').innerHTML = n ? `${E(S.agentName)} is live<small>Every action it takes now goes through Lumni.</small>` : `${E(S.agentName)} connected<small>Waiting for its first check…</small>`;
+  }
+}
+
+function tick(id, text) {
+  if (S.done[id]) return;
+  S.done[id] = text;
+  S.at[id] = Date.now();
+  paintChecks();
+}
+
+const CHIP = { stop: 'Stopped', wait: 'Waited', recheck: 'Looked again', ask: 'Asked you', bad: 'Didn’t happen', proven: 'Proven', blind: 'Allowed', allow: 'Allowed' };
+function pushFeed(row) {
+  S.feed.unshift(row);
+  S.feed = S.feed.slice(0, 5);
+  $('#feed').innerHTML = S.feed.map((r) => `<div class="row"><span class="ai">${E(r.ai)}</span><b title="${E(r.t)}">${E(r.t)}</b><span class="chip ${r.k === 'proven' ? 'ok' : r.k}">${CHIP[r.k] ?? 'Allowed'}</span></div>`).join('');
+}
+
+function paintLive(w) {
+  const k = Shell.isReal ? S.feed.length : 3;
+  $('#live').innerHTML = `<b>You’re live.</b><p>${E(S.agentName)} is checked before every action${k ? `, and Lumni has seen ${k} so far` : ''}. Open Flow to watch the rest arrive.</p>
+    <div class="row2"><a class="btn" href="/flow">Open Flow</a><a class="btn ghost" href="/today">See today</a></div>`;
+}
+
+/** Look again soon: one timer, however many nudges arrive. */
+function pollIn(ms) {
+  clearTimeout(S.pollTimer);
+  if (!S.done.proof) S.pollTimer = setTimeout(poll, ms);
+}
+
+/**
+ * Lumni's change stream says the moment an agent is made or an action is
+ * checked, so this page looks right then. Polling stays, slower, in case the
+ * stream drops or the API predates filtered streams.
+ */
+function listen() {
+  if (S.listening) return;
+  S.listening = true;
+  S.streaming = !!window.EventSource;
+  Shell.onChange(() => pollIn(150));
+}
+
+/** Your workspace: look for the agent the command registers, and its first checks. */
+async function poll() {
+  if (S.polling) return pollIn(400);
+  S.polling = true;
+  try { await pollOnce(); } finally { S.polling = false; }
+  if (S.done.proof) return;
+  const visible = document.visibilityState === 'visible';
+  pollIn(S.streaming ? 10_000 : visible ? 2500 : 8000);
+}
+
+async function pollOnce() {
+  await watchCode();
+  try {
+    // After the first look, ask only for agents made since this page opened
+    // (a little earlier, for clock skew); older APIs ignore \`from\` and send all.
+    const from = encodeURIComponent(new Date(S.since - 120_000).toISOString());
+    const actors = (await Shell.api.get(S.baseline ? `/v1/actors?from=${from}&type=AGENT&limit=200` : '/v1/actors?limit=1000')).items ?? [];
+    if (!S.baseline) {
+      // The command may have finished before this page opened: the agent it
+      // named after the folder, made around that login, is this one, not an old one.
+      const named = S.login?.project && S.login.project.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+      const justMade = (a) => named && a.id === named && (!a.created_at || Date.parse(a.created_at) >= S.login.at - 10 * 60_000);
+      S.baseline = new Set(actors.filter((a) => !justMade(a)).map((a) => a.id));
+      // Its hello check came then too, so look for checks from the login on.
+      if (actors.some(justMade)) S.since = Math.min(S.since, S.login.at);
+      const old = S.baseline.size;
+      $('#listen-meta').innerHTML = old ? `<a class="linky" href="/flow" title="Already set up? See them on Flow">${old} ${old === 1 ? 'agent' : 'agents'} already here</a>` : '';
+    }
+    const fresh = actors.filter((a) => !S.baseline.has(a.id) && a.type !== 'HUMAN');
+    if (fresh.length && !S.done.agent) {
+      const a = fresh[0];
+      S.agentId = a.id;
+      S.agentName = a.display_name || a.id;
+      $('#agent-mark').textContent = S.agentName.slice(0, 2).replace(/^./, (c) => c.toUpperCase());
+      tick('agent', `${S.agentName}${a.runtime ? `, ${a.runtime}` : ''}`);
+    }
+    if (S.done.agent) {
+      const since = encodeURIComponent(new Date(S.since - 120_000).toISOString());
+      const rows = ((await Shell.api.get(`/v1/actions?actor_id=${encodeURIComponent(S.agentId)}&from=${since}&limit=20`)).items ?? []).filter((r) => r.actor_id === S.agentId);
+      for (const r of rows.slice(0, 5).reverse()) {
+        if (S.seen.has(r.id)) continue;
+        S.seen.add(r.id);
+        let k = 'allow';
+        try {
+          const j = await Shell.api.get(`/v1/console/journey/${encodeURIComponent(r.id)}`);
+          k = j.end === 'proven' ? 'proven' : j.end === 'blind' ? (j.decision?.type?.startsWith('WOULD_') ? 'allow' : 'allow') : j.end;
+          const hit = j.stages?.find((s) => s.hit);
+          if (hit && j.end === 'blind') k = hit.kind;
+          if (!S.done.check) tick('check', `${j.did}, ${j.decision?.words ?? 'allowed'}`);
+          if (!S.done.proof && r.operation !== 'lumni.hello' && k !== 'allow') tick('proof', k === 'proven' ? `${j.app?.name ?? 'The app'} shows it happened` : `${CHIP[k]}: ${j.decision?.words ?? ''}`);
+        } catch {
+          if (!S.done.check) tick('check', r.operation);
+        }
+        pushFeed({ ai: (S.agentName || 'Ag').slice(0, 2).replace(/^./, (c) => c.toUpperCase()), t: r.metadata?.summary || r.operation, k });
+      }
+      if (S.done.check) paintLive();
+    }
+  } catch (e) {
+    if (Q.get('shot')) console.error('listening failed:', e.message);
+  }
+}
+
+/** For screenshots: make a key and do what `lumni init` does, through the API. */
+async function simulate() {
+  await sleep(600);
+  await makeCode();
+  await sleep(600);
+  // The command's side: trade the code (no session), then say hello with the key.
+  const trade = { code: S.code, host: 'ak-macbook', project: 'support-agent' };
+  if (S.madeBy === 'api') await Shell.api.post('/v1/onboarding/exchange', trade);
+  else await fetch('/console/onboarding/exchange', { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify(trade) });
+  await sleep(1500);
+  const id = 'support-agent', run = `${id}-hello-sim`;
+  await Shell.api.post('/v1/actors', { id, type: 'AGENT', display_name: id, runtime: 'python', metadata: { source: 'lumni init' } });
+  await Shell.api.post('/v1/work', { id: run, actor_id: id, goal: 'Say hello to Lumni', risk: 'LOW' });
+  const d = await Shell.api.post('/v1/actions/check', { action_id: run, work_id: run, actor_id: id, operation: 'lumni.hello', arguments: {}, resources: [{ type: 'lumni_hello', external_id: run, mode: 'WRITE' }], risk: 'LOW' });
+  await Shell.api.post(`/v1/actions/${d.action_id}/start`, { lease_token: d.lease_token });
+  await Shell.api.post(`/v1/actions/${d.action_id}/result`, { status: 'SUCCEEDED', lease_token: d.lease_token, output: { hello: true } });
+}
+
+// ─── the demo: the whole thing as a film ─────────────
+
+const OUT = [
+  ['ok', 'Traded your code for a key to Acme (lumni_ab12…)'],
+  ['ok', 'Your key works with https://lumni.acme.dev'],
+  ['ok', 'Found a python project using LangGraph, OpenAI'],
+  ['ok', 'Added LUMNI_URL and LUMNI_API_KEY to .env'],
+  ['ok', 'Wrapped billing, stripe in .cursor/mcp.json'],
+  ['ok', 'Registered support-agent and sent a hello check: ALLOW'],
+  ['', ''],
+  ['done', 'Done. Add this where your agent acts, then watch it on the console’s Start page.'],
+];
+
+async function film(w) {
+  S.cinematic = true;
+  S.agentName = 'support-agent';
+  $('#agent-mark').textContent = 'Su';
+  await sleep(700);
+  await makeCode();
+  await sleep(500);
+  const cmd = `curl -fsSL https://console.acme.dev/init | node --input-type=module - --code ${S.code}`;
+  const pre = $('#cmd');
+  for (let i = 0; i <= cmd.length; i += 3) {
+    pre.innerHTML = `<span class="p">$ </span>${E(cmd.slice(0, i)).replace(/(--code )(\S+)/, '$1<span class="k">$2</span>')}<span class="cur"></span>`;
+    await sleep(14);
+  }
+  await sleep(450);
+  let out = '';
+  for (const [k, line] of OUT) {
+    await sleep(k === 'done' ? 300 : 420);
+    out += k === 'ok' ? `\n<span class="line"><span class="ok">  ✓</span> ${E(line)}</span>` : k === 'done' ? `\n<span class="line"><span class="ok">  ${E(line)}</span></span>` : '\n';
+    pre.innerHTML = `<span class="p">$ </span>${E(cmd).replace(/(--code )(\S+)/, '$1<span class="k">$2</span>')}<div class="out">${out}</div>`;
+    if (line.startsWith('Traded')) { tick('ran', 'On ak-macbook, in support-agent'); paintKey(); }
+    if (line.startsWith('Registered')) tick('agent', 'support-agent, python');
+  }
+  await sleep(500);
+  tick('check', 'Said hello, allowed');
+  pushFeed({ ai: 'Su', t: 'Said hello to Lumni', k: 'allow' });
+  // Then its first real work, from the demo world's own patterns.
+  const p = w.patterns;
+  const firsts = [
+    { t: 'Reply to Dana’s ticket', k: 'proven' },
+    { t: p.recheck[0]?.t ?? 'Update a plan', k: 'recheck' },
+    { t: 'Refund $60 to Omar Haddad, a second time', k: 'stop' },
+  ];
+  for (const f of firsts) {
+    await sleep(900);
+    pushFeed({ ai: 'Su', t: f.t, k: f.k });
+    if (f.k === 'stop') tick('proof', 'Stopped a repeat: $60 kept');
+  }
+  paintLive(w);
+  S.cinematic = false;
+}
+
+// ─── then ───────────────────────────────────────────
+
+function paintMode(w) {
+  const cur = w.mode ?? 'SHADOW';
+  $$('#mode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.m === cur)));
+  $('#mode').onclick = async (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.m === cur) return;
+    if (!Shell.isReal) {
+      $$('#mode button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      return Shell.toast(`The demo is now ${b.textContent.toLowerCase()}ing. In your workspace this changes every AI’s default.`);
+    }
+    const out = await Shell.write('PUT', '/v1/config/mode', { mode: b.dataset.m }, { ok: `Your workspace now ${b.dataset.m === 'SHADOW' ? 'watches' : b.dataset.m === 'WARN' ? 'warns' : 'protects'} by default.` });
+    if (out) $$('#mode button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  };
+}
+
+// ─── boot ───────────────────────────────────────────
+
+function reset() {
+  S.timers.forEach(clearTimeout);
+  S.timers = [];
+  clearTimeout(S.pollTimer);
+  Object.assign(S, { login: null, madeBy: null, code: null, codeId: null, codeExp: 0, key: null, prefix: null, done: {}, at: {}, feed: [], seen: new Set(), baseline: null, since: Date.now(), agentName: null, agentId: null, cinematic: false });
+  $('#feed').innerHTML = '';
+  $('#listen').classList.remove('connected', 'done');
+  $('#s1').classList.remove('done');
+  $('#s2').classList.remove('done');
+  $('#listen-title').textContent = 'Listening for your agent';
+  $('#listen-meta').textContent = '';
+  $('#state').innerHTML = 'Waiting for your agent<small>Run the command; this page finds it on its own.</small>';
+}
+
+let booted = false;
+Shell.boot({
+  nav: 'Start',
+  onWorld(w, first) {
+    // A demo volume switch or a re-read shouldn't restart onboarding.
+    paintMode(w);
+    if (booted) return;
+    booted = true;
+    reset();
+    paintKey();
+    paintCommand();
+    paintChecks();
+    if (Shell.isReal) {
+      $('#sub').textContent = `Run one line in your agent’s folder, confirm in your browser, and watch it connect here. Your workspace ${w.mode === 'ENFORCE' ? 'protects' : w.mode === 'WARN' ? 'warns' : 'watches'} by default, which you can change below.`;
+      // Browser login needs nothing made first.
+      tick('code', 'Browser login, or a one-time code');
+      listen();
+      poll();
+      if (Q.get('shot') === 'simulate') simulate().catch((e) => console.error('simulate failed:', e.message));
+    } else if (Q.get('shot') !== 'still') {
+      film(w);
+    }
+  },
+});
+</script>
+</body>
+</html>

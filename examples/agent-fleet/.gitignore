@@ -1,0 +1,4 @@
+.env
+state.json
+*.lumni-backup
+.claude/

@@ -1,0 +1,6354 @@
+openapi: 3.1.0
+info:
+  title: Lumni Coordination API
+  version: 0.2.0
+  description: Deterministic coordination, shadow analysis, and action admission for
+    autonomous work.
+servers:
+- url: http://localhost:8080
+security:
+- bearerAuth: []
+- sessionCookie: []
+paths:
+  /v1/onboarding/codes:
+    post:
+      operationId: createOnboardingCode
+      summary: Create a single-use onboarding credential
+      description: Admin scope. Session writes require X-CSRF-Token. Only a hash is stored; expiry is at most fifteen minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  minItems: 1
+                  maxItems: 7
+                  uniqueItems: true
+                  default: [ingest, query, runtime, admission]
+                  items:
+                    type: string
+                    enum: [ingest, query, runtime, admission, verification, payload, admin]
+                expires_in_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 15
+                  default: 15
+                actor_hint:
+                  type: string
+                  maxLength: 200
+      responses:
+        '201':
+          description: One-time code, returned only at creation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, expires_at]
+                properties:
+                  code:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/onboarding/exchange:
+    post:
+      operationId: exchangeOnboardingCode
+      summary: Atomically exchange a code for a scoped API key
+      security: []
+      description: >-
+        The code is the credential. A code works once across all API instances.
+        Unknown, used, expired, and revoked-issuer codes return the same 404.
+        Limited to ten attempts per minute per transport peer. Credential
+        responses use Cache-Control no-store. Set LUMNI_PUBLIC_BASE_URL behind a proxy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  maxLength: 128
+                host:
+                  type: string
+                  maxLength: 200
+                project:
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: Scoped key issued exactly once
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [api_key, key_id, tenant_name, api_url, actor_hint]
+                properties:
+                  api_key:
+                    type: string
+                  key_id:
+                    type: string
+                  tenant_name:
+                    type: string
+                  api_url:
+                    type: string
+                    format: uri
+                  actor_hint:
+                    type: string
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/onboarding/codes/{code}/status:
+    get:
+      operationId: onboardingCodeStatus
+      summary: Read onboarding progress for the administrator's tenant
+      description: Admin scope. Code values are redacted from access logs. Response is never cached.
+      parameters:
+      - in: path
+        name: code
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Whether the code was exchanged, its actor, and the machine, project and issued key recorded at exchange. Machine and project are null for codes exchanged before migration 24.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [used, used_at, actor_id, host, project, key_id]
+                properties:
+                  used:
+                    type: boolean
+                  used_at:
+                    type: [string, 'null']
+                    format: date-time
+                  actor_id:
+                    type: [string, 'null']
+                  host:
+                    type: [string, 'null']
+                  project:
+                    type: [string, 'null']
+                  key_id:
+                    type: [string, 'null']
+                    format: uuid
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/health/live:
+    get:
+      security: []
+      operationId: live
+      responses:
+        '200':
+          description: Process is live
+  /v1/health/ready:
+    get:
+      security: []
+      operationId: ready
+      responses:
+        '200':
+          description: Database is ready
+  /v1/auth/session:
+    post:
+      operationId: createBrowserSession
+      description: Exchange a bearer API key for an HttpOnly browser session and one-time
+        CSRF token.
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      security:
+      - cookieAuth: []
+      - bearerAuth: []
+      operationId: getBrowserSession
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      security:
+      - cookieAuth: []
+      operationId: deleteBrowserSession
+      parameters:
+      - in: header
+        name: X-CSRF-Token
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/composio/connections:
+    get:
+      operationId: listComposioConnections
+      description: Query scope. Lists tenant-owned GitHub pilot connections; enabled
+        is false when Composio is disabled.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: connectComposioGitHub
+      description: Admin scope. Starts hosted OAuth for an administrator-selected
+        repository, with explicit cloud consent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - repository
+              - cloud_processing_consent
+              properties:
+                repository:
+                  type: string
+                  pattern: ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$
+                cloud_processing_consent:
+                  type: boolean
+                  const: true
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/composio/connections/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: refreshComposioConnection
+      description: Admin scope. Verifies account ownership and prepares the allowlisted
+        session when active.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      operationId: disconnectComposioConnection
+      description: Admin scope. Disables locally before deleting the connected account
+        in Composio.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/composio/connections/{id}/pull-requests/{number}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    - in: path
+      name: number
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    get:
+      operationId: readComposioPullRequest
+      description: Query scope. Fresh GitHub read restricted to the connection repository;
+        returns observed_version for admission.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/composio/connections/{id}/execute:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: executeComposioPullRequestState
+      description: Admission scope. Checks and starts once before a named GitHub tool
+        call; outcome remains pending until fresh verification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - action_id
+              - work_id
+              - actor_id
+              - number
+              - state
+              - observed_version
+              properties:
+                action_id:
+                  type: string
+                  minLength: 1
+                work_id:
+                  type: string
+                  minLength: 1
+                actor_id:
+                  type: string
+                  minLength: 1
+                number:
+                  type: integer
+                  minimum: 1
+                state:
+                  type: string
+                  enum:
+                  - open
+                  - closed
+                observed_version:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integrations/composio/connections/{id}/metrics:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: composioConnectionMetrics
+      description: Query scope. Tenant-scoped request counts and mean/p95 latency
+        grouped by READ, EXECUTE, VERIFY and status.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/webhooks/composio:
+    post:
+      operationId: composioWebhook
+      security: []
+      description: Signed V3 GitHub trigger ingestion. Requires webhook-id, webhook-timestamp,
+        webhook-signature and x-composio-webhook-version V3 headers. Tenant comes
+        from the registered account/user pair.
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actors:
+    post:
+      operationId: putActor
+      requestBody:
+        $ref: '#/components/requestBodies/Actor'
+      responses:
+        '201':
+          $ref: '#/components/responses/Actor'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      operationId: listActors
+      description: Query scope. Newest-first tenant actors with time, type, and cursor filters. since aliases inclusive from; preserve filters while paging.
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - in: query
+        name: since
+        description: Inclusive alias for from. If both are supplied, they must agree.
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: type
+        schema:
+          type: string
+          enum: [AGENT, HUMAN, SERVICE, CRON, WEBHOOK, CI, WORKFLOW, SYSTEM]
+  /v1/actors/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getActor
+      responses:
+        '200':
+          $ref: '#/components/responses/Actor'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/agents:
+    post:
+      operationId: putAgent
+      requestBody:
+        $ref: '#/components/requestBodies/Agent'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      operationId: listAgents
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/sessions:
+    post:
+      operationId: startSession
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/sessions/{id}/complete:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: completeSession
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work:
+    post:
+      operationId: startWork
+      requestBody:
+        $ref: '#/components/requestBodies/Work'
+      responses:
+        '201':
+          $ref: '#/components/responses/Work'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      operationId: listWork
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getWork
+      responses:
+        '200':
+          $ref: '#/components/responses/Work'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}/complete:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: completeWork
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}/fail:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: failWork
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}/cancel:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: cancelWork
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}/supersede:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: supersedeWork
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/work/{id}/graph:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getWorkGraph
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/observations:
+    post:
+      operationId: recordObservation
+      requestBody:
+        $ref: '#/components/requestBodies/Observation'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/observations/batch:
+    post:
+      operationId: recordObservations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Observation'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/check:
+    post:
+      operationId: checkAction
+      requestBody:
+        $ref: '#/components/requestBodies/ActionCheck'
+      responses:
+        '200':
+          $ref: '#/components/responses/Decision'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/observe:
+    post:
+      operationId: observeAction
+      requestBody:
+        $ref: '#/components/requestBodies/ActionCheck'
+      responses:
+        '200':
+          $ref: '#/components/responses/Decision'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getAction
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/{id}/start:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: startAction
+      requestBody:
+        $ref: '#/components/requestBodies/LeaseToken'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/{id}/heartbeat:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: heartbeatAction
+      requestBody:
+        $ref: '#/components/requestBodies/LeaseToken'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/{id}/result:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: reportActionResult
+      requestBody:
+        $ref: '#/components/requestBodies/ActionResult'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actions/{id}/cancel-reservation:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: cancelUnstartedReservation
+      description: Release a reservation only if the action has not started.
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources:
+    get:
+      operationId: listResources
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources/resolve:
+    post:
+      operationId: putResource
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getResource
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources/{id}/version:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: updateResourceVersion
+      requestBody:
+        $ref: '#/components/requestBodies/ResourceVersion'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/approvals:
+    get:
+      summary: List approvals, including pending approvals older than the recent page
+      operationId: console_get_v1_approvals
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleStatus'
+      - $ref: '#/components/parameters/ConsoleActionID'
+      - name: include
+        in: query
+        schema:
+          type: string
+        description: Comma-separated action,rule embeddings
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsoleApproval'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/approvals/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: getApproval
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/approvals/{id}/approve:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: approve
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/approvals/{id}/deny:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    post:
+      operationId: deny
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/events:
+    post:
+      operationId: ingestEvent
+      requestBody:
+        $ref: '#/components/requestBodies/Event'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/events/batch:
+    post:
+      operationId: ingestEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Event'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/costs:
+    post:
+      operationId: recordCost
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finops/summary:
+    get:
+      operationId: finopsSummary
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/finops/graph:
+    get:
+      operationId: finopsGraph
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: FinOps allocation graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinOpsGraph'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/api-keys:
+    get:
+      operationId: listAPIKeys
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createAPIKey
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/api-keys/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    delete:
+      operationId: revokeAPIKey
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config:
+    get:
+      operationId: getConfiguration
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/mode:
+    put:
+      operationId: setEnforcementMode
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/semantic:
+    put:
+      summary: Opt this tenant into or out of advisory semantic evaluation
+      operationId: setSemanticEvaluation
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/semantic-evaluations:
+    get:
+      summary: List advisory semantic evaluation audit records
+      operationId: listSemanticEvaluations
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+  /v1/semantic-evaluations/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      summary: Read one advisory semantic evaluation audit record
+      operationId: getSemanticEvaluation
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/resource-rules:
+    get:
+      operationId: listResourceRules
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createResourceRule
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/conflict-rules:
+    get:
+      operationId: listConflictRules
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createConflictRule
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/policy-rules:
+    get:
+      operationId: listPolicyRules
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createPolicyRule
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/replay/{actionID}:
+    parameters:
+    - in: path
+      name: actionID
+      required: true
+      schema:
+        type: string
+    get:
+      operationId: replayAction
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/work/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: graphWork
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/resource/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    get:
+      operationId: graphResource
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/live:
+    get:
+      operationId: liveGraph
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/snapshot:
+    get:
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      operationId: operationalGraphSnapshot
+      parameters:
+      - in: query
+        name: lens
+        schema:
+          type: string
+          enum:
+          - live
+          - agents
+          - work
+          - resources
+          - transaction
+          - finops
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: focus_type
+        schema:
+          type: string
+      - in: query
+        name: focus_id
+        schema:
+          type: string
+      - in: query
+        name: depth
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: risk
+        schema:
+          $ref: '#/components/schemas/Risk'
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Focused operational graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/entities/{type}/{id}:
+    parameters:
+    - in: path
+      name: type
+      required: true
+      schema:
+        type: string
+    - $ref: '#/components/parameters/ID'
+    get:
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      operationId: inspectGraphEntity
+      responses:
+        '200':
+          description: Entity inspector
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityInspector'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/graph/stream:
+    get:
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      operationId: streamGraphInvalidations
+      description: Query scope. Optional event-type filters include actor.created and action.checked. Explicit cursor=0 replays retained events; without a cursor, starts at the tenant head. Resume with Last-Event-ID or the cursor query parameter, which takes precedence. An expired cursor emits reset immediately before the first retained event and replays from there.
+      parameters:
+      - in: header
+        name: Last-Event-ID
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: integer
+          minimum: 0
+      - in: query
+        name: types
+        description: Comma-separated event types, at most twenty. Omit to receive all invalidations.
+        schema:
+          type: string
+          example: actor.created,action.checked
+      responses:
+        '200':
+          description: Server-sent graph invalidations
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /v1/repositories:
+    get:
+      operationId: listRepositories
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: putRepository
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/webhooks:
+    get:
+      operationId: listOutboundWebhooks
+      responses:
+        '200':
+          $ref: '#/components/responses/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: createOutboundWebhook
+      requestBody:
+        $ref: '#/components/requestBodies/JSON'
+      responses:
+        '201':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/webhooks/{id}:
+    parameters:
+    - $ref: '#/components/parameters/ID'
+    delete:
+      operationId: deleteOutboundWebhook
+      responses:
+        '200':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/webhooks/github:
+    post:
+      security: []
+      operationId: githubWebhook
+      parameters:
+      - in: query
+        name: tenant
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '202':
+          $ref: '#/components/responses/JSON'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/runtime/work:
+    post:
+      summary: Submit versioned native work
+      operationId: post_runtime_work
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunInput'
+  /v1/runtime/claim:
+    post:
+      summary: Claim work with fencing
+      operationId: post_runtime_claim
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimInput'
+  /v1/runtime/work/{id}/heartbeat:
+    post:
+      summary: Renew current worker ownership
+      operationId: post_runtime_work__id__heartbeat
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeAuth'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/finish:
+    post:
+      summary: Persist native work completion
+      operationId: post_runtime_work__id__finish
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepResult'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/cancel:
+    post:
+      summary: Cancel work and children
+      operationId: post_runtime_work__id__cancel
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/signals:
+    post:
+      summary: Deliver an identified signal
+      operationId: post_runtime_work__id__signals
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignalInput'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/steps/begin:
+    post:
+      summary: Begin or replay a stable step
+      operationId: post_runtime_work__id__steps_begin
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepInput'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/steps/{key}/start:
+    post:
+      summary: Persist call-start marker
+      operationId: post_runtime_work__id__steps__key__start
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepResult'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/runtime/work/{id}/steps/{key}/result:
+    post:
+      summary: Persist immutable step result
+      operationId: post_runtime_work__id__steps__key__result
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepResult'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/actions/{id}/recheck:
+    post:
+      summary: Evaluate current admission with a new recheck identity
+      operationId: post_actions__id__recheck
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/actions/{id}/start-once:
+    post:
+      summary: Consume one external invocation permission
+      operationId: post_actions__id__start_once
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/dependencies:
+    post:
+      summary: Create dependency or supersession without cycles
+      operationId: post_dependencies
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DependencyInput'
+    get:
+      summary: Read dependencies
+      operationId: get_dependencies
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/verifiers:
+    post:
+      summary: Register versioned verifier
+      operationId: post_verifiers
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Verifier'
+    get:
+      summary: Read verifiers
+      operationId: get_verifiers
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/outcomes/{id}/evidence:
+    post:
+      summary: Append authenticated verifier evidence
+      operationId: post_outcomes__id__evidence
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationEvidence'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/outcomes/{id}/retry:
+    post:
+      summary: Retry verification without replaying mutation
+      operationId: post_outcomes__id__retry
+      tags:
+      - Durable execution
+      responses:
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+        '202':
+          description: Verification queued without replaying the mutation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued:
+                    type: boolean
+                  attempt_id:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/config/enforcement:
+    put:
+      summary: Set operation and rule enforcement
+      operationId: put_config_enforcement
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Override and effective mode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation: &id001
+                    type: string
+                  rule: *id001
+                  mode: &id002
+                    type: string
+                    enum:
+                    - SHADOW
+                    - WARN
+                    - ENFORCE
+                  effective_mode: *id002
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnforcementRule'
+    delete:
+      summary: Reset an override to the inherited workspace or operation default
+      operationId: console_delete_v1_config_enforcement
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operation:
+                  type: string
+                rule:
+                  type: string
+                  default: '*'
+              required:
+              - operation
+  /v1/config/operation-verifiers:
+    put:
+      summary: Bind a verifier to a mapped operation
+      operationId: put_config_operation_verifiers
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationVerifier'
+  /v1/discovery/tools:
+    post:
+      summary: Record discovered tool schema
+      operationId: post_discovery_tools
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /v1/discovery/confirm:
+    post:
+      summary: Confirm canonical operation resource and effect mapping
+      operationId: post_discovery_confirm
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolMapping'
+  /v1/reconciliation/handlers:
+    post:
+      summary: Register reconciliation handler version
+      operationId: post_reconciliation_handlers
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconciliationHandler'
+  /v1/reconciliation:
+    post:
+      summary: Submit reconciliation through normal runtime admission
+      operationId: post_reconciliation
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReconciliationInput'
+    get:
+      summary: Read reconciliation
+      operationId: get_reconciliation
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/reconciliation/{id}/review:
+    post:
+      summary: Record operator review
+      operationId: post_reconciliation__id__review
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/effects/resolve-identity:
+    post:
+      summary: Resolve ambiguous legacy effect identity with evidence
+      operationId: post_effects_resolve_identity
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EffectIdentityResolution'
+  /v1/model-calls:
+    post:
+      summary: Persist identified model invocation and complete result
+      operationId: post_model_calls
+      tags:
+      - Durable execution
+      responses:
+        '200':
+          description: Persisted result
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient scope
+        '409':
+          description: Ownership or lifecycle conflict
+        '422':
+          description: Typed identity, replay, verification, or validation error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+    get:
+      summary: Read model-calls
+      operationId: get_model_calls
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/findings:
+    get:
+      summary: Read findings
+      operationId: get_findings
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleStatus'
+      - $ref: '#/components/parameters/ConsoleActionID'
+      - name: kind
+        in: query
+        schema:
+          type: string
+        description: Incident kind, including BURST
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/findings/{id}:
+    get:
+      summary: Read findings
+      operationId: get_findings_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/incidents:
+    get:
+      summary: Read incidents
+      operationId: get_incidents
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleStatus'
+      - $ref: '#/components/parameters/ConsoleActionID'
+      - name: kind
+        in: query
+        schema:
+          type: string
+        description: Incident kind, including BURST
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/incidents/{id}:
+    get:
+      summary: Read incidents
+      operationId: get_incidents_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/activity:
+    get:
+      summary: Read activity
+      operationId: get_activity
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/activity/{id}:
+    get:
+      summary: Read activity
+      operationId: get_activity_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/steps:
+    get:
+      summary: Read steps
+      operationId: get_steps
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/steps/{id}:
+    get:
+      summary: Read steps
+      operationId: get_steps_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/step-attempts:
+    get:
+      summary: Read step-attempts
+      operationId: get_step_attempts
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/step-attempts/{id}:
+    get:
+      summary: Read step-attempts
+      operationId: get_step_attempts_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/journal:
+    get:
+      summary: Read journal
+      operationId: get_journal
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/journal/{id}:
+    get:
+      summary: Read journal
+      operationId: get_journal_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/waits:
+    get:
+      summary: Read waits
+      operationId: get_waits
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/waits/{id}:
+    get:
+      summary: Read waits
+      operationId: get_waits_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/effects:
+    get:
+      summary: Read effects
+      operationId: get_effects
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/effects/{id}:
+    get:
+      summary: Read effects
+      operationId: get_effects_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/outcomes:
+    get:
+      summary: Read outcomes
+      operationId: get_outcomes
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleStatus'
+      - $ref: '#/components/parameters/ConsoleActionID'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsoleOutcome'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/outcomes/{id}:
+    get:
+      summary: Read outcomes
+      operationId: get_outcomes_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/verifiers/{id}:
+    get:
+      summary: Read verifiers
+      operationId: get_verifiers_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/verification-attempts:
+    get:
+      summary: Read verification-attempts
+      operationId: get_verification_attempts
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/verification-attempts/{id}:
+    get:
+      summary: Read verification-attempts
+      operationId: get_verification_attempts_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/dependencies/{id}:
+    get:
+      summary: Read dependencies
+      operationId: get_dependencies_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/enforcement:
+    get:
+      summary: Read enforcement
+      operationId: get_enforcement
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/enforcement/{id}:
+    get:
+      summary: Read enforcement
+      operationId: get_enforcement_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/operation-verifiers:
+    get:
+      summary: Read operation-verifiers
+      operationId: get_operation_verifiers
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/operation-verifiers/{id}:
+    get:
+      summary: Read operation-verifiers
+      operationId: get_operation_verifiers_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/discovery:
+    get:
+      summary: Read discovery
+      operationId: get_discovery
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/discovery/{id}:
+    get:
+      summary: Read discovery
+      operationId: get_discovery_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/reconciliation/{id}:
+    get:
+      summary: Read reconciliation
+      operationId: get_reconciliation_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/reconciliation-handlers:
+    get:
+      summary: Read reconciliation-handlers
+      operationId: get_reconciliation_handlers
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Tenant-scoped page of metadata with an opaque next_cursor;
+            no encrypted payloads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+  /v1/reconciliation-handlers/{id}:
+    get:
+      summary: Read reconciliation-handlers
+      operationId: get_reconciliation_handlers_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/model-calls/{id}:
+    get:
+      summary: Read model-calls
+      operationId: get_model_calls_by_id
+      tags:
+      - Durable execution
+      parameters:
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Tenant-scoped bounded metadata; encrypted payloads are excluded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+  /v1/actions/{id}/previous-result:
+    get:
+      summary: Read retained payload (payload scope) or gateway policy (query scope)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Result
+        '422':
+          description: RESULT_PENDING requires authoritative verification; RESULT_UNAVAILABLE
+            means retained result cannot be recovered. Neither permits repeating the
+            mutation.
+  /v1/model-calls/{id}/payload:
+    get:
+      summary: Read retained payload (payload scope) or gateway policy (query scope)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Result
+        '422':
+          description: RESULT_PENDING requires authoritative verification; RESULT_UNAVAILABLE
+            means retained result cannot be recovered. Neither permits repeating the
+            mutation.
+  /v1/gateway/config:
+    get:
+      summary: Read retained payload (payload scope) or gateway policy (query scope)
+      parameters: []
+      responses:
+        '200':
+          description: Result
+        '422':
+          description: RESULT_PENDING requires authoritative verification; RESULT_UNAVAILABLE
+            means retained result cannot be recovered. Neither permits repeating the
+            mutation.
+  /v1/mcp:
+    post:
+      summary: Seven read-only Lumni MCP query tools; requires query scope
+      responses:
+        '200':
+          description: MCP JSON-RPC result
+  /v1/actions:
+    get:
+      summary: List actions with time, status, actor and operation filters
+      operationId: console_get_v1_actions
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - $ref: '#/components/parameters/ConsoleStatus'
+      - $ref: '#/components/parameters/ConsoleActorID'
+      - $ref: '#/components/parameters/ConsoleOperation'
+      - name: work_id
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConsoleAction'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/approvals/decide:
+    post:
+      summary: Decide up to 200 approvals independently
+      operationId: console_post_v1_approvals_decide
+      tags:
+      - Console API
+      description: Requires admission scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: &id003
+                          type: string
+                        status: *id003
+                        error:
+                          type: object
+                          properties:
+                            code:
+                              type: string
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 200
+                decision:
+                  type: string
+                  enum:
+                  - approve
+                  - deny
+                note:
+                  type: string
+                  maxLength: 4000
+              required:
+              - ids
+              - decision
+  /v1/actions/{id}/journey:
+    get:
+      summary: Read action, decisions, approval, outcome and verification attempts
+      operationId: console_get_v1_actions_id_journey
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionJourney'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/analytics/day:
+    get:
+      summary: Exact aggregate day or time window; maximum 7 days
+      operationId: console_get_v1_analytics_day
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      - name: group_by
+        in: query
+        schema:
+          type: string
+          default: kind,hour,actor,app,reason
+        description: 'CSV: kind,hour,actor,app,reason,resource,operation'
+      - name: top
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DayAnalytics'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/analytics/daily:
+    get:
+      summary: Read daily history and optional same-hour comparisons
+      operationId: console_get_v1_analytics_daily
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: days
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 30
+      - $ref: '#/components/parameters/ConsoleTZ'
+      - name: at_hour
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 23
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                        total: &id004
+                          type: integer
+                          format: int64
+                        kinds:
+                          type: object
+                          additionalProperties: *id004
+                        kept_micros_usd: *id004
+                        cost_micros_usd: *id004
+                        verified: *id004
+                        until_hour:
+                          $ref: '#/components/schemas/AnalyticsTotals'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/analytics/freshness:
+    get:
+      summary: Read resource read-age percentiles and stale reads per actor
+      operationId: console_get_v1_analytics_freshness
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  by_actor:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        actor_id:
+                          type: string
+                        reads: &id005
+                          type: integer
+                          format: int64
+                        median_age_ms:
+                          type:
+                          - number
+                          - 'null'
+                        p90_age_ms:
+                          type:
+                          - number
+                          - 'null'
+                        stale: *id005
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/analytics/anomalies:
+    get:
+      summary: Detect fleet-wide loops, runaways and drift
+      operationId: console_get_v1_analytics_anomalies
+      tags:
+      - Console API
+      description: >-
+        Requires query scope. Loop detection uses a sliding ten-minute window
+        with lookback before from for loops continuing inside the range.
+        Runaways require at least ten actions per hour and more than three times
+        the mean of active hours in the preceding six hours, excluding the
+        candidate hour. Drift requires at least twenty actions and more than
+        five percent rechecks. Runaway and drift totals use exact inclusive from
+        and exclusive to boundaries.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      - name: kinds
+        in: query
+        schema:
+          type: string
+          default: loop,runaway,drift
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Anomaly'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/actors/{id}/pause:
+    post:
+      summary: Pause an actor
+      operationId: console_post_v1_actors_id_pause
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActorPause'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorPauseInput'
+  /v1/actors/{id}/resume:
+    post:
+      summary: Resume an actor
+      operationId: console_post_v1_actors_id_resume
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActorPause'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+  /v1/config/pause:
+    post:
+      summary: Pause or resume admissions for the entire workspace
+      operationId: console_post_v1_config_pause
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paused:
+                    type: boolean
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paused:
+                  type: boolean
+              required:
+              - paused
+  /v1/config/limits:
+    get:
+      summary: Read scoped limits and current in-flight/waiting counts
+      operationId: console_get_v1_config_limits
+      tags:
+      - Console API
+      description: Requires admin scope. A resource filter returns only nonempty resource scopes matching that ID, including suffix wildcards; unscoped rules are excluded. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - name: resource
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdmissionLimit'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/limits/{id}:
+    put:
+      summary: Upsert a concurrency cap, rate limit or hold
+      operationId: console_put_v1_config_limits_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdmissionLimit'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdmissionLimit'
+    delete:
+      summary: Delete a scoped limit
+      operationId: console_delete_v1_config_limits_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/spend-limit:
+    get:
+      summary: Read budget, observed spend and pacing; null if unset
+      operationId: console_get_v1_config_spend_limit
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: actor_id
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/SpendLimit'
+                - type: 'null'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Set a UTC daily spend budget for the workspace or actor
+      operationId: console_put_v1_config_spend_limit
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendLimit'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpendLimitInput'
+    delete:
+      summary: Clear a daily spend budget
+      operationId: console_delete_v1_config_spend_limit
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: actor_id
+        in: query
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/autopilot:
+    get:
+      summary: Read approval exemptions and recent slip counts
+      operationId: console_get_v1_config_autopilot
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AutopilotGrant'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/autopilot/{actor_id}:
+    put:
+      summary: Grant an approval exemption with an automatic slip guardrail
+      operationId: console_put_v1_config_autopilot_actor_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: actor_id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutopilotGrant'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutopilotInput'
+    delete:
+      summary: Revoke an approval exemption
+      operationId: console_delete_v1_config_autopilot_actor_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: actor_id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/proofs:
+    post:
+      summary: Create a public proof; configured recipient delivery is queued
+      operationId: console_post_v1_proofs
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedProof'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProofInput'
+  /v1/proofs/{id}:
+    delete:
+      summary: Revoke a public proof link
+      operationId: console_delete_v1_proofs_id
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/public/proofs/{token}:
+    get:
+      summary: Read a public proof without authentication
+      operationId: console_get_v1_public_proofs_token
+      tags:
+      - Console API
+      description: Public allowlisted proof projection. Rate limited; tokens have
+        at least 128 bits of entropy and are stored hashed.
+      parameters:
+      - name: token
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicProof'
+        default:
+          $ref: '#/components/responses/Error'
+      security: []
+  /v1/config/policy-rules/{id}:
+    patch:
+      summary: Update a policy and bump its version; stale version returns 409
+      operationId: console_patch_v1_config_policy_rules_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      - name: If-Match
+        in: header
+        schema:
+          type: string
+        description: Expected numeric rule version, optionally quoted
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyPatch'
+    delete:
+      summary: Soft-delete a policy rule
+      operationId: console_delete_v1_config_policy_rules_id
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/config/notifications:
+    get:
+      summary: Read configured Slack, email and digest routes
+      operationId: console_get_v1_config_notifications
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationConfig'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Replace notification channels and routes
+      operationId: console_put_v1_config_notifications
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationConfig'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationConfig'
+  /v1/notifications/send:
+    post:
+      summary: Queue a notification for a workspace-owned reference
+      operationId: console_post_v1_notifications_send
+      tags:
+      - Console API
+      description: Requires admin scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued:
+                    type: boolean
+                  id:
+                    type: string
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationInput'
+  /v1/config/policy-rules/preview:
+    post:
+      summary: Back-test a proposed rule without storing it; maximum 30 days
+      operationId: console_post_v1_config_policy_rules_preview
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyPreview'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyPreviewInput'
+  /v1/resources/{id}/lease:
+    get:
+      summary: Read holder, fencing token, queue and hand-offs
+      operationId: console_get_v1_resources_id_lease
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceLease'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources/contended:
+    get:
+      summary: Read most contended resources with holders and ordered queues
+      operationId: console_get_v1_resources_contended
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      - name: top
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResourceLease'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/resources/{id}/versions:
+    get:
+      summary: Page resource version history without raw values
+      operationId: console_get_v1_resources_id_versions
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: id
+        in: path
+        schema:
+          type: string
+        required: true
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResourceVersionHistory'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/audit:
+    get:
+      summary: Page transactional configuration and decision audit history
+      operationId: console_get_v1_audit
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleLimit'
+      - $ref: '#/components/parameters/ConsoleCursor'
+      - name: type
+        in: query
+        schema:
+          type: string
+        description: CSV event types
+      - name: actor
+        in: query
+        schema:
+          type: string
+        description: Person name, email or system identity
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  next_cursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - next_cursor
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/apps/{app}/health:
+    get:
+      summary: Read recorded connector/verifier call timing percentiles and errors
+      operationId: console_get_v1_apps_app_health
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - name: app
+        in: path
+        schema:
+          type: string
+        required: true
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      - name: step
+        in: query
+        schema:
+          type: string
+          enum:
+          - 1m
+          - 5m
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppHealth'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/billing/usage:
+    get:
+      summary: Read checked action count and workspace billing price
+      operationId: console_get_v1_billing_usage
+      tags:
+      - Console API
+      description: Requires query scope. Session-cookie writes require X-CSRF-Token.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleFrom'
+      - $ref: '#/components/parameters/ConsoleTo'
+      - $ref: '#/components/parameters/ConsoleTZ'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingUsage'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: lumni_session
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: lumni_session
+  parameters:
+    ID:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    ConsoleFrom:
+      name: from
+      in: query
+      description: Inclusive RFC 3339 UTC lower bound
+      schema:
+        type: string
+        format: date-time
+    ConsoleTo:
+      name: to
+      in: query
+      description: Exclusive RFC 3339 UTC upper bound
+      schema:
+        type: string
+        format: date-time
+    ConsoleTZ:
+      name: tz
+      in: query
+      description: IANA timezone used for day/hour buckets
+      schema:
+        type: string
+        default: UTC
+    ConsoleLimit:
+      name: limit
+      in: query
+      description: Maximum rows per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 200
+    ConsoleCursor:
+      name: cursor
+      in: query
+      description: Opaque cursor from the previous response; preserve other filters
+      schema:
+        type: string
+    ConsoleStatus:
+      name: status
+      in: query
+      description: Comma-separated statuses
+      schema:
+        type: string
+    ConsoleActorID:
+      name: actor_id
+      in: query
+      description: Actor ID
+      schema:
+        type: string
+    ConsoleOperation:
+      name: operation
+      in: query
+      description: Canonical operation
+      schema:
+        type: string
+    ConsoleActionID:
+      name: action_id
+      in: query
+      description: Comma-separated action IDs; at most 100
+      schema:
+        type: string
+  requestBodies:
+    JSON:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    Actor:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Actor'
+    Agent:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Agent'
+    Work:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Work'
+    Observation:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Observation'
+    ActionCheck:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActionCheck'
+    ActionResult:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ActionResult'
+    ResourceVersion:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ResourceVersion'
+    Event:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Event'
+    LeaseToken:
+      required: false
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              lease_token:
+                type: string
+  responses:
+    JSON:
+      description: Successful JSON response
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    List:
+      description: Paginated list
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - items
+            properties:
+              items:
+                type: array
+                items: {}
+              next_cursor:
+                type:
+                - string
+                - 'null'
+    Actor:
+      description: Actor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Actor'
+    Work:
+      description: Work
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Work'
+    Decision:
+      description: Coordination decision
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Decision'
+    Error:
+      description: Canonical error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Metadata:
+      type: object
+      additionalProperties: true
+    Actor:
+      type: object
+      required:
+      - id
+      - type
+      properties:
+        schema_version:
+          type: string
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - AGENT
+          - HUMAN
+          - SERVICE
+          - CRON
+          - WEBHOOK
+          - CI
+          - WORKFLOW
+          - SYSTEM
+        runtime:
+          type: string
+        display_name:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        paused:
+          type: boolean
+          readOnly: true
+        paused_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        paused_by:
+          type: string
+          readOnly: true
+    Agent:
+      type: object
+      required:
+      - id
+      - actor_id
+      - name
+      properties:
+        id:
+          type: string
+        actor_id:
+          type: string
+        name:
+          type: string
+        framework:
+          type: string
+        model_provider:
+          type: string
+        model:
+          type: string
+        version:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    Work:
+      type: object
+      required:
+      - actor_id
+      - goal
+      properties:
+        schema_version:
+          type: string
+        id:
+          type: string
+        actor_id:
+          type: string
+        agent_id:
+          type: string
+        session_id:
+          type: string
+        parent_work_id:
+          type: string
+        goal:
+          type: string
+        status:
+          type: string
+        priority:
+          type: integer
+        risk:
+          $ref: '#/components/schemas/Risk'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    ResourceRef:
+      properties:
+        external_id:
+          type: string
+        id:
+          type: string
+        metadata: {}
+        namespace:
+          type: string
+        type:
+          type: string
+      required:
+      - type
+      type: object
+    ResourceIntent:
+      properties:
+        confidence:
+          type: number
+        evidence: {}
+        evidence_type:
+          type: string
+        expected_version:
+          type: string
+        external_id:
+          type: string
+        id:
+          type: string
+        metadata: {}
+        mode:
+          type: string
+        namespace:
+          type: string
+        observed_version:
+          type: string
+        operation:
+          type: string
+        type:
+          type: string
+        version_source:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+      required:
+      - type
+      - mode
+      type: object
+    Observation:
+      type: object
+      required:
+      - work_id
+      - resource
+      - version
+      - version_source
+      properties:
+        schema_version:
+          type: string
+        id:
+          type: string
+        work_id:
+          type: string
+        session_id:
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        version:
+          type: string
+        version_source:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        confidence:
+          type: number
+        evidence_type:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    ActionCheck:
+      type: object
+      required:
+      - work_id
+      - actor_id
+      - operation
+      properties:
+        schema_version:
+          type: string
+        action_id:
+          type: string
+        work_id:
+          type: string
+        actor_id:
+          type: string
+        session_id:
+          type: string
+        operation:
+          type: string
+        tool:
+          type: string
+        source:
+          type: string
+        arguments: {}
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceIntent'
+        idempotency_key:
+          type: string
+        effect_key:
+          type: string
+        risk:
+          $ref: '#/components/schemas/Risk'
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    Decision:
+      properties:
+        action_id:
+          type: string
+        approval_id:
+          type: string
+        confidence:
+          type: number
+        conflicting_action_ids:
+          items:
+            type: string
+          type: array
+        created_at:
+          format: date-time
+          type: string
+        decision:
+          type: string
+        enforced:
+          type: boolean
+        evaluations:
+          items:
+            $ref: '#/components/schemas/DecisionEvaluation'
+          type: array
+        evidence:
+          items:
+            $ref: '#/components/schemas/Evidence'
+          type: array
+        existing_action_id:
+          type: string
+        existing_result_id:
+          type: string
+        expires_at:
+          format: date-time
+          type: string
+        kernel_version:
+          type: string
+        lease_token:
+          type: string
+        leases:
+          items:
+            $ref: '#/components/schemas/LeaseGrant'
+          type: array
+        policy_version:
+          type: string
+        reason_code:
+          type: string
+        receipt_id:
+          type: string
+        resolver_version:
+          type: string
+        retry_after_ms:
+          type: integer
+        schema_version:
+          type: string
+      required:
+      - schema_version
+      - action_id
+      - receipt_id
+      - decision
+      - reason_code
+      - enforced
+      - confidence
+      - kernel_version
+      - resolver_version
+      - policy_version
+      - created_at
+      type: object
+    DecisionEvaluation:
+      properties:
+        details:
+          additionalProperties: {}
+          type: object
+        duration_us:
+          type: integer
+        outcome:
+          type: string
+        reason_code:
+          type: string
+        stage:
+          type: string
+        subject_id:
+          type: string
+      required:
+      - stage
+      - outcome
+      type: object
+    AnalyticsFreshness:
+      type: object
+      required:
+      - source
+      - as_of
+      - lag_seconds
+      properties:
+        source:
+          type: string
+          enum:
+          - postgres
+          - clickhouse
+        as_of:
+          type: string
+          format: date-time
+        lag_seconds:
+          type: integer
+        fallback:
+          type: boolean
+        message:
+          type: string
+    GraphNode:
+      type: object
+      required:
+      - id
+      - entity_id
+      - type
+      - label
+      properties:
+        id:
+          type: string
+        entity_id:
+          type: string
+        type:
+          type: string
+        label:
+          type: string
+        subtitle:
+          type: string
+        status:
+          type: string
+        risk:
+          $ref: '#/components/schemas/Risk'
+        agent_state:
+          type: string
+        cost_micros_usd:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    GraphLink:
+      type: object
+      required:
+      - id
+      - source
+      - target
+      - type
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        type:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    AttentionItem:
+      type: object
+      required:
+      - id
+      - entity_type
+      - entity_id
+      - priority
+      - category
+      - title
+      properties:
+        id:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        priority:
+          type: integer
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        risk:
+          $ref: '#/components/schemas/Risk'
+        occurred_at:
+          type: string
+          format: date-time
+    GraphTrendPoint:
+      type: object
+      required:
+      - bucket
+      - actions
+      - decisions
+      - failures
+      - cost_micros_usd
+      - waste_micros_usd
+      properties:
+        bucket:
+          type: string
+          format: date-time
+        actions:
+          type: integer
+        decisions:
+          type: integer
+        failures:
+          type: integer
+        cost_micros_usd:
+          type: integer
+        waste_micros_usd:
+          type: integer
+    GraphSnapshot:
+      type: object
+      required:
+      - schema_version
+      - lens
+      - nodes
+      - edges
+      - attention
+      - as_of
+      - cursor
+      - truncated
+      - limit
+      - analytics
+      properties:
+        schema_version:
+          type: string
+        lens:
+          type: string
+          enum:
+          - live
+          - agents
+          - work
+          - resources
+          - transaction
+          - finops
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphLink'
+        attention:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttentionItem'
+        trends:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphTrendPoint'
+        as_of:
+          type: string
+          format: date-time
+        cursor:
+          type: integer
+        truncated:
+          type: boolean
+        limit:
+          type: integer
+        analytics:
+          $ref: '#/components/schemas/AnalyticsFreshness'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    EntityInspector:
+      type: object
+      required:
+      - schema_version
+      - entity
+      - related_nodes
+      - related_edges
+      - timeline
+      - safe_actions
+      - as_of
+      properties:
+        schema_version:
+          type: string
+        entity:
+          $ref: '#/components/schemas/GraphNode'
+        related_nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        related_edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphLink'
+        timeline:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        evaluations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionEvaluation'
+        details:
+          $ref: '#/components/schemas/Metadata'
+        safe_actions:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        as_of:
+          type: string
+          format: date-time
+    FinOpsGraph:
+      type: object
+      required:
+      - schema_version
+      - period_start
+      - period_end
+      - nodes
+      - edges
+      - series
+      - total_cost_micros_usd
+      - waste_micros_usd
+      - analytics
+      properties:
+        schema_version:
+          type: string
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphLink'
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphTrendPoint'
+        by_provider:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        by_model:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        by_waste:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        total_cost_micros_usd:
+          type: integer
+        waste_micros_usd:
+          type: integer
+        analytics:
+          $ref: '#/components/schemas/AnalyticsFreshness'
+        by_actor:
+          type: array
+          items:
+            type: object
+            properties:
+              actor_id:
+                type: string
+              cost_micros_usd: &id006
+                type: integer
+                format: int64
+              actions: *id006
+    ActionResult:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - SUCCEEDED
+          - FAILED
+          - UNKNOWN
+        lease_token:
+          type: string
+        external_result_id:
+          type: string
+        resource_versions:
+          type: object
+          additionalProperties:
+            type: string
+        retryable:
+          type: boolean
+        result_metadata:
+          $ref: '#/components/schemas/Metadata'
+    ResourceVersion:
+      type: object
+      required:
+      - version
+      - version_source
+      properties:
+        version:
+          type: string
+        version_source:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+        sequence:
+          type: integer
+        confidence:
+          type: number
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        actor_id:
+          type: string
+        action_id:
+          type: string
+        summary:
+          type: string
+        value_hash:
+          type: string
+          description: Hash of the value supplied by the caller; no raw value is accepted
+            by the history projection.
+    Event:
+      type: object
+      required:
+      - schema_version
+      - event_id
+      - type
+      - source
+      - occurred_at
+      properties:
+        schema_version:
+          type: string
+        event_id:
+          type: string
+        type:
+          type: string
+        source:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        session_id:
+          type: string
+        work_id:
+          type: string
+        payload: {}
+    Risk:
+      type: string
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      - CRITICAL
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+    ActionCheckInput:
+      properties:
+        action_id:
+          type: string
+        actor_id:
+          type: string
+        arguments: {}
+        effect_key:
+          type: string
+        idempotency_key:
+          type: string
+        metadata: {}
+        observe_only:
+          type: boolean
+        operation:
+          type: string
+        resources:
+          items:
+            $ref: '#/components/schemas/ResourceIntent'
+          type: array
+        risk:
+          type: string
+        schema_version:
+          type: string
+        session_id:
+          type: string
+        source:
+          type: string
+        step_id:
+          type: string
+        tool:
+          type: string
+        verification:
+          $ref: '#/components/schemas/OutcomeSpec'
+        work_id:
+          type: string
+      required:
+      - work_id
+      - actor_id
+      - operation
+      type: object
+    ActionResultInput:
+      properties:
+        compensation: {}
+        created_resources:
+          items:
+            $ref: '#/components/schemas/ResourceRef'
+          type: array
+        external_result_id:
+          type: string
+        lease_token:
+          type: string
+        output: {}
+        resource_versions:
+          additionalProperties:
+            type: string
+          type: object
+        result_metadata: {}
+        retryable:
+          type: boolean
+        status:
+          type: string
+      required:
+      - status
+      type: object
+    ClaimInput:
+      properties:
+        handlers:
+          additionalProperties:
+            type: string
+          type: object
+        worker_id:
+          type: string
+      required:
+      - worker_id
+      - handlers
+      type: object
+    CostInput:
+      properties:
+        action_id:
+          type: string
+        actor_id:
+          type: string
+        agent_id:
+          type: string
+        amount_micros_usd:
+          type: integer
+        compute_units:
+          type: number
+        cost_type:
+          type: string
+        id:
+          type: string
+        input_units:
+          type: integer
+        metadata: {}
+        model:
+          type: string
+        observed_at:
+          format: date-time
+          type: string
+        output_units:
+          type: integer
+        provider:
+          type: string
+        session_id:
+          type: string
+        step_id:
+          type: string
+        work_id:
+          type: string
+      required:
+      - provider
+      - cost_type
+      - amount_micros_usd
+      type: object
+    DependencyInput:
+      properties:
+        entity_type:
+          type: string
+        id:
+          type: string
+        relationship:
+          type: string
+        source_id:
+          type: string
+        target_id:
+          type: string
+      required:
+      - id
+      - source_id
+      - target_id
+      - entity_type
+      - relationship
+      type: object
+    EnforcementRule:
+      properties:
+        mode:
+          type: string
+        operation:
+          type: string
+        rule:
+          type: string
+      required:
+      - operation
+      - rule
+      - mode
+      type: object
+    Evidence:
+      properties:
+        data:
+          additionalProperties: {}
+          type: object
+        type:
+          type: string
+      required:
+      - type
+      type: object
+    LeaseGrant:
+      properties:
+        expires_at:
+          format: date-time
+          type: string
+        fencing_token:
+          type: integer
+        resource_id:
+          type: string
+      required:
+      - resource_id
+      - fencing_token
+      - expires_at
+      type: object
+    ObservationInput:
+      properties:
+        confidence:
+          type: number
+        evidence_type:
+          type: string
+        id:
+          type: string
+        metadata: {}
+        observed_at:
+          format: date-time
+          type: string
+        resource:
+          $ref: '#/components/schemas/ResourceRef'
+        schema_version:
+          type: string
+        session_id:
+          type: string
+        step_id:
+          type: string
+        version:
+          type: string
+        version_source:
+          type: string
+        work_id:
+          type: string
+      required:
+      - work_id
+      - resource
+      - version
+      - version_source
+      type: object
+    OperationVerifier:
+      properties:
+        expected_template: {}
+        operation:
+          type: string
+        verifier_id:
+          type: string
+      required:
+      - operation
+      - verifier_id
+      - expected_template
+      type: object
+    OutcomeSpec:
+      properties:
+        expected: {}
+        verifier_id:
+          type: string
+      required:
+      - verifier_id
+      - expected
+      type: object
+    RetryPolicy:
+      properties:
+        initial_delay_ms:
+          type: integer
+        max_attempts:
+          type: integer
+        max_delay_ms:
+          type: integer
+        multiplier:
+          type: number
+        retry_on:
+          items:
+            type: string
+          type: array
+      type: object
+    RunClaim:
+      properties:
+        actor_id:
+          type: string
+        expires_at:
+          format: date-time
+          type: string
+        fence:
+          type: integer
+        handler:
+          type: string
+        handler_version:
+          type: string
+        input: {}
+        token:
+          type: string
+        work_id:
+          type: string
+      required:
+      - work_id
+      - actor_id
+      - handler
+      - handler_version
+      - input
+      - token
+      - fence
+      - expires_at
+      type: object
+    RunInput:
+      properties:
+        actor_id:
+          type: string
+        agent_id:
+          type: string
+        base_commit:
+          type: string
+        completed_at:
+          format: date-time
+          type: string
+        expected_effects:
+          additionalProperties:
+            $ref: '#/components/schemas/OutcomeSpec'
+          type: object
+        goal:
+          type: string
+        handle_child_failure:
+          type: boolean
+        handler:
+          type: string
+        handler_version:
+          type: string
+        id:
+          type: string
+        input: {}
+        issue_ref:
+          type: string
+        metadata: {}
+        parent_work_id:
+          type: string
+        pr_ref:
+          type: string
+        priority:
+          type: integer
+        repository_id:
+          type: string
+        risk:
+          type: string
+        schema_version:
+          type: string
+        session_id:
+          type: string
+        started_at:
+          format: date-time
+          type: string
+        status:
+          type: string
+      required:
+      - id
+      - actor_id
+      - goal
+      - handler
+      - handler_version
+      type: object
+    RuntimeAuth:
+      properties:
+        fence:
+          type: integer
+        token:
+          type: string
+      required:
+      - token
+      - fence
+      type: object
+    SignalInput:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        payload: {}
+      required:
+      - id
+      - name
+      type: object
+    Step:
+      properties:
+        action_id:
+          type: string
+        attempt:
+          type: integer
+        decision:
+          $ref: '#/components/schemas/Decision'
+        error:
+          type: string
+        id:
+          type: string
+        input_hash:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        output: {}
+        output_hash:
+          type: string
+        replay:
+          type: boolean
+        status:
+          type: string
+        type:
+          type: string
+        work_id:
+          type: string
+      required:
+      - id
+      - work_id
+      - key
+      - type
+      - name
+      - status
+      - attempt
+      - input_hash
+      type: object
+    StepInput:
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionCheckInput'
+        fence:
+          type: integer
+        input: {}
+        key:
+          type: string
+        name:
+          type: string
+        retry_policy:
+          $ref: '#/components/schemas/RetryPolicy'
+        token:
+          type: string
+        type:
+          type: string
+        wait:
+          $ref: '#/components/schemas/WaitInput'
+      required:
+      - token
+      - fence
+      - key
+      - type
+      type: object
+    StepResult:
+      properties:
+        attempt:
+          type: integer
+        effect_absent:
+          type: boolean
+        error:
+          type: string
+        external_result_id:
+          type: string
+        fence:
+          type: integer
+        output: {}
+        retryable:
+          type: boolean
+        status:
+          type: string
+        token:
+          type: string
+      required:
+      - token
+      - fence
+      - attempt
+      - status
+      type: object
+    VerificationEvidence:
+      properties:
+        effect_absent:
+          type: boolean
+        external_result_id:
+          type: string
+        id:
+          type: string
+        observed: {}
+        prior_attempt_terminated:
+          type: boolean
+        reason:
+          type: string
+        status:
+          type: string
+      required:
+      - id
+      - status
+      type: object
+    Verifier:
+      properties:
+        config: {}
+        enabled:
+          type: boolean
+        id:
+          type: string
+        kind:
+          type: string
+        name:
+          type: string
+        secret:
+          type: string
+        version:
+          type: string
+      required:
+      - id
+      - name
+      - kind
+      - version
+      - config
+      - enabled
+      type: object
+    WaitInput:
+      properties:
+        approval_id:
+          type: string
+        delay_ms:
+          type: integer
+        resource_id:
+          type: string
+        signal:
+          type: string
+        type:
+          type: string
+        version:
+          type: string
+        wake_at:
+          format: date-time
+          type: string
+        work_id:
+          type: string
+      required:
+      - type
+      type: object
+    EffectIdentityResolution:
+      properties:
+        current_key:
+          type: string
+        evidence: {}
+        legacy_key:
+          type: string
+      required:
+      - legacy_key
+      - current_key
+      - evidence
+      type: object
+    ReconciliationHandler:
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+      required:
+      - name
+      - version
+      type: object
+    ReconciliationInput:
+      properties:
+        handler:
+          type: string
+        handler_version:
+          type: string
+        id:
+          type: string
+        input: {}
+        outcome_id:
+          type: string
+      required:
+      - id
+      - outcome_id
+      - handler
+      - handler_version
+      type: object
+    ResourceMapping:
+      properties:
+        id_pointer:
+          type: string
+        mode:
+          type: string
+        namespace:
+          type: string
+        observed_version_pointer:
+          type: string
+        type:
+          type: string
+        version_source:
+          type: string
+      required:
+      - mode
+      - type
+      - id_pointer
+      type: object
+    ToolMapping:
+      properties:
+        effect_key_fields:
+          items:
+            type: string
+          type: array
+        operation:
+          type: string
+        resources:
+          items:
+            $ref: '#/components/schemas/ResourceMapping'
+          type: array
+        source:
+          type: string
+        tool:
+          type: string
+      required:
+      - source
+      - tool
+      - operation
+      - resources
+      type: object
+    ConsolePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        next_cursor:
+          type:
+          - string
+          - 'null'
+      required:
+      - items
+      - next_cursor
+    ConsoleAction:
+      type: object
+      properties:
+        id: &id007
+          type: string
+        operation: *id007
+        actor_id: *id007
+        work_id: *id007
+        status: *id007
+        risk: *id007
+        requested_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              resource_id: &id008
+                type: string
+              mode: *id008
+      required:
+      - id
+      - operation
+      - actor_id
+      - status
+      - requested_at
+    ConsoleOutcome:
+      type: object
+      properties:
+        id: &id009
+          type: string
+        action_id: *id009
+        status:
+          type: string
+          enum:
+          - VERIFIED
+          - MISMATCH
+          - PARTIAL
+          - FAILED
+          - PENDING
+          - UNKNOWN
+        verifier_id:
+          type:
+          - string
+          - 'null'
+        attempts:
+          type: integer
+          format: int64
+        reason: *id009
+        created_at:
+          type: string
+          format: date-time
+    ConsoleApproval:
+      type: object
+      properties:
+        id: &id010
+          type: string
+        action_id: *id010
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - DENIED
+          - EXPIRED
+        reason_code: *id010
+        requested_at:
+          type: string
+          format: date-time
+        expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        resolved_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        resolved_by:
+          type:
+          - string
+          - 'null'
+        metadata: &id011
+          type: object
+          additionalProperties: true
+        action:
+          $ref: '#/components/schemas/ConsoleAction'
+        rule: *id011
+    AnalyticsBreakdown:
+      type: object
+      properties:
+        actor_id: &id012
+          type: string
+        app: *id012
+        operation: *id012
+        kind: *id012
+        reason_code: *id012
+        total: &id013
+          type: integer
+          format: int64
+        count: *id013
+        kinds:
+          type: object
+          additionalProperties: *id013
+        verified: *id013
+        cost_micros_usd: *id013
+        kept_micros_usd: *id013
+        hours:
+          type: array
+          items:
+            type: integer
+            format: int64
+        last_at:
+          type: string
+          format: date-time
+        streak: *id013
+        checked:
+          type: boolean
+        top_resource: *id012
+        sample_action_id: *id012
+    AnalyticsTotals:
+      type: object
+      properties:
+        total: &id014
+          type: integer
+          format: int64
+        kinds: &id015
+          type: object
+          additionalProperties: *id014
+        would: *id015
+        outcomes: *id015
+        cost_micros_usd: *id014
+        kept_micros_usd: *id014
+        verified: *id014
+    DayAnalytics:
+      type: object
+      properties:
+        from: &id016
+          type: string
+          format: date-time
+        to: *id016
+        tz:
+          type: string
+        total: &id017
+          type: integer
+          format: int64
+        kinds: &id018
+          type: object
+          additionalProperties: *id017
+        would: *id018
+        outcomes: *id018
+        cost_micros_usd: *id017
+        kept_micros_usd: *id017
+        truncated:
+          type: boolean
+        actor_count: *id017
+        app_count: *id017
+        resource_count: *id017
+        hours:
+          type: array
+          items:
+            type: object
+            properties:
+              h:
+                type: integer
+                minimum: 0
+                maximum: 23
+              total: &id019
+                type: integer
+                format: int64
+              kinds:
+                type: object
+                additionalProperties: *id019
+        by_actor:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsBreakdown'
+        by_app:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsBreakdown'
+        by_reason:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsBreakdown'
+        by_operation:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyticsBreakdown'
+        by_resource:
+          type: array
+          items:
+            type: object
+            properties:
+              resource_id: &id020
+                type: string
+              name: *id020
+              touches: &id021
+                type: integer
+                format: int64
+              actors: *id021
+              stepins:
+                type: object
+                additionalProperties: *id021
+              hours:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+      required:
+      - from
+      - to
+      - tz
+      - total
+      - kinds
+      - would
+      - outcomes
+      - truncated
+    ActionJourney:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/ConsoleAction'
+        decision:
+          $ref: '#/components/schemas/Decision'
+        earlier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Decision'
+        approval:
+          $ref: '#/components/schemas/ConsoleApproval'
+        outcome:
+          $ref: '#/components/schemas/ConsoleOutcome'
+        attempts:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        duplicate_of:
+          type:
+          - string
+          - 'null'
+      required:
+      - action
+      - earlier
+      - attempts
+    ActorPauseInput:
+      type: object
+      properties:
+        reason:
+          type: string
+        until:
+          type: string
+          format: date-time
+    ActorPause:
+      type: object
+      properties:
+        actor_id:
+          type: string
+        paused:
+          type: boolean
+        paused_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        paused_by:
+          type:
+          - string
+          - 'null'
+        until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ControlScope:
+      type: object
+      properties:
+        operation:
+          type:
+          - string
+          - 'null'
+        actor_id:
+          type:
+          - string
+          - 'null'
+        resource:
+          type:
+          - string
+          - 'null'
+          description: Resource ID or suffix wildcard prefix, e.g. vercel:site:*
+    AdmissionLimit:
+      type: object
+      properties:
+        id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ControlScope'
+        max_in_flight:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        per_minute:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        hold:
+          type: boolean
+        mode:
+          type: string
+          enum:
+          - SHADOW
+          - WARN
+          - ENFORCE
+        created_at:
+          type: string
+          format: date-time
+        in_flight_now: &id022
+          type: integer
+          format: int64
+        waiting_now: *id022
+      required:
+      - scope
+    SpendLimitInput:
+      type: object
+      properties:
+        daily_micros_usd:
+          type: integer
+          format: int64
+          minimum: 1
+        when_reached:
+          type: string
+          enum:
+          - SLOW
+          - HOLD
+        tz:
+          type: string
+          default: UTC
+          description: IANA time zone for the daily budget and pacing window. Omission uses UTC.
+        scope:
+          type: object
+          properties:
+            actor_id:
+              type: string
+      required:
+      - daily_micros_usd
+      - when_reached
+    SpendLimit:
+      type: object
+      properties:
+        daily_micros_usd: &id023
+          type: integer
+          format: int64
+        when_reached:
+          type: string
+          enum:
+          - SLOW
+          - HOLD
+        tz:
+          type: string
+          description: Configured IANA time zone.
+        day_start:
+          type: string
+          format: date-time
+          description: Start of the current local budget day, expressed in UTC.
+        resets_at:
+          type: string
+          format: date-time
+          description: Next local midnight, expressed in UTC. Day length accounts for daylight saving changes.
+        spent_today_micros_usd: *id023
+        pace_micros_usd: *id023
+        slow_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        scope:
+          type: object
+          properties:
+            actor_id:
+              type: string
+    AutopilotInput:
+      type: object
+      properties:
+        operation:
+          type: string
+        skip_rules:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 100
+        below:
+          type: object
+          properties:
+            pointer:
+              type: string
+              pattern: ^/
+            value:
+              type: number
+              exclusiveMinimum: 0
+          required:
+          - pointer
+          - value
+        revert_after:
+          type: object
+          properties:
+            slips:
+              type: integer
+              minimum: 1
+            per:
+              type: integer
+              minimum: 1
+              maximum: 100000
+          required:
+          - slips
+          - per
+      required:
+      - operation
+      - skip_rules
+      - below
+      - revert_after
+    AutopilotGrant:
+      type: object
+      properties:
+        actor_id: &id024
+          type: string
+        operation: *id024
+        active:
+          type: boolean
+        since:
+          type: string
+          format: date-time
+        slips:
+          type: integer
+          format: int64
+        reverted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        skip_rules:
+          type: array
+          items:
+            type: string
+        below: &id025
+          type: object
+          additionalProperties: true
+        revert_after: *id025
+    ProofShow:
+      type: object
+      properties:
+        what: &id026
+          type: boolean
+        checks: *id026
+        stopped_repeat: *id026
+        actor: *id026
+    ProofInput:
+      type: object
+      properties:
+        action_id:
+          type: string
+        show:
+          $ref: '#/components/schemas/ProofShow'
+        expires_in_hours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+          default: 168
+        recipients:
+          type: array
+          items:
+            type: string
+            format: email
+          maxItems: 100
+      required:
+      - action_id
+      - show
+    CreatedProof:
+      type: object
+      properties:
+        id: &id027
+          type: string
+        url:
+          type: string
+          format: uri
+        token: *id027
+        expires_at:
+          type: string
+          format: date-time
+        sent_to:
+          type: array
+          items:
+            type: string
+      required:
+      - id
+      - url
+      - token
+      - expires_at
+      - sent_to
+    PublicProof:
+      type: object
+      properties:
+        workspace: &id029
+          type: string
+        status:
+          type: string
+          enum:
+          - proven
+          - unproven
+          - pending
+        what:
+          type: object
+          properties:
+            summary: &id028
+              type: string
+            at:
+              type: string
+              format: date-time
+            app: *id028
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              t:
+                type: string
+              ok:
+                type: boolean
+        stopped_repeat:
+          type: object
+          properties:
+            at:
+              type: string
+              format: date-time
+        actor: *id029
+        receipt:
+          type:
+          - string
+          - 'null'
+    PolicyPatch:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        numeric_threshold:
+          type: number
+        name:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+    NotificationChannel:
+      type: object
+      properties:
+        id: &id030
+          type: string
+        kind:
+          type: string
+          enum:
+          - slack
+          - email
+        target: *id030
+        connection_id: *id030
+      required:
+      - id
+      - kind
+      - target
+    NotificationRoute:
+      type: object
+      properties:
+        event:
+          type: string
+          enum:
+          - approval.requested
+          - incident.opened
+          - digest.weekly
+        channels:
+          type: array
+          items:
+            type: string
+        schedule:
+          type: string
+          description: 'Required for digest.weekly: DAY HH:MM IANA-zone, e.g. MON
+            09:00 Asia/Kolkata'
+      required:
+      - event
+      - channels
+    NotificationConfig:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationChannel'
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationRoute'
+      required:
+      - channels
+      - routes
+    NotificationInput:
+      type: object
+      properties:
+        channel_id: &id031
+          type: string
+        kind:
+          type: string
+          enum:
+          - incident
+          - digest
+          - proof
+        ref_id: *id031
+      required:
+      - channel_id
+      - kind
+      - ref_id
+    PolicyPreviewInput:
+      type: object
+      properties:
+        rule:
+          type: object
+          properties:
+            operation: &id032
+              type: string
+            resource_type: *id032
+            minimum_risk:
+              $ref: '#/components/schemas/Risk'
+            argument_pointer: *id032
+            numeric_threshold:
+              type: number
+            outcome:
+              type: string
+              enum:
+              - REQUIRE_APPROVAL
+              - REJECT
+              - WARN
+            reason_code: *id032
+          required:
+          - outcome
+          - reason_code
+        from: &id033
+          type: string
+          format: date-time
+        to: *id033
+        tz:
+          type: string
+          default: UTC
+        examples:
+          type: integer
+          minimum: 0
+          maximum: 50
+          default: 3
+      required:
+      - rule
+      - from
+      - to
+    PolicyPreview:
+      type: object
+      properties:
+        matched: &id034
+          type: integer
+          format: int64
+        would_change: *id034
+        already_handled: *id034
+        by_day:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              matched:
+                type: integer
+                format: int64
+        by_hour:
+          type: array
+          items:
+            type: integer
+            format: int64
+        examples:
+          type: array
+          items:
+            type: object
+            properties:
+              action_id: &id035
+                type: string
+              summary: *id035
+              at:
+                type: string
+                format: date-time
+              decision_then: *id035
+              decision_with_rule: *id035
+        false_positive_estimate: *id034
+        unavailable_arguments: *id034
+        truncated:
+          type: boolean
+    AuditEvent:
+      type: object
+      properties:
+        id: &id036
+          type: string
+        at:
+          type: string
+          format: date-time
+        by: *id036
+        type: *id036
+        target:
+          type: object
+          additionalProperties: true
+        before:
+          type:
+          - object
+          - 'null'
+        after:
+          type:
+          - object
+          - 'null'
+    ResourceLease:
+      type: object
+      properties:
+        resource_id:
+          type: string
+        holder:
+          type: object
+          properties:
+            action_id: &id037
+              type: string
+            actor_id: *id037
+            since: &id038
+              type: string
+              format: date-time
+            expires_at: *id038
+            fencing_token:
+              type: integer
+              format: int64
+        queue:
+          type: array
+          items:
+            type: object
+            properties:
+              action_id: &id039
+                type: string
+              actor_id: *id039
+              waiting_since:
+                type: string
+                format: date-time
+              position:
+                type: integer
+                format: int64
+        limit:
+          type: object
+          properties:
+            max_in_flight: &id040
+              type: integer
+              format: int64
+            in_flight: *id040
+        handoffs_last_hour: &id041
+          type: integer
+          format: int64
+        refused_late_writes_today: *id041
+    ResourceVersionHistory:
+      type: object
+      properties:
+        version: &id042
+          type: string
+        at:
+          type: string
+          format: date-time
+        actor_id: *id042
+        action_id: *id042
+        summary: *id042
+        value_hash: *id042
+    AppHealth:
+      type: object
+      properties:
+        app:
+          type: string
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              at:
+                type: string
+                format: date-time
+              p50_ms:
+                type: number
+              p95_ms:
+                type: number
+              errors: &id043
+                type: integer
+                format: int64
+              timeouts: *id043
+    BillingUsage:
+      type: object
+      properties:
+        checked_actions: &id044
+          type: integer
+          format: int64
+        price_per_action_micros_usd: *id044
+        cost_micros_usd: *id044
+        plan:
+          type: string
+    Anomaly:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - loop
+          - runaway
+          - drift
+        actor_id: &id045
+          type: string
+        operation: *id045
+        resource_id: *id045
+        count: &id046
+          type: integer
+          format: int64
+        interval_ms: *id046
+        baseline:
+          type: number
+        factor:
+          type: number
+        since:
+          type: string
+          format: date-time
+        cost_micros_usd: *id046
+        open:
+          type: boolean

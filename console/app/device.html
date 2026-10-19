@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Connect a machine</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  .wrap { padding: 56px 40px 64px; display: grid; place-items: start center; }
+  .box { width: min(560px, 100%); padding: 34px 36px 30px; animation: rise .6s var(--ease) both; }
+  .box .eyebrow { display: flex; align-items: center; gap: 8px; }
+  .box h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; line-height: 1.15; margin-top: 8px; }
+  .box h1 + p { color: var(--ink2); margin-top: 8px; font-size: 15px; }
+  .code {
+    margin: 26px 0 8px; display: flex; justify-content: center; gap: 10px;
+    font: 750 44px/1 var(--mono); letter-spacing: .08em; color: var(--accent);
+  }
+  .code span { padding: 16px 18px; border-radius: 18px; background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent-line); animation: pop .55s var(--spring) both; }
+  .code span + span { animation-delay: .08s; }
+  .code i { align-self: center; width: 14px; height: 4px; border-radius: 2px; background: var(--accent-line); }
+  @keyframes pop { from { opacity: 0; transform: scale(.7) rotate(-4deg); } }
+  .match { text-align: center; font-size: 13.5px; color: var(--ink2); font-weight: 550; }
+  .facts { margin-top: 24px; border-top: 1px solid var(--line); }
+  .facts div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .facts dt { color: var(--ink2); font-weight: 600; }
+  .facts dd { margin: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .facts dd small { color: var(--ink3); font-weight: 550; margin-left: 6px; }
+  label.name { display: block; margin-top: 20px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  label.name input { display: block; width: 100%; margin-top: 6px; height: 42px; padding: 0 14px; border-radius: 12px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); font: 600 15px var(--sans); background: #fff; }
+  label.name input:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--accent); }
+  .acts { display: flex; gap: 10px; margin-top: 22px; }
+  .acts .btn { height: 44px; padding: 0 20px; font-size: 15px; }
+  .acts .go { flex: 1; justify-content: center; }
+  .warn { display: flex; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--wash); font-size: 13px; color: var(--ink2); line-height: 1.45; }
+  .warn b { color: var(--ink); }
+  .done { text-align: center; padding: 10px 0 4px; }
+  .tick { width: 76px; height: 76px; margin: 6px auto 18px; border-radius: 26px; background: var(--accent); display: grid; place-items: center; box-shadow: 0 20px 40px -16px rgba(91,75,245,.7); animation: pop .6s var(--spring) both; }
+  .tick svg { width: 38px; height: 38px; }
+  .tick path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .5s var(--ease) .35s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .done h1 { font-size: 28px; }
+  .done .acts { justify-content: center; }
+  .enter { display: flex; gap: 10px; margin-top: 22px; }
+  .enter input { flex: 1; height: 50px; padding: 0 16px; border-radius: 14px; border: 0; box-shadow: inset 0 0 0 1px var(--line2); font: 700 22px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+  .enter input:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--accent); }
+  .err { margin-top: 12px; color: var(--red); font-size: 13.5px; font-weight: 600; min-height: 18px; }
+  .muted { color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap"><section class="card box" id="box"><div class="muted">Reading the login…</div></section></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+// Browser login for the onboarding command: the terminal shows a short code,
+// this page shows the same one, and Connect hands the waiting command a
+// one-time code it trades for its key. Nothing secret is on this page.
+const E = (s) => Shell.esc(s);
+const Q = new URLSearchParams(location.search);
+const box = $('#box');
+const ago = (iso) => { const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000)); return s < 5 ? 'Just now' : s < 90 ? `${s} s ago` : `${Math.round(s / 60)} min ago`; };
+const left = (iso) => { const m = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 60000)); return m < 1 ? 'less than a minute left' : `${m} min left`; };
+const slug = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+const head = (t, sub) => `<div class="eyebrow"><span class="tag accent">Connect a machine</span></div><h1>${t}</h1>${sub ? `<p>${sub}</p>` : ''}`;
+
+function askForCode(msg = '') {
+  box.innerHTML = `${head('Enter the code from your terminal', 'The command printed a short code, like WDJB-MJHT, when it opened this page.')}
+    <form class="enter" id="f"><input id="code" maxlength="9" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX" autofocus><button class="btn accent">Continue</button></form>
+    <div class="err">${E(msg)}</div>`;
+  $('#f').onsubmit = (e) => { e.preventDefault(); const v = $('#code').value.trim(); if (v) { history.replaceState(null, '', `/device?code=${encodeURIComponent(v.toUpperCase())}`); show(v); } };
+}
+
+function codeChip(c) {
+  const [a, b] = c.split('-');
+  return `<div class="code"><span>${E(a)}</span><i></i><span>${E(b)}</span></div>`;
+}
+
+function ended(title, sub) {
+  box.innerHTML = `${head(title, sub)}<div class="acts"><a class="btn" href="/start">Back to Start</a></div>`;
+}
+
+async function show(code) {
+  let l;
+  try {
+    l = await Shell.api.get(`/v1/console/device/${encodeURIComponent(code)}`);
+  } catch (e) {
+    return askForCode(e.status === 404 ? 'No login with that code. Check it matches your terminal.' : e.status === 501 ? 'This console’s server doesn’t offer browser login yet. Restart it to update.' : e.message);
+  }
+  if (l.status === 'expired') return ended('This login has expired', 'Logins last 10 minutes. Run the command in your terminal again for a new code.');
+  if (l.status === 'denied') return ended('This login was cancelled', 'Nothing was connected. Run the command again if you meant to connect.');
+  if (l.status !== 'pending') return connected(l, false);
+
+  if (l.purpose === 'try') return showTry(l);
+  box.innerHTML = `${head('Is this you?', 'A terminal is asking to connect to your Lumni workspace.')}
+    ${codeChip(l.user_code)}
+    <div class="match">Check it matches the code in your terminal</div>
+    <dl class="facts">
+      <div><dt>Machine</dt><dd>${E(l.host ?? 'Not given')}</dd></div>
+      <div><dt>Folder</dt><dd>${E(l.project ?? 'Not given')}</dd></div>
+      <div><dt>From</dt><dd>${E(l.client ?? 'A command')}${l.address && l.address !== 'peer' ? `<small>${E(l.address)}</small>` : ''}</dd></div>
+      <div><dt>Asked</dt><dd>${ago(l.created_at)}<small>${left(l.expires_at)}</small></dd></div>
+    </dl>
+    <label class="name">Name this agent<input id="name" value="${E(slug(l.project) || 'my-agent')}" maxlength="80" spellcheck="false"></label>
+    <div class="acts"><button class="btn accent go" id="ok">Connect</button><button class="btn" id="no">Cancel</button></div>
+    <div class="warn"><span>⚠︎</span><span><b>Only connect a code you just made.</b> If someone sent you this link, cancel: connecting gives their machine a key to your workspace.</span></div>
+    <div class="err" id="err"></div>`;
+  $('#ok').onclick = async () => {
+    $('#ok').disabled = $('#no').disabled = true;
+    $('#ok').textContent = 'Connecting…';
+    const out = await Shell.write('POST', `/v1/console/device/${encodeURIComponent(l.user_code)}/approve`, { actor_hint: $('#name').value.trim() }, { reload: false });
+    if (!out) {
+      $('#ok').disabled = $('#no').disabled = false;
+      $('#ok').textContent = 'Connect';
+      $('#err').textContent = Shell.lastError?.message ?? 'It couldn’t be connected.';
+      return;
+    }
+    connected(out, true);
+  };
+  $('#no').onclick = async () => {
+    await Shell.write('POST', `/v1/console/device/${encodeURIComponent(l.user_code)}/deny`, {}, { reload: false });
+    ended('Cancelled', 'Nothing was connected. The command in your terminal stops.');
+  };
+}
+
+/** lumniverse try: sample agents, with a key that can do everything until the run ends. */
+function showTry(l) {
+  box.innerHTML = `${head('Run the sample agents here?', 'A terminal wants to act out twelve short scenarios in this workspace, so you can see Lumni at work.')}
+    ${codeChip(l.user_code)}
+    <div class="match">Check it matches the code in your terminal</div>
+    <dl class="facts">
+      <div><dt>Machine</dt><dd>${E(l.host ?? 'Not given')}</dd></div>
+      <div><dt>From</dt><dd>lumniverse try${l.address && l.address !== 'peer' ? `<small>${E(l.address)}</small>` : ''}</dd></div>
+      <div><dt>Asked</dt><dd>${ago(l.created_at)}<small>${left(l.expires_at)}</small></dd></div>
+    </dl>
+    <p class="muted" style="margin-top:14px">About a dozen sample agents (a refund agent, a price setter, a quote bot…) and one sample person will appear in this workspace with their actions, a checker and a research limit. Only demo apps are touched. The run gets a <b>full-access key</b> that the command revokes when it finishes.</p>
+    <div class="acts"><button class="btn accent go" id="ok">Run them</button><button class="btn" id="no">Cancel</button></div>
+    <div class="warn"><span>⚠︎</span><span><b>Only approve a command you just ran.</b> If someone sent you this link, cancel: approving gives their machine full access to your workspace.</span></div>
+    <div class="err" id="err"></div>`;
+  $('#ok').onclick = async () => {
+    $('#ok').disabled = $('#no').disabled = true;
+    $('#ok').textContent = 'Starting…';
+    const out = await Shell.write('POST', `/v1/console/device/${encodeURIComponent(l.user_code)}/approve`, {}, { reload: false });
+    if (!out) {
+      $('#ok').disabled = $('#no').disabled = false;
+      $('#ok').textContent = 'Run them';
+      $('#err').textContent = Shell.lastError?.message ?? 'It couldn’t be started.';
+      return;
+    }
+    box.innerHTML = `<div class="done">
+      <div class="tick"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21l7 7 13-15" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h1>Running</h1>
+      <p class="muted" style="margin-top:8px">The sample agents are starting in your terminal. Watch them arrive.</p>
+      <div class="acts"><a class="btn accent" href="/today">Watch Today</a><a class="btn" href="/flow">Flow</a></div></div>`;
+  };
+  $('#no').onclick = async () => {
+    await Shell.write('POST', `/v1/console/device/${encodeURIComponent(l.user_code)}/deny`, {}, { reload: false });
+    ended('Cancelled', 'Nothing ran. The command in your terminal stops.');
+  };
+}
+
+function connected(l, now) {
+  box.innerHTML = `<div class="done">
+    <div class="tick"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21l7 7 13-15" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h1>${now ? 'Connected' : 'Already connected'}</h1>
+    <p class="muted" style="margin-top:8px">${E(l.project ?? 'The folder')} on ${E(l.host ?? 'that machine')} is connected. Your terminal carries on by itself; you can close this tab.</p>
+    <div class="acts"><a class="btn accent" href="/start">Watch it arrive</a><a class="btn" href="/today">Today</a></div></div>`;
+}
+
+Shell.boot({
+  nav: 'Start',
+  onWorld() {
+    if (!Shell.isReal) {
+      box.innerHTML = `${head('Connecting needs your workspace', 'You’re looking at the demo. Switch to your workspace, signed in, to connect a machine.')}
+        <div class="acts"><button class="btn accent" id="real">Switch to your workspace</button></div>`;
+      $('#real').onclick = () => Shell.setMode('real');
+      return;
+    }
+    // Screenshots: start a login the way the command does, then show it (and connect it).
+    const shot = Q.get('shot');
+    if (shot === 'login' || shot === 'connect') {
+      fetch('/console/device', { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ host: 'ak-macbook', project: 'billing-agent', client: 'lumni init' }) })
+        .then((r) => r.json()).then(async (d) => {
+          await show(d.user_code);
+          if (shot === 'connect') setTimeout(() => $('#ok')?.click(), 900);
+        });
+      return;
+    }
+    const code = Q.get('code');
+    if (code) show(code); else askForCode();
+  },
+});
+</script>
+</body>
+</html>

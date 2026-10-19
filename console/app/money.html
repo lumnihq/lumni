@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Money</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; --grey: #a3a7b3; }
+  .wrap { padding: 36px 40px 56px; }
+
+  /* Header: the sentence, and the unit that matters. */
+  .head { display: flex; align-items: flex-end; gap: 40px; }
+  .head .eyebrow { font-size: 14px; }
+  .head h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; margin-top: 6px; max-width: 900px; text-wrap: balance; }
+  .head h1 .soft { color: var(--ink3); }
+  .head h1 mark { background: none; color: var(--ink); padding: 0; box-shadow: inset 0 -0.16em 0 var(--pop); }
+  .head .sub { margin-top: 12px; font-size: 16px; color: var(--ink2); max-width: 860px; }
+  .head .sub b { color: var(--ink); font-weight: 650; }
+  .unit { margin-left: auto; flex: none; width: 330px; padding: 18px 20px; }
+  .unit .eyebrow { font-size: 12.5px; }
+  .unit .big { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+  .unit .big b { font-size: 38px; font-weight: 750; letter-spacing: -0.03em; color: var(--accent); line-height: 1.1; }
+  .unit .big span { font-size: 14px; font-weight: 600; color: var(--ink2); }
+  .unit .vs { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 550; color: var(--ink2); }
+  .unit .vs s { color: var(--ink3); text-decoration-thickness: 1.5px; }
+
+  /* The money river. */
+  .river { margin-top: 28px; padding: 26px 32px 22px; }
+  .card-h { display: flex; align-items: flex-start; gap: 16px; }
+  .card-h h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+  .card-h p { font-size: 14px; color: var(--ink2); margin-top: 3px; }
+  .card-h .right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .rv { position: relative; width: 1296px; margin-top: 6px; }
+  .rv svg { display: block; width: 1296px; overflow: visible; }
+  .rv .lbl { position: absolute; white-space: nowrap; opacity: 0; transition: opacity .5s var(--ease), transform .6s var(--ease); transform: translateX(-8px); }
+  .rv .lbl.on { opacity: 1; transform: none; }
+  .rv .src { left: 0; width: 176px; text-align: right; }
+  .rv .src small, .rv .dst small { display: block; font-size: 12.5px; font-weight: 550; color: var(--ink2); }
+  .rv .src .k { font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .rv .src b { display: block; font-size: 34px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.1; }
+  .rv .ghost { left: 0; width: 176px; text-align: right; font-size: 12.5px; font-weight: 650; color: var(--accent); }
+  .rv .dst { left: 1006px; transform: translate(-8px, -50%); }
+  .rv .dst.on { transform: translate(0, -50%); }
+  .rv .dst .t { display: flex; align-items: baseline; gap: 8px; font-size: 14.5px; font-weight: 650; }
+  .rv .dst .t b { font-size: 17px; font-weight: 750; letter-spacing: -0.02em; }
+  .rv .dst.hero .t b { font-size: 30px; letter-spacing: -0.03em; }
+  .rv .dst.hero .t { font-size: 16px; }
+  .rv .dst small { padding-left: 0; }
+  .rv .dst .sh { font-size: 12px; font-weight: 650; color: var(--ink2); background: var(--wash); border-radius: 999px; padding: 1px 7px; align-self: center; }
+  .rv .pool { left: 610px; top: 14px; width: 300px; padding: 12px 16px; border-radius: 16px; background: var(--accent-soft); border: 1.5px dashed var(--accent-line); }
+  .rv .pool .k { font-size: 12.5px; font-weight: 650; color: var(--accent); }
+  .rv .pool b { font-size: 26px; font-weight: 750; letter-spacing: -0.03em; color: var(--accent); line-height: 1.15; display: block; }
+  .rv .pool small { display: block; font-size: 12px; font-weight: 550; color: var(--ink2); white-space: normal; line-height: 1.35; }
+  .rv .inline { font-family: var(--sans); font-size: 13.5px; font-weight: 650; fill: #fff; opacity: 0; transition: opacity .6s var(--ease); }
+  .rv .inline.on { opacity: 1; }
+  .rv-foot { display: flex; gap: 22px; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 550; color: var(--ink2); }
+  .rv-foot span { display: inline-flex; align-items: center; gap: 7px; }
+  .rv-foot i { width: 14px; height: 9px; border-radius: 2px; display: inline-block; }
+  .rv-foot .note { margin-left: auto; }
+  .rv-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 12px; font-size: 13px; color: var(--ink2); font-weight: 550; }
+  .rv-extra .k { font-weight: 650; color: var(--ink); margin-right: 4px; }
+  .rv-extra .xr { display: inline-flex; align-items: baseline; gap: 7px; padding: 7px 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+  .rv-extra .xr i { width: 8px; height: 8px; border-radius: 2px; background: var(--ink); align-self: center; }
+  .rv-extra .xr i.av { background: #fff; box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .rv-extra .xr b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .rv-extra .xr small { font-size: 12px; color: var(--ink3); }
+  .empty-river { position: relative; height: 300px; margin-top: 14px; }
+  .empty-river svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .empty-river .msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 520px; text-align: center; background: #fff; padding: 22px 26px; border-radius: 18px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+  .empty-river .msg h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+  .empty-river .msg p { font-size: 14px; color: var(--ink2); margin-top: 6px; }
+  .empty-river .msg .acts { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--wash); padding: 2px 6px; border-radius: 5px; }
+
+  /* Leaderboard and receipt. */
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 20px; margin-top: 20px; align-items: start; }
+  .board { padding: 26px 28px 24px; }
+  .lb { margin-top: 18px; }
+  .lb-r { display: grid; grid-template-columns: minmax(0, 1fr) 70px 72px 196px 66px 92px; align-items: center; gap: 14px; height: 48px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .lb-r.hd { height: 32px; font-size: 12.5px; font-weight: 600; color: var(--ink2); border-bottom: 1px solid var(--line2); }
+  .lb-r.hd .hero-col { color: var(--accent); }
+  .lb-r:not(.hd) { animation: rise .6s var(--ease) both; }
+  .lb-r .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .lb-r .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .lb-r .who .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-r .who small { color: var(--ink3); font-weight: 600; font-size: 12.5px; font-variant-numeric: tabular-nums; margin-left: 2px; }
+  .lb-r .ai { width: 26px; height: 26px; font-size: 10px; border-radius: 7px; }
+  .lb-r .pp { display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 10px; }
+  .lb-r .pp b { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+  .lb-r .track { position: relative; height: 8px; border-radius: 4px; background: var(--wash); overflow: hidden; }
+  .lb-r .track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); transform-origin: left; animation: grow .9s var(--ease) both; }
+  .lb-r .track.over i { background: repeating-linear-gradient(-45deg, #a3a7b3 0 3px, #d3d5dc 3px 6px); }
+  .lb-r .track.over::after { content: ''; position: absolute; top: -2px; bottom: -2px; left: 70%; width: 6px; background: #fff; transform: skewX(-20deg); }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .lb-r .warn { color: var(--orange); }
+  .lb-r svg { width: 92px; height: 26px; overflow: visible; display: block; }
+  .lb-r.worst { background: linear-gradient(90deg, #f6f6f9, #fbfbfc); border-radius: 12px; border-bottom-color: transparent; box-shadow: inset 0 0 0 1px var(--line2); }
+  .lb-r.worst { height: 56px; }
+  .lb-r .who em { display: block; font-style: normal; font-size: 12px; font-weight: 550; color: var(--ink2); margin-top: -1px; }
+  .callout { display: flex; align-items: center; gap: 16px; margin-top: 18px; padding: 16px 18px; border-radius: 16px; background: linear-gradient(180deg, #f2f0ff 0%, #f8f7ff 100%); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .callout .gm { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px; flex: none; }
+  .callout .tx { flex: 1; font-size: 14px; font-weight: 550; color: var(--ink2); line-height: 1.4; }
+  .callout .tx b { color: var(--ink); font-weight: 700; }
+  .callout .tx .from { text-decoration: line-through; text-decoration-color: var(--ink3); color: var(--ink2); }
+  .callout .tx .to { color: var(--accent); font-weight: 750; }
+  .calm { margin-top: 16px; padding: 16px 18px; border-radius: 14px; background: var(--wash); color: var(--ink2); font-size: 14px; display: flex; align-items: center; gap: 14px; }
+  .calm span { flex: 1; }
+  .steps { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .step { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-top: 10px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); }
+  .step .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 750; background: var(--wash); color: var(--ink2); flex: none; }
+  .step .n.on { background: var(--accent); color: #fff; }
+  .step .tx { flex: 1; min-width: 0; }
+  .step .tx b { font-size: 14.5px; font-weight: 650; }
+  .step .tx small { display: block; font-size: 13px; color: var(--ink2); font-weight: 500; margin-top: 1px; }
+  .step .tx small.c { margin-top: 6px; color: var(--ink3); }
+  .steps p { margin-top: 14px; font-size: 13px; color: var(--ink2); }
+
+  /* The receipt. */
+  .printer { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .slot { width: 420px; height: 18px; border-radius: 10px; background: linear-gradient(180deg, #2a2b33, #0d0e14); box-shadow: 0 6px 14px -6px rgba(13,14,20,.5); position: relative; z-index: 2; }
+  .slot::after { content: ''; position: absolute; left: 18px; right: 18px; top: 8px; height: 3px; border-radius: 2px; background: #000; }
+  .feed { width: 400px; margin-top: -8px; padding: 0 0 26px; clip-path: inset(0 -80px -80px -80px); position: relative; z-index: 1; }
+  .paper-shadow { filter: drop-shadow(0 18px 22px rgba(30,25,80,.16)) drop-shadow(0 1px 1px rgba(13,14,20,.08)); }
+  .paper { width: 380px; margin: 0 auto; background: #fff; padding: 34px 28px 44px; position: relative; }
+  .feed.go .paper-shadow { animation: feed 1.7s cubic-bezier(.3,.7,.3,1) .7s both; }
+  @keyframes feed {
+    0% { transform: translateY(-100%); }
+    18% { transform: translateY(-78%); } 24% { transform: translateY(-74%); }
+    44% { transform: translateY(-46%); } 50% { transform: translateY(-42%); }
+    72% { transform: translateY(-14%); } 78% { transform: translateY(-10%); }
+    100% { transform: translateY(0); }
+  }
+  .paper .logo { text-align: center; }
+  .paper .logo .wm { font-size: 26px; }
+  .paper .logo small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 550; margin-top: 4px; }
+  .paper hr { border: 0; border-top: 1.5px dashed var(--line2); margin: 18px 0; }
+  .paper .h { font-size: 12.5px; font-weight: 650; color: var(--ink2); margin-bottom: 8px; }
+  .paper .li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 7px 0; font-size: 14px; font-weight: 600; align-items: baseline; }
+  .paper .li small { display: block; font-size: 12px; color: var(--ink2); font-weight: 500; margin-top: 1px; }
+  .paper .li b { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.01em; }
+  .paper .li.tot { font-size: 16px; font-weight: 700; }
+  .paper .li.tot b { font-size: 18px; }
+  .paper .li.cost b { color: var(--ink2); }
+  .paper .ret { text-align: center; margin-top: 6px; }
+  .paper .ret b { display: block; font-size: 64px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--accent); }
+  .paper .ret span { display: block; font-size: 13px; color: var(--ink2); font-weight: 550; margin-top: 6px; }
+  .paper .ret.small b { font-size: 46px; }
+  .paper .bc { display: flex; justify-content: center; gap: 2px; height: 42px; margin-top: 20px; }
+  .paper .bc i { display: block; background: var(--ink); }
+  .paper .foot { text-align: center; font-size: 11.5px; color: var(--ink3); font-weight: 600; margin-top: 8px; }
+  .share { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+  .share small { font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .toast { position: absolute; left: 50%; bottom: 46px; transform: translate(-50%, 8px); z-index: 4; background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 600; padding: 10px 16px; border-radius: 12px; box-shadow: 0 16px 30px -12px rgba(13,14,20,.55); opacity: 0; pointer-events: none; transition: opacity .2s, transform .3s var(--spring); white-space: nowrap; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Pacing. */
+  .pace { margin-top: 20px; padding: 26px 32px 22px; }
+  .pace .say { text-align: right; }
+  .pace .say b { display: block; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+  .pace .say b em { font-style: normal; color: var(--accent); }
+  .pace .say small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink2); font-weight: 550; }
+  .pace .say { flex-direction: column; align-items: flex-end; gap: 0; }
+  .pace .say b { white-space: nowrap; }
+  .pc { position: relative; width: 1296px; height: 300px; margin-top: 16px; user-select: none; }
+  .pc svg { position: absolute; inset: 0; width: 1296px; height: 300px; overflow: visible; }
+  .pc text { font-family: var(--sans); }
+  .handle { position: absolute; left: 70px; transform: translateY(-50%); display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 10px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 650; cursor: ns-resize; box-shadow: 0 10px 22px -10px rgba(13,14,20,.6); touch-action: none; white-space: nowrap; }
+  .handle .grip { display: grid; grid-template-columns: repeat(2, 3px); gap: 3px; }
+  .handle .grip i { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.55); }
+  .handle:hover, .handle.drag { background: #23242c; }
+  .hitline { position: absolute; left: 0; right: 0; height: 18px; transform: translateY(-50%); cursor: ns-resize; touch-action: none; }
+  .pc-legend { display: flex; gap: 22px; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 550; color: var(--ink2); }
+  .pc-legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .pc-legend svg { width: 22px; height: 6px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: inset 0 0 0 1px var(--line2); }
+  .lb-r .pp .na { font-size: 12.5px; color: var(--ink2); font-weight: 550; white-space: nowrap; }
+  .lb-r .pv { text-align: right; font-size: 13px; color: var(--ink2); font-weight: 550; font-variant-numeric: tabular-nums; }
+  .paper .ret.set b { font-size: 22px; letter-spacing: -0.02em; color: var(--ink); line-height: 1.25; }
+  .paper .ret.set code { font-size: 11.5px; display: inline-block; margin-top: 8px; }
+  .extra { margin-left: auto; }
+  .pace .setl { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .pace .setl small { font-size: 12.5px; color: var(--ink2); font-weight: 550; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 30px; padding: 0 11px; border-radius: 8px; font: inherit; font-size: 12.5px; font-weight: 650; color: var(--ink2); }
+  .seg button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,14,20,.12); }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .lin { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line2); font-size: 14px; font-weight: 600; color: var(--ink2); }
+  .lin input { width: 84px; border: 0; outline: 0; font: inherit; font-weight: 700; color: var(--ink); background: none; font-variant-numeric: tabular-nums; }
+  .btn.confirm { background: var(--ink); color: #fff; box-shadow: none; }
+  .handle.saved { animation: saved 1.1s var(--spring) both; }
+  @keyframes saved { 0% { box-shadow: 0 0 0 0 rgba(91,75,245,.55); background: var(--accent); } 60% { box-shadow: 0 0 0 14px rgba(91,75,245,0); background: var(--accent); } 100% { box-shadow: 0 10px 22px -10px rgba(13,14,20,.6); } }
+  .empty-head .big b { color: var(--ink3) !important; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+/** Escapes text from your workspace before it goes into HTML. */
+const esc = (s) => Shell.esc(s);
+// Everything is read from the World. The demo's day follows its own shape
+// (World.HOURS); your workspace follows today's real hourly actions.
+const HOUR_RATE = 85;
+const Q = new URLSearchParams(location.search);
+const SHOT = Q.get('shot');
+// ?motion=1 forces the motion on, for checking it in a headless capture.
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches && !Q.has('motion');
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const plural = (n, one, many) => (n === 1 ? one : many);
+const trunc = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const upper1 = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+let NOW_H = 12;
+/** Spend so far by hour t (t up to now), and where the day is heading after now. */
+let spentAt = () => 0;
+let projAt = () => 0;
+
+function shape(w) {
+  NOW_H = w.nowH;
+  if (w.key !== 'real') {
+    const H = World.HOURS, HS = H.reduce((a, b) => a + b, 0);
+    const cs = (t) => { let s = 0; for (let h = 0; h < 24; h++) s += H[h] * clamp(t - h); return s / HS; };
+    spentAt = (t) => w.pace * cs(t);
+    projAt = spentAt;
+    return;
+  }
+  // Real: spend so far follows today's actions, hour by hour; the rest of the
+  // day is a straight line to the server's pace.
+  const upTo = (t) => {
+    let s = 0;
+    for (let h = 0; h < 24; h++) {
+      const end = Math.min(h + 1, NOW_H);
+      if (end <= h) break;
+      s += w.hourly[h] * clamp((t - h) / (end - h));
+    }
+    return s;
+  };
+  const tot = upTo(NOW_H) || 1;
+  spentAt = (t) => w.spend * (upTo(Math.min(t, NOW_H)) / tot);
+  projAt = (t) => (t <= NOW_H ? spentAt(t) : w.spend + (w.pace - w.spend) * clamp((t - NOW_H) / Math.max(1e-6, 24 - NOW_H)));
+}
+
+const clock = (h, round = 5) => {
+  let mins = Math.round((h * 60) / round) * round;
+  if (mins >= 24 * 60) mins = 24 * 60 - 1;
+  const hh = Math.floor(mins / 60), mm = mins % 60;
+  return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
+};
+const hourName = (h) => (h % 24 === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`);
+/** Dollars: cents under $10, then the compact form. */
+const usd = (n) => (n > 0 && n < 10 ? '$' + n.toFixed(2) : fmtMoney(n));
+/** Exact dollars for the receipt, with cents under $100. */
+const exact = (n) => (n > 0 && n < 100 && Math.abs(n - Math.round(n)) > 0.004 ? '$' + n.toFixed(2) : '$' + Math.round(n).toLocaleString('en-US'));
+/** A unit price: three places under a dollar. */
+const unitP = (v) => '$' + (v < 1 ? v.toFixed(3) : v.toFixed(2));
+const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+
+// Counts a value up with a formatter. Checks the render generation.
+let GEN = 0;
+function tick(el, to, fmt, ms = 1100) {
+  if (!el) return;
+  const g = GEN;
+  if (REDUCED) { el.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    if (g !== GEN) return;
+    const p = Math.min(1, (t - t0) / ms);
+    el.textContent = fmt(to * (1 - Math.pow(1 - p, 4)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+const later = (ms, fn) => { const g = GEN; setTimeout(() => g === GEN && fn(), REDUCED ? 0 : ms); };
+
+/** What a limit does to the rest of the day. */
+function paceWith(w, limit) {
+  if (!w.pace) return null;
+  if (limit >= w.pace) return { under: true, end: w.pace, spare: limit - w.pace };
+  const from = Math.max(limit, w.spend);
+  let t = NOW_H;
+  if (limit > w.spend) { let lo = NOW_H, hi = 24; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (projAt(m) >= limit) hi = m; else lo = m; } t = hi; }
+  // Demo: after the limit, work already started finishes; new work waits.
+  return { under: false, at: t, now: limit <= w.spend, end: from + (w.pace - from) * 0.12, from };
+}
+/* Your workspace's real limit, from the API. */
+const NEEDS = 'Needs a newer Lumni API';
+const realLimit = (w) => (w.key === 'real' ? w.money.limit : null);
+const isSet = (w, v) => realLimit(w) != null && Math.abs(v - realLimit(w)) < 1e-6;
+const hourOf = (w, ms) => (ms - w.dayStart) / 3600e3;
+/** Where the server says the real limit is reached: 'now', an hour today, or null (not today). */
+function slowHour(w) {
+  const at = w.money.slowAt;
+  if (at == null) return null;
+  if (at <= w.now) return 'now';
+  const h = hourOf(w, at);
+  return h < 48 ? h : null;
+}
+/** When, as the server says it: later today, or tomorrow (spend limits count the API's own days). */
+const slowClock = (h) => (h >= 24 ? `${clock(h - 24)} tomorrow` : clock(h));
+const slows = (mode) => (mode === 'HOLD' ? 'holds' : 'slows');
+const slowing = (mode) => (mode === 'HOLD' ? 'holding' : 'slowing');
+
+function paceSentence(w, limit) {
+  if (w.key === 'real') {
+    const L = realLimit(w);
+    if (L == null) return `On pace for <b>${usd(w.pace)}</b> by midnight, from ${usd(w.spend)} so far. No daily limit is set.`;
+    const h = slowHour(w), mode = w.money.limitMode;
+    return `On pace for <b>${usd(w.pace)}</b> by midnight. Your daily limit is ${usd(L)}, so Lumni ${h === 'now' ? `is ${slowing(mode)} new work <b>now</b>` : h != null ? `${slows(mode)} new work at <b>${slowClock(h)}</b>` : 'won’t need to step in today'}.`;
+  }
+  if (w.money.limit == null) return `On pace for <b>${usd(w.pace)}</b> by midnight, from ${usd(w.spend)} so far. No daily limit is set.`;
+  const p = paceWith(w, limit);
+  if (p.under) return `On pace for <b>${usd(w.pace)}</b> by midnight, ${fmtMoney(p.spare)} under your ${usd(limit)} daily limit.`;
+  return `On pace for <b>${usd(w.pace)}</b> by midnight, ${fmtMoney(w.pace - limit)} over your ${usd(limit)} daily limit, so Lumni ${p.now ? 'is holding new work <b>now</b>' : `slows new work at <b>${clock(p.at)}</b>`}.`;
+}
+const provenN = (w) => Math.round(w.total * w.proven);
+
+/* ─── header ─────────────────────────────────────────── */
+
+function header(w) {
+  const m = w.money;
+  const when = `Money, ${esc(w.dayLabel)}, ${esc(w.timeLabel)}`;
+  if (!w.spend) {
+    return `<section class="head rise">
+      <div><div class="eyebrow">${when}</div>
+        <h1>No AI spend reported yet today.<br /><span class="soft">${w.kept >= 1 ? `Lumni still kept ${usd(w.kept)} from going out twice.` : 'Costs arrive with each model call.'}</span></h1>
+        <p class="sub">Lumni hasn’t received any model costs today. Send what each call costs to <code>POST /v1/costs</code>, and this page shows what every proven outcome costs, and what bought nothing.</p></div>
+      <div class="card unit empty-head"><div class="eyebrow">Per proven outcome</div>
+        <div class="big"><b>Can’t tell</b><span>no costs yet</span></div>
+        <div class="vs"><span>Proven so far</span><span>${fmtN(provenN(w))} of ${fmtN(w.total)} ${plural(w.total, 'action', 'actions')}</span></div></div>
+    </section>`;
+  }
+  const pp = m.perProven;
+  return `<section class="head rise">
+    <div><div class="eyebrow">${when}</div>
+      <h1><span data-tick="${w.spend}" data-f="usd">${usd(w.spend)}</span> spent on AI so far.<br /><span class="soft">${m.wasted > 0.005
+        ? `<mark data-tick="${m.wasted}" data-f="usd">${usd(m.wasted)}</mark> of it bought nothing.`
+        : 'None of it was wasted that Lumni could see.'}</span></h1>
+      <p class="sub" id="hsub">${paceSentence(w, m.limit)}</p></div>
+    <div class="card unit rise" style="animation-delay:.1s"><div class="eyebrow">Per proven outcome</div>
+      <div class="big">${pp != null ? `<b>${unitP(pp)}</b><span>each real result</span>` : '<b style="color:var(--ink3)">Can’t tell</b><span>nothing proven yet</span>'}</div>
+      <div class="vs"><span>Counting tokens, it looks like</span><s>${unitP(m.unit)}</s></div></div>
+  </section>`;
+}
+
+/* ─── the money river ────────────────────────────────── */
+
+const RV = { W: 1296, srcX: 196, barW: 12, dstX: 984, R: 230 };
+
+function riverBands(w) {
+  const m = w.money;
+  const blind = w.kinds.blind * m.unit;
+  return [
+    { id: 'proven', label: 'Proven outcomes', usd: Math.max(0, w.spend - m.wasted - blind), n: provenN(w), sub: 'actions Lumni read back in the app', fill: 'url(#rvProven)' },
+    { id: 'blind', label: 'Couldn’t be checked', usd: blind, n: w.kinds.blind, sub: 'actions in apps that aren’t connected', fill: 'url(#rvHatch)' },
+    { id: 'stale', label: 'Redone after old info', usd: m.waste.stale.usd, n: m.waste.stale.n, sub: 'actions done again after reading old info', fill: 'var(--orange)' },
+    { id: 'superseded', label: 'Thrown away', usd: m.waste.superseded.usd, n: m.waste.superseded.n, sub: 'actions a newer task replaced', fill: 'var(--ink)' },
+    { id: 'failed', label: 'Didn’t happen', usd: m.waste.failed.usd, n: m.waste.failed.n, sub: 'actions the app never shows', fill: 'var(--red)' },
+  ].filter((b) => b.id === 'proven' || b.usd > 0 || b.n > 0);
+}
+
+function river(w) {
+  if (!w.spend) return riverEmpty(w);
+  const m = w.money;
+  const { W, srcX, barW, dstX, R } = RV;
+  const bands = riverBands(w);
+  // Thickness follows dollars; the thin waste bands keep a floor so they read.
+  bands.forEach((b) => (b.h = Math.max(b.id === 'proven' ? 0 : 5, (b.usd / w.spend) * R)));
+  // The pocket keeps its proportion up to a point, so the river still fits.
+  const ah = Math.min(64, Math.max(14, (m.avoidedSpend / w.spend) * R));
+  const srcTop = 158;
+  let y = srcTop;
+  bands.forEach((b, i) => { b.ys = y; y += b.h + (i < bands.length - 1 ? 2 : 0); });
+  const srcEnd = y;
+  let prevEnd = 0, prevC = -1e9;
+  bands.forEach((b, i) => {
+    b.yd = i === 0 ? 126 : Math.max(prevEnd + 18, prevC + 54 - b.h / 2);
+    prevEnd = b.yd + b.h; prevC = b.yd + b.h / 2;
+  });
+  const H = Math.max(prevEnd, srcEnd) + 28;
+  const x0 = srcX + barW, x1 = dstX, xm = (x0 + x1) / 2;
+  const ribbon = (ys, yd, h, a = x0, b = x1) => {
+    const c = (a + b) / 2;
+    return `M${a},${ys} C${c},${ys} ${c},${yd} ${b},${yd} L${b},${yd + h} C${c},${yd + h} ${c},${ys + h} ${a},${ys + h} Z`;
+  };
+  // The never-spent band peels off the top of the river into the pocket.
+  const ay = srcTop - 12 - ah;
+  const poolX = 610, poolY = 46;
+  const pv = bands[0];
+  const midY = (pv.ys + pv.yd) / 2 + pv.h / 2;
+  const showInline = m.perProven != null && pv.h > 26;
+  const extra = (m.extra ?? []).filter((x) => x && (x.n || x.usd));
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" aria-label="Where every dollar went">
+    <defs>
+      <linearGradient id="rvProven" x1="0" x2="1"><stop offset="0" stop-color="#7a6cff"/><stop offset="1" stop-color="#5b4bf5"/></linearGradient>
+      <pattern id="rvHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#e3e4ea"/><rect width="2.5" height="6" fill="#b7bac4"/></pattern>
+      <clipPath id="rvClip"><rect id="rvClipR" x="0" y="-20" width="${REDUCED ? W : 0}" height="${H + 40}"/></clipPath>
+    </defs>
+    <g clip-path="url(#rvClip)">
+      ${bands.map((b) => `<path d="${ribbon(b.ys, b.yd, b.h)}" fill="${b.fill}" opacity="${b.id === 'proven' ? 0.92 : 0.85}"/>`).join('')}
+      ${bands.map((b) => `<rect x="${dstX}" y="${b.yd}" width="6" height="${b.h}" rx="1.5" fill="${b.id === 'blind' ? '#a3a7b3' : b.fill}"/>`).join('')}
+      <path d="${ribbon(ay, poolY - ah / 2, ah, x0, poolX)}" fill="rgba(91,75,245,.07)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 4" stroke-linecap="round"/>
+    </g>
+    <rect x="${srcX}" y="${srcTop}" width="${barW}" height="${srcEnd - srcTop}" rx="3" fill="var(--ink)"/>
+    <rect x="${srcX}" y="${ay}" width="${barW}" height="${ah}" rx="3" fill="#fff" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 3"/>
+    ${showInline ? `<text class="inline" id="rvInline" x="${xm - 120}" y="${midY + 5}">${unitP(m.perProven)} per proven outcome</text>` : ''}
+  </svg>`;
+
+  const labels = `
+    <div class="lbl ghost on" style="top:${ay + ah / 2 - 9}px">+ <span data-tick="${m.avoidedSpend}" data-f="usd">${usd(m.avoidedSpend)}</span> never spent</div>
+    <div class="lbl src on" style="top:${(srcTop + srcEnd) / 2 - 40}px"><span class="k">Spent today</span><b data-tick="${w.spend}" data-f="usd">${usd(w.spend)}</b><small>${fmtN(w.total)} ${plural(w.total, 'action', 'actions')} at ${unitP(m.unit)}</small></div>
+    <div class="lbl pool" id="rvPool" style="top:${poolY - 40}px">
+      <div class="k">Kept in your pocket</div><b data-v="${m.avoidedSpend}">$0</b>
+      <small>${fmtN(m.waste.repeats.n)} ${plural(m.waste.repeats.n, 'repeat', 'repeats')} stopped before they ran, ${fmtN(m.waste.loops.n)} retry ${plural(m.waste.loops.n, 'loop', 'loops')} cut short</small></div>
+    ${bands.map((b, i) => `<div class="lbl dst ${i === 0 ? 'hero' : ''}" data-i="${i}" style="top:${b.yd + b.h / 2}px">
+      <div class="t"><b data-v="${b.usd}" style="${i === 0 ? 'color:var(--accent)' : ''}">$0</b>${b.label}<span class="sh">${pct(b.usd / w.spend)}</span></div>
+      <small>${fmtN(b.n)} ${b.n === 1 ? b.sub.replace('actions', 'action').replace(' aren’t', ' isn’t') : b.sub}</small></div>`).join('')}`;
+
+  return `<section class="card river rise" style="animation-delay:.12s">
+    <div class="card-h"><div><h2>Where every dollar went</h2><p>Today’s AI spend, followed from the model call to what Lumni could prove happened in the app.</p></div>
+      <div class="right"><button class="btn" id="replay">Replay</button></div></div>
+    <div class="rv" id="rv" style="height:${H}px">${svg}${labels}</div>
+    <div class="rv-foot">
+      <span><i style="background:var(--accent)"></i>Bought a result Lumni proved</span>
+      <span><i style="background:repeating-linear-gradient(-45deg,#b7bac4 0 2px,#e3e4ea 2px 4px)"></i>Can’t tell yet</span>
+      <span><i style="background:var(--orange)"></i><i style="background:var(--ink);margin-left:-4px"></i><i style="background:var(--red);margin-left:-4px"></i>Bought nothing, ${usd(m.wasted)}</span>
+      <span><i style="background:#fff;box-shadow:inset 0 0 0 1.5px var(--accent);border-radius:3px"></i>Never spent</span>
+      <span class="note">Thickness is dollars. The thinnest bands are drawn a little thicker so you can see them.</span>
+    </div>
+    ${extra.length ? `<div class="rv-extra"><span class="k">Also in your cost report</span>
+      ${extra.slice(0, 6).map((x) => `<span class="xr"><i class="${x.avoided ? 'av' : ''}"></i><b>${usd(x.usd ?? 0)}</b>${esc(trunc(x.t ?? x.key, 40))}<small>${fmtN(x.n ?? 0)} ${plural(x.n ?? 0, 'action', 'actions')}, ${x.avoided ? 'never spent' : 'bought nothing'}</small></span>`).join('')}
+      ${extra.length > 6 ? `<span class="xr more">and ${fmtN(extra.length - 6)} more</span>` : ''}</div>` : ''}
+  </section>`;
+}
+
+function riverEmpty(w) {
+  const lines = [70, 110, 150, 190, 230].map((y, i) => `<path d="M200,150 C640,150 640,${y} 1080,${y}" fill="none" stroke="var(--line2)" stroke-width="${i === 0 ? 4 : 2}" stroke-dasharray="2 6" stroke-linecap="round"/>`).join('');
+  return `<section class="card river rise" style="animation-delay:.12s">
+    <div class="card-h"><div><h2>Where every dollar went</h2><p>Today’s AI spend, followed from the model call to what Lumni could prove happened in the app.</p></div></div>
+    <div class="empty-river">
+      <svg viewBox="0 0 1296 300">${lines}<rect x="190" y="110" width="12" height="80" rx="3" fill="var(--line2)"/></svg>
+      <div class="msg">${w.total ? `<span class="tag ok">${fmtN(provenN(w))} of ${fmtN(w.total)} ${plural(w.total, 'action', 'actions')} proven today</span>` : '<span class="tag">No actions yet today</span>'}
+        <h3>Costs aren’t being sent yet</h3>
+        <p>Lumni splits every dollar into proven, unchecked and wasted once it knows what each model call cost. Send one cost per call, from your agent or your gateway.</p>
+        <div class="acts"><span class="btn" style="pointer-events:none"><code>POST /v1/costs</code></span></div></div>
+    </div>
+  </section>`;
+}
+
+function animateRiver() {
+  const rv = $('#rv');
+  if (!rv) return;
+  const r = $('#rvClipR'), W = RV.W, ms = 2100;
+  const pool = $('#rvPool'), dsts = $$('.dst', rv), inline = $('#rvInline');
+  dsts.forEach((d) => d.classList.remove('on'));
+  pool.classList.remove('on');
+  inline?.classList.remove('on');
+  const reach = (x) => {
+    // Inverse of the eased sweep: when does the clip pass x?
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (ease(m) * W >= x) hi = m; else lo = m; }
+    return hi * ms;
+  };
+  const showPool = () => { pool.classList.add('on'); const b = $('b', pool); tick(b, +b.dataset.v, usd, 900); };
+  const showDst = () => dsts.forEach((d, i) => later(i * 110, () => { d.classList.add('on'); const b = $('b', d); tick(b, +b.dataset.v, usd, 1000); }));
+  if (REDUCED) { r.setAttribute('width', W); showPool(); showDst(); inline?.classList.add('on'); return; }
+  const g = GEN;
+  r.setAttribute('width', 0);
+  const t0 = performance.now();
+  const step = (t) => {
+    if (g !== GEN) return;
+    const p = Math.min(1, (t - t0) / ms);
+    r.setAttribute('width', (ease(p) * W).toFixed(1));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  later(reach(560), showPool);
+  later(reach(620), () => inline?.classList.add('on'));
+  later(reach(RV.dstX), showDst);
+}
+
+/* ─── the leaderboard ───────────────────────────────── */
+
+const initials = (name) => String(name).split(/\s+/).filter(Boolean).map((s) => s[0]).join('').slice(0, 2).toUpperCase();
+function hash(s) { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+
+/** Demo only: fourteen days of $ per proven outcome, ending today. Deterministic. */
+function trend(a, key) {
+  const drift = { quote: 0.02, deploy: -0.22, accounts: -0.18, refund: 0.28, invoice: 0.24, pricer: 0.1 }[a.id] ?? 0.12;
+  let s = hash(a.id + key);
+  const rnd = () => ((s = (s * 1103515245 + 12345) >>> 0) / 4294967296);
+  return Array.from({ length: 14 }, (_, i) => a.perProven * (1 + drift * (1 - i / 13)) * (0.985 + rnd() * 0.03)).map((v, i) => (i === 13 ? a.perProven : v));
+}
+function sparkSvg(vals, color) {
+  // One scale for every row: plus or minus 35% around today's value.
+  const W = 92, H = 26, last = vals[vals.length - 1] || 1, min = last * 0.8, max = last * 1.32, span = max - min || 1;
+  const pts = vals.map((v, i) => [(i / (vals.length - 1)) * W, H - 3 - ((v - min) / span) * (H - 6)]);
+  const d = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L');
+  const [lx, ly] = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${W} ${H}"><path d="M${d}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx}" cy="${ly}" r="2.6" fill="${color}"/></svg>`;
+}
+
+function board(w) {
+  const real = w.key === 'real';
+  const head = (sub) => `<div class="card-h"><div><h2>Cost per proven outcome, by AI</h2><p>${sub}</p></div>
+      <div class="right"><span class="tag">Today</span></div></div>`;
+  if (!w.fleet.length) {
+    return `<article class="card board rise" style="animation-delay:.22s">${head('Each AI gets a row here, ranked by what a proven result costs it.')}
+      <div class="calm"><span><b style="color:var(--ink)">No AIs have acted yet today.</b> Once one does, its spend and proven outcomes show up here.</span><a class="btn" href="/flow">See the flow</a></div></article>`;
+  }
+  // Nothing proven means we can't tell, and that ranks as the most expensive.
+  const pp = (a) => (a.perProven == null ? Infinity : a.perProven);
+  const rows = [...w.fleet].sort((a, b) => (pp(b) - pp(a)) || b.n - a.n);
+  const known = rows.filter((a) => a.perProven != null);
+  const worst = rows[0];
+  const app = w.app(worst.app);
+  const flagged = !!app?.blind && (worst.perProven == null || known.length > 1);
+  const ref = flagged ? known.find((a) => a !== worst) : known[0];
+  const cap = Math.max(1e-9, (ref?.perProven ?? 1) * 1.15);
+  const waste = (a) => (a.n ? (a.stale + a.bad + (real ? 0 : Math.round(a.n * 0.012))) / a.n : 0);
+
+  const row = (a, i) => {
+    const ws = waste(a);
+    const isWorst = flagged && a === worst;
+    const note = isWorst ? `${esc(app.name)} can’t be checked` : a.perProven == null || (!w.spend && !a.proven) ? 'Nothing proven yet' : '';
+    let ppCell;
+    if (!w.spend) ppCell = `<span class="na" style="grid-column:1/3">No costs yet</span>`;
+    else if (a.perProven == null) ppCell = `<span class="na" style="grid-column:1/3">Can’t tell</span>`;
+    else ppCell = `<b style="${isWorst ? '' : 'color:var(--accent)'}">${unitP(a.perProven)}</b><span class="track ${a.perProven > cap ? 'over' : ''}"><i style="width:${Math.min(1, a.perProven / cap) * 100}%;animation-delay:${0.5 + i * 0.04}s"></i></span>`;
+    let last;
+    if (real) last = `<div class="pv">${fmtN(a.proven)} of ${fmtN(a.n)}</div>`;
+    else { const t = trend(a, w.key); last = `<div>${sparkSvg(t, t[13] <= t[0] ? 'var(--accent)' : 'var(--orange)')}</div>`; }
+    return `<div class="lb-r ${isWorst ? 'worst' : ''}" style="animation-delay:${0.3 + i * 0.04}s">
+      <div class="who"><span class="ai">${esc(a.initials ?? initials(a.name))}</span><span class="nm">${esc(a.name)} <small>×${fmtN(a.copies)}</small>${note ? `<em>${note}</em>` : ''}</span></div>
+      <div class="r">${fmtN(a.n)}</div>
+      <div class="r">${usd(a.spend)}</div>
+      <div class="pp">${ppCell}</div>
+      <div class="r ${ws > 0.04 ? 'warn' : ''}">${pct(ws)}</div>
+      ${last}
+    </div>`;
+  };
+
+  let foot = '';
+  if (flagged) {
+    const btn = `<button class="btn accent" data-check="${esc(app.id)}" data-name="${esc(app.name)}">Check ${esc(app.name)}</button>`;
+    if (!real) {
+      // Demo: if its app were connected, it would be proven as often as everyone else.
+      const fixed = worst.spend / Math.max(1, worst.n - worst.repeats - worst.bad - Math.round(worst.n * 0.02));
+      const typical = [...known].sort((a, b) => a.perProven - b.perProven)[Math.floor(known.length / 2)].perProven;
+      foot = `<div class="callout"><span class="gm" style="background:${app.color}">${esc(app.mark)}</span>
+        <div class="tx"><b>${esc(worst.name)} costs ${unitP(worst.perProven)} per proven outcome</b>, ${Math.round(worst.perProven / typical)}× a typical AI here, because Lumni can’t read ${esc(app.name)} back.
+          Check ${esc(app.name)} and its cost per proven outcome falls from <span class="from">$${worst.perProven.toFixed(2)}</span> to <span class="to">$${fixed.toFixed(2)}</span>.</div>${btn}</div>`;
+    } else {
+      foot = `<div class="callout"><span class="gm" style="background:${app.color}">${esc(app.mark)}</span>
+        <div class="tx"><b>${!w.spend ? `Nothing ${esc(worst.name)} did today can be proven` : worst.perProven == null ? `${esc(worst.name)} spent ${usd(worst.spend)} today, and Lumni can’t prove any of it` : `${esc(worst.name)} costs ${unitP(worst.perProven)} per proven outcome`}</b>, because no checker reads ${esc(app.name)} back.
+          Switch one on and its actions get read back, so what they cost can count as proven.</div>${btn}</div>`;
+    }
+  } else if (!w.spend) {
+    foot = `<div class="calm"><span>Spend per AI shows up here once your agents send costs to <code>POST /v1/costs</code>.</span></div>`;
+  }
+
+  const copies = w.fleet.reduce((s, a) => s + (a.copies || 0), 0);
+  const sub = real
+    ? `${fmtN(w.fleet.length)} ${plural(w.fleet.length, 'AI', 'AIs')} acting today, ${fmtN(copies)} registered ${plural(copies, 'copy', 'copies')}. Most expensive per proven result first.`
+    : `Your ${fmtN(w.fleet.length)} AIs, ${fmtN(w.scale.ais)} running copies. Most expensive per real result first.`;
+  return `<article class="card board rise" style="animation-delay:.22s">${head(sub)}
+    <div class="lb">
+      <div class="lb-r hd"><span>AI</span><span class="r">Actions</span><span class="r">Spend</span><span class="hero-col">$ per proven outcome</span><span class="r">Waste</span><span ${real ? 'class="r"' : ''}>${real ? 'Proven' : 'Last 14 days'}</span></div>
+      ${rows.map(row).join('')}
+    </div>
+    ${foot}
+  </article>`;
+}
+
+/* ─── the receipt ───────────────────────────────────── */
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function receiptId(w) {
+  const [, mon, d] = String(w.dayLabel).match(/([A-Z][a-z]{2}) (\d+)/) ?? [];
+  const mmdd = mon ? String(MONTHS.indexOf(mon) + 1).padStart(2, '0') + String(d).padStart(2, '0') : '0000';
+  const org = (String(w.scale.org).match(/[A-Z]/g) ?? ['Y']).join('').slice(0, 2);
+  return `${org}-${mmdd}-${String((hash(w.key + w.total) % 9000) + 1000)}`;
+}
+function roiText(r) { return r >= 10 ? `${Math.round(r).toLocaleString("en-US")}×` : `${r.toFixed(1).replace(/\.0$/, '')}×`; }
+function receiptLines(w) {
+  const m = w.money;
+  const paid = w.patterns.stop.filter((p) => p.kept > 0).reduce((s, p) => s + p.n, 0);
+  const avoidedN = m.waste.repeats.n + m.waste.loops.n;
+  return [
+    ['Money that never went out twice', paid ? `${fmtN(paid)} ${plural(paid, 'repeat', 'repeats')} that would have paid out` : 'no repeat payouts today', w.kept],
+    ['AI spend avoided', w.spend ? `${fmtN(avoidedN)} ${plural(avoidedN, 'repeat or loop', 'repeats and loops')} that never ran` : 'counts once costs are sent', m.avoidedSpend],
+    ['Team hours not spent cleaning up', `${fmtN(m.hoursSaved)} h at $${HOUR_RATE} an hour`, m.hoursSaved * HOUR_RATE],
+  ];
+}
+
+function receipt(w) {
+  const m = w.money;
+  const lines = receiptLines(w);
+  const back = lines.reduce((s, l) => s + l[2], 0);
+  const bars = (() => {
+    let s = hash(w.scale.org + w.key);
+    const out = [];
+    for (let i = 0; i < 46; i++) { s = (s * 1103515245 + 12345) >>> 0; out.push(1 + (s >>> 28) % 3); }
+    return out.map((b, i) => `<i style="width:${b}px;${i % 7 === 3 ? 'margin-right:2px' : ''}"></i>`).join('');
+  })();
+  const priced = m.lumniCost != null && m.roi != null;
+  // Billing can report a plan with nothing charged today.
+  const free = !priced && m.lumniCost === 0;
+  const plan = m.plan ? `${esc(upper1(m.plan))} plan` : '';
+  const costSub = priced || free
+    ? [`${fmtN(w.total)} ${plural(w.total, 'action', 'actions')} checked${m.pricePerAction ? ` at ${unitP(m.pricePerAction)}` : ''}`, plan].filter(Boolean).join(', ')
+    : 'no price per action set';
+  const hint = w.key === 'real' && w.source === 'snapshots'
+    ? 'Billing needs a newer Lumni API<br />to see the return'
+    : 'Set <code>LUMNI_CONSOLE_PRICE_PER_ACTION</code><br />to see the return';
+  return `<div class="printer rise" style="animation-delay:.25s">
+    <div class="slot"></div>
+    <div class="feed ${REDUCED || SHOT ? '' : 'go'}" id="feed">
+      <div class="paper-shadow"><div class="paper" id="paper">
+        <div class="logo"><span class="wm">lum<i>n</i>i</span><small>${esc(w.scale.org)}, ${fmtN(w.total)} ${plural(w.total, 'action', 'actions')} so far today</small><small>${esc(w.dayLabel)}, ${esc(w.timeLabel)}</small></div>
+        <hr />
+        <div class="h">What Lumni gave back today</div>
+        ${lines.map(([t, s, v]) => `<div class="li"><span>${t}<small>${s}</small></span><b>${exact(v)}</b></div>`).join('')}
+        <hr />
+        <div class="li tot"><span>Total back</span><b>${exact(back)}</b></div>
+        <div class="li cost"><span>Lumni cost today<small>${costSub}</small></span><b>${priced || free ? exact(m.lumniCost) : 'not set'}</b></div>
+        <hr />
+        ${priced
+          ? `<div class="ret ${m.roi >= 100 ? 'small' : ''}"><b>${roiText(m.roi)} return</b><span>every $1 on Lumni brought back ${exact(m.roi)}</span></div>`
+          : free
+            ? `<div class="ret set"><b>${exact(back)} back today</b><span>Lumni cost nothing today${plan ? ` on the ${plan.toLowerCase()}` : ''}</span></div>`
+            : `<div class="ret set"><b>${exact(back)} back today</b><span>${hint}</span></div>`}
+        <div class="bc">${bars}</div>
+        <div class="foot">Receipt ${esc(receiptId(w))}<br />Kept and avoided come from today’s records. Hours use $${HOUR_RATE} an hour.</div>
+      </div></div>
+    </div>
+    <div class="share"><button class="btn primary" id="share">Share receipt</button><small>Copies it as text, ready to paste</small></div>
+    <div class="toast" id="toast">Copied. Paste it in Slack, or anywhere.</div>
+  </div>`;
+}
+
+function zigzag() {
+  const p = $('#paper');
+  if (!p) return;
+  const W = p.offsetWidth, t = 9, d = 8;
+  const pts = ['0 0', '100% 0'];
+  for (let x = W, up = false; x >= 0; x -= t, up = !up) pts.push(`${Math.max(0, x)}px calc(100% - ${up ? 0 : d}px)`);
+  pts.push(`0 calc(100% - ${d}px)`);
+  p.style.clipPath = `polygon(${pts.join(',')})`;
+}
+
+function receiptText(w) {
+  const m = w.money;
+  const lines = receiptLines(w);
+  const back = lines.reduce((s, l) => s + l[2], 0);
+  const priced = m.lumniCost != null && m.roi != null;
+  return [
+    `Lumni receipt, ${w.scale.org}, ${w.dayLabel}`,
+    ...lines.map(([t, , v]) => `${t}: ${exact(v)}`),
+    `Total back: ${exact(back)}`,
+    ...(priced ? [`Lumni cost: ${exact(m.lumniCost)}${m.plan ? `, ${upper1(m.plan)} plan` : ''}`, `${roiText(m.roi)} return`] : []),
+  ].join('\n');
+}
+
+/* ─── budget pacing ─────────────────────────────────── */
+
+const PC = { W: 1296, H: 300, top: 36, bot: 268 };
+let limitNow = 0;
+const limitStep = (w) => Math.pow(10, Math.floor(Math.log10(Math.max(1e-6, w.pace) / 40)));
+const snapLimit = (w, v) => { const s = limitStep(w); return Math.round(v / (s * 5)) * s * 5 || s; };
+
+let modeNow = 'SLOW', justSaved = false;
+/** Your workspace: the real controls. Set, slow or hold, and remove. */
+function limitControls(w, { input = false } = {}) {
+  const off = w.source === 'snapshots' ? `disabled title="${NEEDS}"` : '';
+  const L = realLimit(w);
+  return `${input ? `<label class="lin">$<input id="limitIn" type="number" min="1" step="1" inputmode="decimal" value="${L ?? ''}" placeholder="50" aria-label="Daily limit in dollars" ${off} /> a day</label>` : ''}
+    <span class="seg" id="lmode" role="group" aria-label="When the limit is reached">
+      <button data-m="SLOW" aria-pressed="${modeNow === 'SLOW'}" title="Space out new checks once spend runs ahead" ${off}>Slow new work</button>
+      <button data-m="HOLD" aria-pressed="${modeNow === 'HOLD'}" title="Turn new actions away once the limit is spent" ${off}>Hold new work</button></span>
+    <button class="btn primary" id="setLimit" ${off}>Set this limit</button>
+    ${L != null ? `<button class="btn" id="removeLimit" ${off}>Remove limit</button>` : ''}`;
+}
+
+function pacing(w) {
+  const real = w.key === 'real';
+  const L = realLimit(w);
+  if (!w.spend || !w.pace) {
+    const said = L != null
+      ? `<b style="color:var(--ink)">Your daily limit is ${usd(L)}.</b> Lumni ${slows(w.money.limitMode)} new work once spend reaches it. Today’s spend draws here once your agents send costs to <code>POST /v1/costs</code>.`
+      : `<b style="color:var(--ink)">No spend to pace yet.</b> Once your agents send costs to <code>POST /v1/costs</code>, today’s spend draws here against a limit you can drag.${real ? ' You can set one now.' : ''}`;
+    return `<section class="card pace rise" style="animation-delay:.32s">
+      <div class="card-h"><div><h2>Pacing against a daily limit</h2><p>Today’s spend, where it’s heading, and where a daily limit would land.</p></div></div>
+      <div class="calm" style="margin-top:18px"><span>${said}</span></div>
+      ${real ? `<div class="setl" style="margin-top:14px">${limitControls(w, { input: true })}</div>` : ''}
+      <div class="pc" style="height:70px"><svg viewBox="0 0 1296 70" style="height:70px">
+        <line x1="0" x2="1296" y1="40" y2="40" stroke="var(--line2)" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>
+        <circle cx="${(NOW_H / 24) * 1296}" cy="40" r="5" fill="var(--ink3)"/>
+        ${[0, 6, 12, 18, 24].map((h) => `<text x="${(h / 24) * 1296}" y="64" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" font-size="11.5" font-weight="600" fill="var(--ink3)">${hourName(h)}</text>`).join('')}
+      </svg></div>
+    </section>`;
+  }
+  const title = !real || L != null ? 'Pacing against your daily limit' : 'Pacing, and what a daily limit would do';
+  const sub = !real ? 'Spend so far, where today is heading, and where Lumni starts holding new work. Drag the limit to try another.'
+    : L != null ? 'Spend so far, where today is heading, and where Lumni starts stepping in. Drag the line to try another limit, then set it.'
+    : 'Spend so far and where today is heading. No daily limit is set yet: drag the line to where you want one, then set it.';
+  const line = (dash, color = 'var(--ink)') => `<svg viewBox="0 0 22 6"><line x1="1" x2="21" y1="3" y2="3" stroke="${color}" stroke-width="2" ${dash ? 'stroke-dasharray="6 4"' : ''}/></svg>`;
+  return `<section class="card pace rise" style="animation-delay:.32s">
+    <div class="card-h"><div><h2>${title}</h2><p>${sub}</p></div>
+      <div class="right say" id="say"></div></div>
+    <div class="pc" id="pc"><svg viewBox="0 0 ${PC.W} ${PC.H}" id="pcSvg"></svg>
+      <div class="hitline" id="hit"></div>
+      <div class="handle" id="handle"><span class="grip"><i></i><i></i><i></i><i></i><i></i><i></i></span><span id="hval"></span></div></div>
+    <div class="pc-legend">
+      <span><svg viewBox="0 0 22 6"><line x1="1" x2="21" y1="3" y2="3" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/></svg>Spent so far</span>
+      <span><svg viewBox="0 0 22 6"><line x1="1" x2="21" y1="3" y2="3" stroke="var(--ink3)" stroke-width="2" stroke-dasharray="1.5 4" stroke-linecap="round"/></svg>Where today is heading</span>
+      ${real ? '' : '<span><svg viewBox="0 0 22 6"><line x1="1" x2="21" y1="3" y2="3" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/></svg>With Lumni holding new work</span>'}
+      ${!real ? `<span>${line(false)}Daily limit</span>` : L != null ? `<span>${line(false)}Your daily limit</span><span>${line(true)}A limit to try</span>` : `<span>${line(true)}A limit to try</span>`}
+      <span class="setl" style="margin-left:auto;margin-top:0">${real ? limitControls(w) : '<button class="btn" id="setLimit">Set this limit</button>'}</span>
+    </div>
+  </section>`;
+}
+
+/** Round gridline values under max. */
+function ticks(max) {
+  const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * p).find((s) => s >= raw);
+  const out = [];
+  for (let v = step; v < max * 0.98; v += step) out.push(v);
+  return out;
+}
+
+function drawPace(w, limit) {
+  const svg = $('#pcSvg');
+  if (!svg) return;
+  const real = w.key === 'real';
+  const { W, top, bot } = PC;
+  const maxY = Math.max(w.pace, limit) * 1.3;
+  const x = (h) => (h / 24) * W;
+  const y = (v) => bot - (v / maxY) * (bot - top);
+  const p = paceWith(w, limit);
+  const pts = [];
+  for (let h = 0; h <= Math.floor(NOW_H); h++) pts.push([x(h), y(spentAt(h))]);
+  pts.push([x(NOW_H), y(w.spend)]);
+  const line = pts.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(' L');
+  const [nx, ny] = pts[pts.length - 1];
+  const fc = [];
+  for (let t = NOW_H; t <= 24.001; t += 0.25) fc.push(`${x(Math.min(24, t)).toFixed(1)},${y(projAt(Math.min(24, t))).toFixed(1)}`);
+  let held = '', mark = '';
+  const set = isSet(w, limit);
+  // Your real limit: where the server says it's reached, not a guess.
+  if (set) {
+    const h = slowHour(w), mode = w.money.limitMode;
+    if (h === 'now' || (h != null && h < 24)) {
+      const cx = x(h === 'now' ? NOW_H : h), cy = y(Math.min(limit, projAt(h === 'now' ? NOW_H : h)));
+      const right = cx > W - 220;
+      mark = `<line x1="${cx}" x2="${cx}" y1="${cy}" y2="${bot}" stroke="var(--accent-line)" stroke-width="1.5" stroke-dasharray="2 4"/>
+        <circle cx="${cx}" cy="${cy}" r="13" fill="var(--accent)" opacity=".14"/><circle cx="${cx}" cy="${cy}" r="6" fill="#fff" stroke="var(--accent)" stroke-width="3"/>
+        <text x="${cx}" y="${bot}" dy="-8" dx="${right ? -8 : 8}" text-anchor="${right ? 'end' : 'start'}" font-size="12.5" font-weight="650" fill="var(--accent)">${h === 'now' ? `${upper1(slowing(mode))} new work now` : `${clock(h)}, new work ${mode === 'HOLD' ? 'is held' : 'slows'}`}</text>`;
+    }
+  } else if (!p.under) {
+    const cx = x(p.at), cy = y(p.from);
+    const right = cx > W - 220;
+    if (!real) {
+      const c0 = projAt(p.at), path = [];
+      for (let t = p.at; t <= 24.001; t += 0.2) {
+        const tt = Math.min(24, t);
+        path.push(`${x(tt).toFixed(1)},${y(p.from + (p.end - p.from) * ((projAt(tt) - c0) / Math.max(1e-6, w.pace - c0))).toFixed(1)}`);
+      }
+      held = `<path d="M${path.join(' L')}" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>
+        <text x="${W - 4}" y="${y(p.end) + 20}" text-anchor="end" font-size="13" font-weight="650" fill="var(--accent)">${usd(p.end)} with Lumni</text>`;
+    }
+    const label = real ? (p.now ? 'Already past it' : `${clock(p.at)}, you’d reach it`) : (p.now ? 'Holding new work now' : `${clock(p.at)}, new work slows`);
+    mark = `<line x1="${cx}" x2="${cx}" y1="${cy}" y2="${bot}" stroke="var(--accent-line)" stroke-width="1.5" stroke-dasharray="2 4"/>
+      <circle cx="${cx}" cy="${cy}" r="13" fill="var(--accent)" opacity=".14"/><circle cx="${cx}" cy="${cy}" r="6" fill="#fff" stroke="var(--accent)" stroke-width="3"/>
+      <text x="${cx}" y="${bot}" dy="-8" dx="${right ? -8 : 8}" text-anchor="${right ? 'end' : 'start'}" font-size="12.5" font-weight="650" fill="var(--accent)">${label}</text>`;
+  }
+  const near = Math.abs(y(limit) - ny + 18) < 18;
+  svg.innerHTML = `
+    <defs><linearGradient id="pcg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5b4bf5" stop-opacity=".2"/><stop offset="1" stop-color="#5b4bf5" stop-opacity="0"/></linearGradient></defs>
+    ${ticks(maxY).map((v) => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="0" y="${y(v) - 6}" font-size="11.5" font-weight="600" fill="var(--ink3)">${usd(v)}</text>`).join('')}
+    <line x1="0" x2="${W}" y1="${bot}" y2="${bot}" stroke="var(--line2)" stroke-width="1"/>
+    <path d="M0,${bot} L${line} L${nx},${bot} Z" fill="url(#pcg)"/>
+    <path d="M${line}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M${fc.join(' L')}" fill="none" stroke="var(--ink3)" stroke-width="2" stroke-dasharray="1.5 5" stroke-linecap="round"/>
+    <text x="${W - 4}" y="${y(w.pace) - 10}" text-anchor="end" font-size="13" font-weight="650" fill="var(--ink2)">${usd(w.pace)} by midnight at this pace</text>
+    ${held}
+    ${real && realLimit(w) != null && !set ? `<line x1="0" x2="${W}" y1="${y(realLimit(w))}" y2="${y(realLimit(w))}" stroke="var(--ink3)" stroke-width="1.5"/>
+      <text x="${W / 2}" y="${y(realLimit(w)) - 7}" text-anchor="middle" font-size="12" font-weight="650" fill="var(--ink2)">Your limit, ${usd(realLimit(w))}</text>` : ''}
+    <line x1="0" x2="${W}" y1="${y(limit)}" y2="${y(limit)}" stroke="var(--ink)" stroke-width="2" ${real && !set ? 'stroke-dasharray="6 4"' : ''}/>
+    ${mark}
+    <circle cx="${nx}" cy="${ny}" r="13" fill="var(--accent)" opacity=".15"/><circle cx="${nx}" cy="${ny}" r="6" fill="var(--accent)"/>
+    <text x="${near ? nx + 14 : nx - 12}" y="${near ? ny + 24 : ny - 14}" text-anchor="${near ? 'start' : 'end'}" font-size="13" font-weight="650" fill="var(--accent)">${usd(w.spend)} now</text>
+    ${[0, 6, 12, 18, 24].map((h) => `<text x="${x(h)}" y="${PC.H - 12}" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" font-size="11.5" font-weight="600" fill="var(--ink3)">${hourName(h)}</text>`).join('')}`;
+  $('#handle').style.top = y(limit) + 'px';
+  $('#hit').style.top = y(limit) + 'px';
+  $('#hval').textContent = !real || set ? `Daily limit ${usd(limit)}` : `Try a limit of ${usd(limit)}`;
+  $('#handle').setAttribute('aria-valuenow', String(limit));
+  $('#handle').setAttribute('aria-valuetext', usd(limit));
+  if (real && set) {
+    const h = slowHour(w), mode = w.money.limitMode;
+    const how = mode === 'HOLD' ? `New actions are turned away once ${usd(limit)} is spent.` : `It spaces out new checks so the day stays near ${usd(limit)}.`;
+    $('#say').innerHTML = h === 'now'
+      ? `<b><em>Lumni is ${slowing(mode)} new work now</em>.</b><small>Today’s spend reached your ${usd(limit)} limit. ${how}</small>`
+      : h != null
+        ? `<b><em>Lumni ${slows(mode)} new work at ${slowClock(h)}</em>.</b><small>${how}</small>`
+        : `<b>Today stays under your ${usd(limit)} limit.</b><small>At this pace the day ends near ${usd(w.pace)}.</small>`;
+  } else if (real) {
+    const then = realLimit(w) != null ? 'Set it to replace your limit.' : `Set it and Lumni ${slows(modeNow)} new work there.`;
+    $('#say').innerHTML = p.under
+      ? `<b>Today stays under ${usd(limit)}.</b><small>At this pace the day ends near ${usd(w.pace)}. ${then}</small>`
+      : `<b>At this pace you’d reach <em>${usd(limit)}</em> ${p.now ? 'already' : `at ${clock(p.at)}`}.</b><small>${then}</small>`;
+  } else {
+    $('#say').innerHTML = p.under
+      ? `<b>Today stays under the limit.</b><small>The day ends near ${usd(w.pace)}, with ${usd(p.spare)} to spare.</small>`
+      : `<b><em>Lumni slows new work ${p.now ? 'now' : `at ${clock(p.at)}`}</em>; the day ends near ${usd(p.end)}.</b><small>Instead of ${usd(w.pace)}. Work already started still finishes.</small>`;
+  }
+}
+
+function wirePace(w) {
+  const pc = $('#pc');
+  if (!pc) return;
+  const step = limitStep(w);
+  const min = snapLimit(w, w.spend * 0.5), max = snapLimit(w, w.pace * 1.22);
+  const maxY = () => Math.max(w.pace, limitNow) * 1.3;
+  let drag = false;
+  const update = () => {
+    drawPace(w, limitNow);
+    const hs = $('#hsub');
+    if (hs) hs.innerHTML = paceSentence(w, limitNow);
+    syncSet(w);
+  };
+  const move = (e) => {
+    if (!drag) return;
+    const r = pc.getBoundingClientRect();
+    const v = ((PC.bot - (e.clientY - r.top)) / (PC.bot - PC.top)) * maxY();
+    limitNow = Math.max(min, Math.min(max, snapLimit(w, v)));
+    update();
+  };
+  const start = (e) => { drag = true; $('#handle').classList.add('drag'); e.target.setPointerCapture?.(e.pointerId); e.preventDefault(); };
+  const stop = () => { drag = false; $('#handle').classList.remove('drag'); };
+  for (const el of [$('#handle'), $('#hit')]) {
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
+  }
+  // Keyboard: the handle is a slider.
+  const h = $('#handle');
+  h.tabIndex = 0;
+  h.setAttribute('role', 'slider');
+  h.setAttribute('aria-label', 'Daily limit');
+  h.addEventListener('keydown', (e) => {
+    const d = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    limitNow = Math.max(min, Math.min(max, limitNow + d * step * 5));
+    update();
+  });
+}
+
+/** Set is only worth a click when it would change something. */
+function syncSet(w) {
+  const b = $('#setLimit');
+  if (!b || w.key !== 'real' || w.source === 'snapshots') return;
+  const same = isSet(w, limitNow) && modeNow === w.money.limitMode;
+  b.disabled = same;
+  b.title = same ? 'This is your limit now' : '';
+  b.textContent = same ? 'Limit set' : realLimit(w) != null ? 'Set this limit instead' : 'Set this limit';
+}
+
+/** The real writes: set the daily limit, or remove it (a second click confirms). */
+function wireLimit(w) {
+  $$('#lmode button').forEach((b) => b.addEventListener('click', () => {
+    modeNow = b.dataset.m;
+    $$('#lmode button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    if ($('#pcSvg')) drawPace(w, limitNow);
+    syncSet(w);
+  }));
+  const set = $('#setLimit');
+  set?.addEventListener('click', async () => {
+    if (w.key !== 'real') return Shell.toast(`Daily limit set to ${usd(limitNow)}.`);
+    const inp = $('#limitIn');
+    const v = inp ? Number(inp.value) : limitNow;
+    if (!(v > 0)) { inp?.focus(); return Shell.toast('Type a daily limit in dollars first.', 'bad'); }
+    set.disabled = true;
+    const out = await Shell.write('PUT', '/v1/config/spend-limit', { daily_micros_usd: Math.round(v * 1e6), when_reached: modeNow, tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
+      { ok: `Daily limit set to ${usd(v)}. Lumni ${slows(modeNow)} new work once spend reaches it.` });
+    if (!out) { set.disabled = false; return; }
+    justSaved = true;
+  });
+  const rm = $('#removeLimit');
+  rm?.addEventListener('click', async () => {
+    if (!rm.classList.contains('confirm')) {
+      rm.classList.add('confirm');
+      rm.textContent = 'Confirm, remove it';
+      const g = GEN;
+      setTimeout(() => { if (g === GEN && rm.isConnected && !rm.disabled) { rm.classList.remove('confirm'); rm.textContent = 'Remove limit'; } }, 4000);
+      return;
+    }
+    rm.disabled = true;
+    const out = await Shell.write('DELETE', '/v1/config/spend-limit', undefined, { ok: 'Daily limit removed. Spend isn’t capped any more.' });
+    if (!out) { rm.disabled = false; rm.classList.remove('confirm'); rm.textContent = 'Remove limit'; }
+  });
+  syncSet(w);
+}
+
+/* ─── render ────────────────────────────────────────── */
+
+function render(w) {
+  GEN++;
+  shape(w);
+  const real = w.key === 'real';
+  $('#main').innerHTML = `
+    ${header(w)}
+    ${river(w)}
+    <section class="row">${board(w)}${receipt(w)}</section>
+    ${pacing(w)}`;
+
+  zigzag();
+  $$('[data-tick]').forEach((el) => tick(el, +el.dataset.tick, usd, 1300));
+  if (w.spend) animateRiver();
+  $('#replay')?.addEventListener('click', () => { GEN++; animateRiver(); });
+
+  modeNow = real && w.money.limitMode === 'HOLD' ? 'HOLD' : 'SLOW';
+  $$('#lmode button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.m === modeNow)));
+  if (w.spend && w.pace) {
+    limitNow = w.money.limit ?? snapLimit(w, w.pace * 0.9);
+    if (SHOT === 'limit') limitNow = snapLimit(w, w.pace * 0.72);
+    if (SHOT === 'under') limitNow = snapLimit(w, w.pace * 1.12);
+    drawPace(w, limitNow);
+    wirePace(w);
+  }
+  wireLimit(w);
+  // The success motion plays on the world that carries the new limit.
+  if (justSaved) { justSaved = false; $('#handle')?.classList.add('saved'); }
+  if (real) shotLimit(w);
+
+  // Check an app: a real write in your workspace, simulated in the demo.
+  $$('[data-check]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.check, name = b.dataset.name;
+    if (!real) { Shell.toast(`${name} is checked from now on.`); b.disabled = true; return; }
+    b.disabled = true;
+    const out = await Shell.write('POST', `/v1/console/apps/${encodeURIComponent(id)}/checker`, { on: true }, { ok: `${name} is checked from now on. New actions there get read back.` });
+    if (!out) b.disabled = false;
+  }));
+  if (SHOT === 'check') later(400, () => $('[data-check]')?.click());
+
+  const toast = $('#toast');
+  $('#share').addEventListener('click', async () => {
+    try { await navigator.clipboard?.writeText(receiptText(w)); } catch {}
+    toast.classList.add('on');
+    const g = GEN;
+    setTimeout(() => g === GEN && toast.classList.remove('on'), 2200);
+  });
+  if (SHOT === 'share') toast.classList.add('on');
+  if (SHOT === 'receipt') later(50, () => $('.printer').scrollIntoView({ block: 'center' }));
+}
+
+// Screenshots of the real writes: each runs once per page load.
+let shotStep = 0;
+function shotLimit(w) {
+  const go = (fn, ms = 900) => later(ms, () => { fn(); $('.pace')?.scrollIntoView({ block: 'center' }); });
+  if (SHOT === 'set-limit' && shotStep === 0) {
+    shotStep = 1;
+    go(() => { limitNow = snapLimit(w, w.pace * 0.8); drawPace(w, limitNow); syncSet(w); $('#setLimit').click(); });
+  } else if (SHOT === 'remove-limit') {
+    if (shotStep === 0 && realLimit(w) == null) { shotStep = 1; go(() => { limitNow = snapLimit(w, w.pace * 0.8); drawPace(w, limitNow); syncSet(w); $('#setLimit').click(); }, 300); }
+    else if (shotStep <= 1 && realLimit(w) != null) { shotStep = 2; go(() => { $('#removeLimit').click(); later(500, () => $('#removeLimit').click()); }); }
+  } else if (SHOT === 'limit-set' || SHOT === 'remove-confirm') {
+    // Hold a state still for a screenshot: a real limit, or the remove button asking.
+    if (shotStep === 0 && realLimit(w) == null) { shotStep = 1; go(() => { limitNow = snapLimit(w, w.pace * 0.8); drawPace(w, limitNow); syncSet(w); $('#setLimit').click(); }, 300); }
+    else if (realLimit(w) != null) go(() => SHOT === 'remove-confirm' && $('#removeLimit').click(), 400);
+  }
+}
+
+Shell.boot({ nav: 'Money', onWorld: render });
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lumni-sdk"
+version = "0.3.0"
+readme = "README.md"
+description = "Python client for the Lumni coordination protocol"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+
+[project.urls]
+Homepage = "https://lumniverse.com"
+Source = "https://github.com/lumnihq/lumni"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_default_fixture_loop_scope = "function"
+
+[project.optional-dependencies]
+langgraph = ["langgraph>=1.2.11,<2"]
+openai = ["openai-agents>=0.22.2,<0.23"]

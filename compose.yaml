@@ -1,0 +1,136 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lumni
+      POSTGRES_PASSWORD: lumni
+      POSTGRES_DB: lumni
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumni -d lumni"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    ports:
+      - "127.0.0.1:${LUMNI_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - lumni-postgres:/var/lib/postgresql/data
+
+  lumnid:
+    build: .
+    environment:
+      LUMNI_DATABASE_URL: postgres://lumni:lumni@postgres:5432/lumni?sslmode=disable
+      LUMNI_HTTP_ADDR: :8080
+      LUMNI_OTLP_HTTP_ADDR: :4318
+      LUMNI_OTLP_GRPC_ADDR: :4317
+      LUMNI_BOOTSTRAP_TENANT_NAME: Local Development
+      LUMNI_BOOTSTRAP_TENANT_SLUG: local
+      LUMNI_BOOTSTRAP_ADMIN_KEY: ${LUMNI_BOOTSTRAP_ADMIN_KEY:-lumni_local_change_me}
+      LUMNI_MODE: SHADOW
+      LUMNI_SECRET_ENCRYPTION_KEY: ${LUMNI_SECRET_ENCRYPTION_KEY:-local-development-secret-change-me}
+
+      LUMNI_COMPOSIO_API_KEY: ${LUMNI_COMPOSIO_API_KEY:-}
+      LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID:-}
+      LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID:-}
+      LUMNI_PUBLIC_BASE_URL: ${LUMNI_PUBLIC_BASE_URL:-}
+      LUMNI_COMPOSIO_WEBHOOK_SECRET: ${LUMNI_COMPOSIO_WEBHOOK_SECRET:-}
+      LUMNI_COMPOSIO_CALLBACK_URL: ${LUMNI_COMPOSIO_CALLBACK_URL:-}
+      LUMNI_COMPOSIO_BASE_URL: ${LUMNI_COMPOSIO_BASE_URL:-https://backend.composio.dev/api/v3.1}
+      LUMNI_COMPOSIO_TIMEOUT: ${LUMNI_COMPOSIO_TIMEOUT:-15s}
+      LUMNI_ANALYTICS_BACKEND: ${LUMNI_ANALYTICS_BACKEND:-auto}
+      LUMNI_CLICKHOUSE_URL: http://clickhouse:8123
+      LUMNI_CLICKHOUSE_DATABASE: lumni
+      LUMNI_CLICKHOUSE_USER: default
+      LUMNI_CLICKHOUSE_PASSWORD: ${LUMNI_CLICKHOUSE_PASSWORD:-lumni}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+        required: false
+    ports:
+      - "127.0.0.1:${LUMNI_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${LUMNI_OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${LUMNI_OTLP_HTTP_PORT:-4318}:4318"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/lumni", "get", "health/ready", "--url", "http://127.0.0.1:8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  worker:
+    build: .
+    entrypoint: ["/usr/local/bin/worker"]
+    environment:
+      LUMNI_DATABASE_URL: postgres://lumni:lumni@postgres:5432/lumni?sslmode=disable
+      LUMNI_SECRET_ENCRYPTION_KEY: ${LUMNI_SECRET_ENCRYPTION_KEY:-local-development-secret-change-me}
+      LUMNI_GITHUB_API_TOKEN: ${LUMNI_GITHUB_API_TOKEN:-}
+      LUMNI_GITHUB_API_URL: ${LUMNI_GITHUB_API_URL:-https://api.github.com}
+      LUMNI_COMPOSIO_API_KEY: ${LUMNI_COMPOSIO_API_KEY:-}
+      LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID:-}
+      LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID:-}
+      LUMNI_SMTP_ADDR: ${LUMNI_SMTP_ADDR:-}
+      LUMNI_SMTP_FROM: ${LUMNI_SMTP_FROM:-}
+      LUMNI_SMTP_USER: ${LUMNI_SMTP_USER:-}
+      LUMNI_SMTP_PASSWORD: ${LUMNI_SMTP_PASSWORD:-}
+      LUMNI_COMPOSIO_BASE_URL: ${LUMNI_COMPOSIO_BASE_URL:-https://backend.composio.dev/api/v3.1}
+      LUMNI_COMPOSIO_TIMEOUT: ${LUMNI_COMPOSIO_TIMEOUT:-15s}
+      LUMNI_SEMANTIC_PROVIDER: ${LUMNI_SEMANTIC_PROVIDER:-off}
+      LUMNI_OPENROUTER_API_KEY: ${LUMNI_OPENROUTER_API_KEY:-}
+      LUMNI_JEV_MODEL: ${LUMNI_JEV_MODEL:-typesafe/jev-1.13}
+      LUMNI_SEMANTIC_TIMEOUT: ${LUMNI_SEMANTIC_TIMEOUT:-5s}
+      LUMNI_SEMANTIC_MAX_RETRIES: ${LUMNI_SEMANTIC_MAX_RETRIES:-3}
+      LUMNI_SEMANTIC_MAX_CANDIDATES: ${LUMNI_SEMANTIC_MAX_CANDIDATES:-20}
+      LUMNI_ANALYTICS_BACKEND: ${LUMNI_ANALYTICS_BACKEND:-auto}
+      LUMNI_CLICKHOUSE_URL: http://clickhouse:8123
+      LUMNI_CLICKHOUSE_DATABASE: lumni
+      LUMNI_CLICKHOUSE_USER: default
+      LUMNI_CLICKHOUSE_PASSWORD: ${LUMNI_CLICKHOUSE_PASSWORD:-lumni}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+        required: false
+
+  console:
+    build:
+      context: .
+      dockerfile: console/Dockerfile
+    environment:
+      LUMNI_API_URL: http://lumnid:8080
+      LUMNI_CONSOLE_PUBLIC_API_URL: ${LUMNI_PUBLIC_API_URL:-http://localhost:8080}
+      LUMNI_CONSOLE_ADMIN_KEY: ${LUMNI_BOOTSTRAP_ADMIN_KEY:-lumni_local_change_me}
+      LUMNI_CONSOLE_SECRET: ${LUMNI_CONSOLE_SECRET:-local-development-console-secret}
+      LUMNI_CONSOLE_WORKSPACE_NAME: Local Development
+    depends_on:
+      lumnid:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${LUMNI_CONSOLE_PORT:-5200}:5200"
+    volumes:
+      - lumni-console:/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.7-alpine
+    profiles: ["analytics"]
+    environment:
+      CLICKHOUSE_DB: lumni
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${LUMNI_CLICKHOUSE_PASSWORD:-lumni}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+    ports:
+      - "127.0.0.1:${LUMNI_CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "127.0.0.1:${LUMNI_CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+    volumes:
+      - lumni-clickhouse:/var/lib/clickhouse
+      - ./deploy/clickhouse/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  lumni-postgres:
+  lumni-clickhouse:
+  lumni-console:

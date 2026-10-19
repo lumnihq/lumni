@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Without Lumni</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --k-stop: var(--accent); --k-recheck: #f08a24; --k-wait: #3b9eff; --k-ask: var(--ink); --k-bad: var(--red); --chaos: #c8261c; }
+  .wrap { padding: 34px 40px 56px; }
+
+  /* Headline. */
+  .head .eyebrow { font-size: 14px; }
+  .head h1 { font-size: 44px; font-weight: 750; letter-spacing: -0.035em; line-height: 1.06; margin-top: 6px; }
+  .head h1 .soft { color: var(--ink3); }
+  .head p { margin-top: 10px; font-size: 16.5px; color: var(--ink2); max-width: 780px; }
+
+  /* The shared clock. */
+  .scrub { display: grid; grid-template-columns: 124px 178px minmax(0, 1fr) auto; align-items: center; gap: 28px; padding: 16px 24px 14px; margin-top: 26px; }
+  .play { height: 44px; width: 124px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 650; display: inline-flex; align-items: center; justify-content: center; gap: 9px; box-shadow: 0 8px 18px -8px rgba(13,14,20,.55); transition: transform .15s var(--ease); }
+  .play:active { transform: scale(.97); }
+  .play svg { flex: none; }
+  .clk b { display: block; font-size: 28px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .clk small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 550; margin-top: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .track { position: relative; height: 66px; cursor: pointer; touch-action: none; outline-offset: 6px; }
+  .track .bars { position: absolute; left: 0; right: 0; top: 18px; height: 30px; }
+  .track .bars i { position: absolute; bottom: 0; border-radius: 2px 2px 1px 1px; background: var(--line2); }
+  .track .bars.lit { clip-path: inset(0 100% 0 0); }
+  .track .bars.lit i { background: var(--ink); }
+  .track .mk { position: absolute; top: 0; z-index: 2; transform: translateX(calc(-100% - 6px)); font-size: 11.5px; font-weight: 650; color: var(--chaos); white-space: nowrap; }
+  .track .mk::after { content: ''; position: absolute; right: -6.75px; top: 6px; width: 1.5px; height: 42px; background: var(--chaos); opacity: .7; }
+  .track .head-line { position: absolute; top: 12px; height: 38px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 2px; pointer-events: none; }
+  .track .head-line::before { content: ''; position: absolute; left: 50%; top: -5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 2.5px var(--ink), 0 2px 6px rgba(13,14,20,.2); }
+  .track .ax { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; font-size: 11.5px; font-weight: 600; color: var(--ink3); }
+  .track .ax span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .track .ax span:first-child { transform: none; }
+  .track .ax span.now { transform: translateX(-100%); color: var(--ink); }
+  .seg { display: flex; padding: 3px; border-radius: 10px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .seg button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,14,20,.12); }
+
+  /* Two worlds, one frame. */
+  .split { position: relative; margin-top: 18px; overflow: hidden; }
+  .half { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  .half.with { left: 0; background: linear-gradient(180deg, #fbfaff 0%, #ffffff 40%); }
+  .half.without { right: 0; background: #fff; transition: transform .1s; }
+  .half .inner { position: absolute; top: 0; padding: 28px 40px 32px; }
+  .with .inner { left: 0; }
+  .without .inner { right: 0; }
+  .tint { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background:
+      radial-gradient(110% 70% at 100% 0%, rgba(255,59,48,.16) 0%, rgba(255,59,48,0) 62%),
+      radial-gradient(80% 60% at 100% 100%, rgba(255,59,48,.08) 0%, rgba(255,59,48,0) 70%),
+      linear-gradient(180deg, rgba(255,59,48,.035), rgba(255,59,48,.06)); }
+  .without.hit .tint { animation: flash .9s var(--ease); }
+  .without.hit .inner { animation: jolt .45s ease; }
+  @keyframes flash { 0% { filter: brightness(1); } 18% { filter: saturate(2.4) brightness(.92); } }
+  @keyframes jolt { 20% { translate: -3px 1px; } 45% { translate: 2px -1px; } 70% { translate: -1px 0; } }
+
+  .uh { display: flex; align-items: center; gap: 12px; }
+  .uh h2 { font-size: 24px; font-weight: 750; letter-spacing: -0.025em; line-height: 1.1; white-space: nowrap; }
+  .uh small { display: block; font-size: 13px; font-weight: 550; color: var(--ink2); margin-top: 3px; white-space: nowrap; }
+  .uh .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 13px; border-radius: 999px; font-size: 13px; font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .with .pill { background: var(--accent-soft); color: var(--accent); }
+  .with .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(91,75,245,.18); animation: breathe 2.8s ease-in-out infinite; }
+  .without .pill { background: var(--wash); color: var(--ink2); transition: background .4s, color .4s; }
+  .without .pill.on { background: var(--bad-bg); color: var(--chaos); }
+  .without .pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  @keyframes breathe { 50% { box-shadow: 0 0 0 6px rgba(91,75,245,0); } }
+
+  /* The damage odometer. */
+  .dmg { margin-top: 26px; }
+  .lab { font-size: 13px; font-weight: 600; color: var(--ink2); display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+  .lab span { margin-left: auto; font-weight: 550; color: var(--ink3); font-variant-numeric: tabular-nums; }
+  .odo { display: flex; align-items: flex-end; height: 66px; margin-top: 4px; font-size: 62px; font-weight: 750; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+  .odo .d { display: inline-block; height: 1em; overflow: hidden; position: relative; -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 82%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 20%, #000 82%, transparent 100%); }
+  .odo .d > span { display: block; will-change: transform; }
+  .odo .d > span > b { display: block; height: 1em; font-weight: inherit; }
+  .odo .c { display: inline-block; }
+  .with .odo { color: var(--ink); }
+  .odo-note { min-height: 19px; font-size: 13px; color: var(--ink2); font-weight: 550; margin-top: 6px; white-space: nowrap; }
+  .with .odo-note b { color: var(--accent); }
+  .cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; border-top: 1px solid var(--line); }
+  .cells > div { padding: 14px 16px 0 0; min-width: 0; }
+  .cells > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+  .cells b { display: block; font-size: 24px; font-weight: 720; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.15; }
+  .cells small { display: block; font-size: 12.5px; color: var(--ink2); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+  /* Things that went wrong, by the hour. */
+  .chart { position: relative; margin-top: 28px; }
+  .hours { position: relative; height: 96px; margin-top: 12px; display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; align-items: end; border-bottom: 1px solid var(--line); }
+  .hours i { display: block; height: 0; border-radius: 3px 3px 1px 1px; background: #2b2d38; min-height: 0; }
+  .hours i.spk { background: var(--chaos); }
+  .hours i.later { height: 3px !important; background: transparent; border-top: 2px dotted var(--line2); border-radius: 0; }
+  .flat { position: absolute; left: 0; bottom: -1px; height: 2.5px; border-radius: 2px; background: var(--accent); width: 0; }
+  .flat::after { content: ''; position: absolute; right: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 5px rgba(91,75,245,.16); }
+  .flat-note { position: absolute; left: 0; bottom: 14px; font-size: 13px; font-weight: 600; color: var(--accent); opacity: .75; }
+  .hax { position: relative; height: 16px; margin-top: 6px; font-size: 11.5px; color: var(--ink3); font-weight: 600; }
+  .hax span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .hax span:first-child { transform: none; }
+
+  /* The 11:40 callout. */
+  .callout { position: absolute; right: 0; top: 22px; width: 248px; padding: 12px 15px 13px; border-radius: 16px; background: var(--ink); color: #fff; z-index: 3;
+    box-shadow: 0 22px 44px -14px rgba(13,14,20,.55); opacity: 0; transform: translateY(8px) scale(.94); transform-origin: 20% 100%; pointer-events: none; transition: opacity .25s, transform .25s var(--ease); }
+  .callout.on { opacity: 1; transform: none; pointer-events: auto; transition: opacity .3s, transform .55s var(--spring); }
+  .callout .t { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #ffb4ae; }
+  .callout .t i { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 3px rgba(255,59,48,.3); }
+  .callout p { font-size: 14.5px; font-weight: 650; line-height: 1.3; margin-top: 5px; letter-spacing: -0.005em; }
+  .callout small { display: block; font-size: 12.5px; color: #b9bccb; margin-top: 5px; font-weight: 550; }
+  .callout a { color: #fff; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,.35); }
+
+  /* The tallies. */
+  .rows { margin-top: 26px; border-top: 1px solid var(--line); }
+  .row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 76px; align-items: center; gap: 12px; height: 43px; border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .row .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .row .l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .n { font-size: 12.5px; font-weight: 600; white-space: nowrap; text-align: right; color: var(--ink2); }
+  .with .row .n { color: var(--accent); }
+  .row .n.zero { color: var(--ink3); font-weight: 550; }
+  .row b { text-align: right; font-size: 19px; font-weight: 720; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; transition: color .35s; }
+  .with .row b { color: var(--ink); }
+  .without .row b.zero { color: var(--ink3); }
+  .without .row b.up { color: var(--chaos); transition: none; }
+  .without .row.bad b:not(.zero) { color: var(--chaos); }
+
+  /* The feed, and the quiet. */
+  .low { margin-top: 26px; height: 214px; position: relative; }
+  .feed { position: relative; height: 186px; margin-top: 10px; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent); mask-image: linear-gradient(180deg, #000 62%, transparent); }
+  .fr { display: grid; grid-template-columns: 70px 8px minmax(0, 1fr) auto; align-items: center; gap: 12px; height: 37px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
+  .fr.in { animation: drop .42s var(--ease) both; }
+  @keyframes drop { from { opacity: 0; transform: translateY(-12px); } }
+  .fr time { font-size: 12.5px; color: var(--ink3); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fr i { width: 7px; height: 7px; border-radius: 50%; }
+  .fr span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .fr small { font-size: 12.5px; color: var(--ink2); font-weight: 550; white-space: nowrap; }
+  .fr.spk { background: var(--bad-bg); }
+  .fr.spk span { color: var(--chaos); }
+  .feed-empty { position: absolute; left: 12px; right: 12px; font-size: 13.5px; color: var(--ink2); font-weight: 550; }
+  .quiet { height: 186px; margin-top: 10px; border-radius: 16px; background: linear-gradient(180deg, rgba(240,238,255,.7), rgba(240,238,255,.2)); display: flex; align-items: center; gap: 22px; padding: 0 28px; }
+  .orb { position: relative; width: 64px; height: 64px; flex: none; }
+  .orb i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--accent-line); animation: ripple 4.2s ease-out infinite; }
+  .orb i:nth-child(2) { animation-delay: 1.4s; }
+  .orb i:nth-child(3) { animation-delay: 2.8s; }
+  .orb b { position: absolute; inset: 22px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 6px rgba(91,75,245,.12); }
+  @keyframes ripple { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+  .quiet h3 { font-size: 22px; font-weight: 720; letter-spacing: -0.02em; }
+  .quiet p { font-size: 14px; color: var(--ink2); font-weight: 550; margin-top: 3px; max-width: 420px; }
+  .quiet p b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* The handle between the worlds. */
+  .divider { position: absolute; top: 0; bottom: 0; width: 0; z-index: 6; }
+  .divider::before { content: ''; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: var(--ink); opacity: .9; }
+  .grip { position: absolute; left: -22px; top: 356px; width: 44px; height: 44px; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 2px var(--ink), 0 12px 26px -8px rgba(13,14,20,.4); display: grid; place-items: center; cursor: ew-resize; touch-action: none; transition: transform .2s var(--spring); }
+  .grip:hover, .grip.drag { transform: scale(1.08); }
+  .hint { position: absolute; left: 0; transform: translateX(-50%); width: 66px; padding: 5px 0; top: 410px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 11px; line-height: 1.25; font-weight: 650; text-align: center; transition: opacity .4s; pointer-events: none; }
+  .hint.gone { opacity: 0; }
+
+  /* The difference, in one sentence. */
+  .diff { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 40px; padding: 30px 36px 30px; margin-top: 20px; position: relative; }
+  .diff .eyebrow { display: flex; align-items: center; gap: 10px; }
+  .diff .eyebrow .wm2 { font-size: 17px; font-weight: 800; letter-spacing: -0.05em; color: var(--ink); }
+  .diff p { font-size: 31px; font-weight: 680; letter-spacing: -0.025em; line-height: 1.28; margin-top: 10px; max-width: 980px; text-wrap: pretty; }
+  .diff mark { background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 0 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .diff .next { font-size: 14.5px; color: var(--ink2); margin-top: 10px; font-weight: 550; }
+  .diff .acts { display: flex; gap: 10px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .fr small { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+/** Escapes text from your workspace before it goes into HTML. */
+const esc = (s) => Shell.esc(s);
+// Two copies of the same day. The left one is what happened; the right one is
+// the same day with nothing stepping in. Every number on the right is a
+// step-in from the World, replayed against the clock. In your workspace that
+// means what Lumni really did (kinds), plus what it only watched (would),
+// which happened in both worlds.
+const HALF = 680;
+const KC = { stop: 'var(--k-stop)', recheck: 'var(--k-recheck)', wait: 'var(--k-wait)', ask: 'var(--k-ask)', bad: 'var(--k-bad)', any: 'var(--ink3)' };
+const CANT = 'Lumni’s API can’t do this yet';
+let NOW_H = 12;
+
+// How each demo pattern reads in the world without Lumni.
+const FEED = {
+  'p-refund2': ['refund sent twice', 'refunds sent twice'],
+  'p-invoice2': ['invoice sent again', 'invoices sent again'],
+  'p-ticket2': ['ticket answered twice', 'tickets answered twice'],
+  'p-cancelled': ['cancelled customer charged', 'cancelled customers charged'],
+  'p-quote2': ['sent quote rewritten', 'sent quotes rewritten'],
+  'p-oldplan': ['customer billed on an old plan', 'customers billed on an old plan'],
+  'p-oldaddr': ['account updated from an old copy', 'accounts updated from an old copy'],
+  'p-oldprice': ['quote at yesterday’s price', 'quotes at yesterday’s price'],
+  'p-deploy': ['deploy ran over another', 'deploys ran over each other'],
+  'p-book': ['refund booked before it landed', 'refunds booked before they landed'],
+  'p-acct': ['account overwritten by a second AI', 'accounts overwritten by a second AI'],
+  'g-bigrefund': ['refund over $500, nobody asked', 'refunds over $500, nobody asked'],
+  'g-downgrade': ['enterprise downgrade, nobody asked', 'enterprise downgrades, nobody asked'],
+  'g-email': ['person’s edit overwritten', 'people’s edits overwritten'],
+  'p-norefund': ['refund failed, nobody noticed', 'refunds failed, nobody noticed'],
+  'p-noclose': ['ticket marked closed, still open', 'tickets marked closed, still open'],
+};
+
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const clock = (h) => {
+  let hh = Math.floor(h), mm = Math.floor((h - hh) * 60 + 1e-6);
+  if (mm === 60) { hh++; mm = 0; }
+  const h12 = ((hh + 11) % 12) + 1;
+  return `${h12}:${String(mm).padStart(2, '0')} ${hh < 12 || hh === 24 ? 'AM' : 'PM'}`;
+};
+const hourName = (h) => (h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`);
+const plural = (n, one, many) => (n === 1 ? one : many);
+const hash = (s, k) => { let x = k * 1013 + 7; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 100003; return (x % 997) / 997; };
+const hoursText = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${fmtN(Math.round(h))} ${plural(Math.round(h), 'hour', 'hours')}`);
+const trunc = (s, n = 60) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const journey = (story) => (Shell.isReal ? `/journey?id=${encodeURIComponent(story)}` : `/journey?story=${encodeURIComponent(story)}`);
+// ?motion=1 plays anyway, for checking the replay in a headless browser.
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches && !new URLSearchParams(location.search).has('motion');
+
+/** "11:36 AM" to hours since midnight. */
+function hoursOf(label) {
+  const m = String(label).match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return null;
+  const h = (Number(m[1]) % 12) + (m[3].toUpperCase() === 'PM' ? 12 : 0);
+  return h + Number(m[2]) / 60;
+}
+
+// ─── the model: how many things went wrong by any time of day ─────────────
+
+function shared(w) {
+  // Share of an hourly series done by time t (the current hour is partial).
+  const upTo = (arr, t) => {
+    let s = 0;
+    for (let h = 0; h < 24; h++) {
+      const end = Math.min(h + 1, NOW_H);
+      if (end <= h) break;
+      s += (arr[h] ?? 0) * clamp((t - h) / (end - h));
+    }
+    return s;
+  };
+  const tot = upTo(w.hourly, NOW_H);
+  const C = (t) => (tot ? upTo(w.hourly, t) / tot : t / NOW_H);
+  const stot = upTo(w.stepHourly, NOW_H);
+  const S = (t) => (stot ? upTo(w.stepHourly, t) / stot : C(t));
+
+  // The moment worth calling out: an incident, or else a pattern's spike hour.
+  const inc = w.incident;
+  let spike = null;
+  if (inc) {
+    const a = w.key === 'real' && inc.startAt ? (inc.startAt - w.dayStart) / 3600e3 : hoursOf(inc.start);
+    const b = w.key === 'real' && inc.endAt ? (inc.endAt - w.dayStart) / 3600e3 : hoursOf(inc.end);
+    if (a != null && b != null && b >= a) spike = { a, b, at: a + Math.min(4 / 60, (b - a) / 2), inc };
+  }
+  if (!spike) {
+    const p = Object.values(w.patterns).flat().filter((x) => x.spike != null).sort((x, y) => y.n - x.n)[0];
+    if (p) { const h = Math.floor(p.spike); spike = { a: h, b: h + 1, at: h + 0.5, pattern: p }; }
+  }
+  return { C, S, spike };
+}
+
+function demoModel(w) {
+  const { C, spike } = shared(w);
+  const SP = spike?.inc ? spike : null;
+  const inc = w.incident;
+  const who = (p) => `${w.team(p.team).name} AI, ${w.app(p.app).name}`;
+  const burstOf = (p) => (p.spike && SP ? Math.min(p.n, inc.burst) : 0);
+  const fnFor = (p) => {
+    const B = burstOf(p);
+    return (t) => B * clamp((t - SP.a) / (SP.b - SP.a)) + (p.n - B) * C(t);
+  };
+  const pats = Object.entries(w.patterns).flatMap(([kind, list]) => list.map((p) => {
+    const q = { ...p, kind, fn: fnFor(p), who: who(p), phi: 0.15 + 0.7 * hash(p.id, 3) };
+    // Whole things, not fractions: each pattern lands its first one part way into its share.
+    q.ct = (t) => Math.min(q.n, Math.floor(q.fn(t) + q.phi));
+    return q;
+  }));
+  const of = (kind, f = () => true) => pats.filter((p) => p.kind === kind && f(p));
+  const isRefund = (p) => p.id === 'p-refund2';
+  const rows = [
+    { id: 'refund', kind: 'stop', label: 'Refunds sent twice', pats: of('stop', isRefund), calm: (n) => `${n} stopped before Stripe` },
+    { id: 'repeat', kind: 'stop', label: 'Invoices, renewals and replies sent twice', pats: of('stop', (p) => !isRefund(p)), calm: (n) => `${n} stopped, already done` },
+    { id: 'stale', kind: 'recheck', label: 'Charged a wrong price or an old plan', pats: of('recheck'), calm: (n) => `${n} looked again first` },
+    { id: 'over', kind: 'wait', label: 'Customer records two AIs overwrote', pats: of('wait', (p) => p.id !== 'p-deploy'), calm: (n) => `${n} waited their turn` },
+    { id: 'deploy', kind: 'wait', label: 'Deploys that ran over each other', pats: of('wait', (p) => p.id === 'p-deploy'), calm: (n) => `${n} waited for the last one` },
+    { id: 'ask', kind: 'ask', label: 'Risky actions nobody was asked about', pats: of('ask'), calm: (n) => `${n} asked you first` },
+    { id: 'bad', kind: 'bad', label: 'Failed, and nobody knew', pats: of('bad'), calm: (n) => `${n} caught and sent to you` },
+  ];
+  for (const r of rows) {
+    r.count = (t) => r.pats.reduce((s, p) => s + p.ct(t), 0);
+    r.watched = () => 0;
+    r.has = r.pats.length > 0;
+    r.who = r.pats[0]?.who ?? '';
+  }
+  const count = (kind, t) => of(kind).reduce((s, p) => s + p.ct(t), 0);
+  const wrong = (t) => pats.reduce((s, p) => s + p.ct(t), 0);
+
+  // The feed: what went wrong, grouped into reasons per stretch of the day.
+  const step = w.key === 'small' ? 1 / 6 : 0.5;
+  let events = [];
+  for (const p of pats) {
+    const B = burstOf(p);
+    const base = B ? (t) => p.fn(t) - B * clamp((t - SP.a) / (SP.b - SP.a)) : p.fn;
+    let prev = 0;
+    for (let a = 0; a < NOW_H - 1e-9; a += step) {
+      const b = Math.min(NOW_H, a + step);
+      const c = Math.min(p.n - B, Math.floor(base(b) + p.phi));
+      if (c > prev) events.push({ t: a + (b - a) * (0.2 + 0.75 * hash(p.id, a)), p, n: c - prev, bucket: Math.round(a / step) });
+      prev = c;
+    }
+    if (B) events.push({ t: SP.at + 0.95 / 60, p, n: B, spike: true, bucket: -1 });
+  }
+  if (w.key !== 'small') {
+    // At volume, keep the three biggest reasons in each stretch.
+    const by = {};
+    for (const e of events) (by[e.bucket] ??= []).push(e);
+    events = Object.entries(by).flatMap(([k, list]) => (k === '-1' ? list : list.sort((x, y) => y.n - x.n).slice(0, 3)));
+  }
+  events = events.map((e) => ({ t: e.t, when: clock(e.t), kind: e.p.kind, spike: e.spike, text: `+${fmtN(e.n)} ${plural(e.n, ...FEED[e.p.id] ?? ['thing went wrong', 'things went wrong'])}`, who: esc(e.p.who) }));
+  events.sort((x, y) => x.t - y.t);
+
+  return {
+    real: false, C, rows, spike: SP, wrong, events, watchedTotal: 0, grouped: w.key === 'small' ? 'one by one' : 'grouped by reason',
+    money: (t, smooth) => of('stop').reduce((s, p) => s + (smooth ? Math.min(p.n, p.fn(t)) : p.ct(t)) * (p.money ?? 0), 0),
+    paid: (t) => Math.round(count('stop', t) * 0.93),
+    hours: (t) => count('stop', t) * 0.12 + count('bad', t) * 0.5 + count('ask', t) * 0.05 + count('wait', t) * 0.02,
+    tix: (t) => Math.round(count('stop', t) * 0.93 * 0.6),
+    totalAt: (t) => Math.round(w.total * C(t)),
+    story: 'omar',
+  };
+}
+
+function realModel(w) {
+  const { C, S, spike } = shared(w);
+  const would = w.would ?? {};
+  const top = (k) => [...(w.patterns[k] ?? [])].sort((a, b) => b.n - a.n)[0];
+  const whoOf = (p) => {
+    if (!p) return '';
+    const t = w.team(p.team), a = w.app(p.app);
+    return t && t.id !== 'ai:unknown' && t.id !== 'other' ? `${esc(t.name)}, ${esc(a.name)}` : esc(a.name);
+  };
+  const DEF = [
+    ['stop', 'Repeats that ran twice', 'stopped, already done'],
+    ['recheck', 'Actions on out-of-date info', 'looked again first'],
+    ['wait', 'Two AIs changing the same thing', 'waited their turn'],
+    ['ask', 'Risky actions nobody was asked about', 'asked you first'],
+    ['bad', 'Failed, and nobody knew', 'caught and shown to you'],
+  ];
+  // Enforced step-ins follow today's step-in hours; watched ones follow the actions.
+  const rows = DEF.map(([kind, label, did]) => {
+    const enf = w.kinds[kind] ?? 0, wat = kind === 'bad' ? 0 : would[kind] ?? 0;
+    return {
+      id: kind, kind, label, enf, wat, has: enf + wat > 0, who: whoOf(top(kind)),
+      count: (t) => Math.floor(enf * S(t) + wat * C(t) + 1e-6),
+      watched: (t) => Math.floor(wat * C(t) + 1e-6),
+      calm: (n, t) => {
+        const e = Math.floor(enf * S(t) + 1e-6), v = Math.floor(wat * C(t) + 1e-6);
+        return [e ? `${fmtN(e)} ${did}` : '', v ? `${fmtN(v)} only watched` : ''].filter(Boolean).join(', ');
+      },
+    };
+  });
+  const paidN = (w.patterns.stop ?? []).filter((p) => p.kept > 0).reduce((s, p) => s + p.n, 0);
+  const watchedTotal = rows.reduce((s, r) => s + r.wat, 0);
+  const wrong = (t) => rows.reduce((s, r) => s + r.count(t), 0);
+
+  // The feed: step-ins hour by hour, named by the pattern that spiked there.
+  const events = [];
+  const pats = Object.values(w.patterns).flat();
+  for (let h = 0; h < Math.ceil(NOW_H); h++) {
+    const n = w.stepHourly[h] ?? 0;
+    if (!n) continue;
+    const p = pats.filter((x) => x.spike != null && Math.floor(x.spike) === h).sort((a, b) => b.n - a.n)[0];
+    const hot = !!p || (spike && h === Math.floor(spike.a));
+    events.push({
+      t: Math.min(h + 1, NOW_H) - 1e-4, when: hourName(h), kind: p?.kind ?? 'any', spike: hot,
+      text: `+${fmtN(n)} ${plural(n, 'thing went wrong', 'things went wrong')}`,
+      who: p ? esc(trunc(p.t, 54)) : 'across the hour',
+    });
+  }
+  return {
+    real: true, C, rows, spike, wrong, events, watchedTotal, paidN, grouped: 'hour by hour',
+    money: (t) => w.kept * S(t),
+    paid: (t) => Math.floor(paidN * S(t) + 1e-6),
+    hours: (t) => (w.money?.hoursSaved ?? 0) * S(t),
+    totalAt: (t) => Math.round(w.total * C(t)),
+    story: top('stop')?.story ?? null,
+  };
+}
+
+// ─── the odometer ─────────────────────────────────────────────────────────
+
+function odo(el, v, rolling) {
+  const s = '$' + Math.floor(v + 1e-6).toLocaleString('en-US');
+  if (el.dataset.s !== String(s.length)) {
+    el.dataset.s = String(s.length);
+    let place = s.replace(/\D/g, '').length;
+    el.innerHTML = [...s].map((ch) => (/\d/.test(ch)
+      ? `<span class="d" data-p="${--place}"><span>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((d) => `<b>${d}</b>`).join('')}</span></span>`
+      : `<span class="c">${ch}</span>`)).join('');
+  }
+  const val = rolling ? v : Math.round(v);
+  for (const d of el.querySelectorAll('.d')) {
+    const i = Number(d.dataset.p), m = Math.pow(10, i);
+    let pos;
+    if (i === 0) pos = val % 10;
+    else {
+      const lower = (val % m) / m;
+      pos = (Math.floor(val / m) % 10) + (rolling && lower > 0.9 ? (lower - 0.9) * 10 : 0);
+    }
+    d.firstChild.style.transform = `translateY(${-pos}em)`;
+  }
+}
+
+// ─── the page ─────────────────────────────────────────────────────────────
+
+const S = { t: 0, playing: false, speed: 1, split: 0.5, raf: 0, last: 0, began: 0, shown: -1, prevT: 0, w: null, M: null, touched: false };
+
+/** Keep the callout clear of today's bars: right of the current hour, or over the night. */
+function calloutPos() {
+  const x = Math.min(1, Math.ceil(NOW_H + 1e-6) / 24);
+  return (1 - x) * 600 >= 190 ? `style="left:calc(${(x * 100).toFixed(2)}% + 8px);right:0;width:auto"` : 'style="left:0;right:auto"';
+}
+
+function calloutHTML(w, M) {
+  const sp = M.spike;
+  if (!sp) return '';
+  if (sp.inc) {
+    const inc = sp.inc;
+    // The burst's own title is on the scrubber and the incident page; keep this short.
+    const head = M.real ? '' : 'Stripe timed out.';
+    const what = M.real
+      ? `${fmtN(inc.burst)} ${plural(inc.burst, 'repeat', 'repeats')} would have gone out twice.`
+      : `${fmtN(inc.burst)} ${plural(inc.burst, 'refund', 'refunds')} went out twice.`;
+    const bits = [inc.customers ? `${fmtN(inc.customers)} ${plural(inc.customers, 'customer', 'customers')}` : '', inc.kept >= 1 ? fmtMoney(inc.kept) : ''].filter(Boolean).join(', ');
+    return `<div class="callout" id="callout" ${calloutPos()}>
+      <span class="t"><i></i>${esc(inc.start)}</span>
+      <p>${head ? `${head} ` : ''}${what}</p>
+      <small>${bits ? `${bits}${M.real ? '' : ', in 11 minutes'}. ` : ''}<a href="/incident">Replay it</a></small>
+    </div>`;
+  }
+  const p = sp.pattern;
+  return `<div class="callout" id="callout" ${calloutPos()}>
+    <span class="t"><i></i>The ${hourName(Math.floor(sp.a))} hour</span>
+    <p>${esc(trunc(p.t, 80))}</p>
+    <small>${fmtN(p.n)} today, most of them in that hour.${p.story ? ` <a href="${journey(p.story)}">Replay one</a>` : ''}</small>
+  </div>`;
+}
+
+function half(side, w, M) {
+  const withL = side === 'with';
+  const spikeH = M.spike ? Math.floor(M.spike.a) : -1;
+  const rows = M.rows.map((r) => `<div class="row ${r.kind === 'bad' ? 'bad' : ''}" data-r="${r.id}">
+      <span class="dot" style="background:${KC[r.kind]}"></span>
+      <span class="l">${r.label}</span>
+      <span class="n">${withL ? '' : r.who}</span>
+      <b>0</b></div>`).join('');
+  const hours = Array.from({ length: 24 }, (_, h) => `<i class="${h > NOW_H ? 'later' : ''}${h === spikeH ? ' spk' : ''}"></i>`).join('');
+  const ax = [0, 6, 12, 18].map((h) => `<span style="left:${(h / 24) * 100}%">${hourName(h)}</span>`).join('');
+  const wt = M.watchedTotal;
+  const cells = M.real
+    ? `<div><b data-c="cust">0</b><small>${withL ? 'repeats that paid out twice' : 'repeats that paid out twice'}</small></div>
+       <div><b data-c="hours">0 min</b><small>${withL ? 'of cleanup' : 'of cleanup for your team'}</small></div>`
+    : `<div><b data-c="cust">0</b><small>${withL ? 'customers charged twice' : 'customers hit twice'}</small></div>
+       <div><b data-c="hours">0 min</b><small>${withL ? 'of cleanup' : 'of cleanup for your team'}</small></div>
+       <div><b data-c="tix">0</b><small>${withL ? 'angry tickets' : 'tickets they would open'}</small></div>`;
+  return `
+    ${withL ? '' : '<div class="tint"></div>'}
+    <div class="inner">
+      <div class="uh">
+        <div><h2>${withL ? 'With Lumni' : 'Without Lumni'}</h2>
+          <small>${withL ? 'Every action checked before it ran' : 'Same AIs, same apps, nothing stepping in'}</small></div>
+        <span class="pill">${withL ? `<i></i>${wt ? `${fmtN(wt)} only watched` : 'All quiet'}` : '<i></i><span class="pv">Nothing yet</span>'}</span>
+      </div>
+
+      <div class="dmg">
+        <div class="lab">Money that went out twice</div>
+        <div class="odo" data-odo>$0</div>
+        <div class="odo-note">${withL ? '<span class="kept"></span>' : '<span class="dnote"></span>'}</div>
+        <div class="cells" ${M.real ? 'style="grid-template-columns:repeat(2,minmax(0,1fr))"' : ''}>${cells}</div>
+      </div>
+
+      <div class="chart">
+        <div class="lab">${M.real ? 'Step-ins, by the hour' : 'Things that went wrong, by the hour'} <span data-c="wrong">0 so far</span></div>
+        <div class="hours">${withL ? `<div class="flat"></div><div class="flat-note">${wt ? `Only the ${fmtN(wt)} watched ${plural(wt, 'one', 'ones')} got through` : 'Nothing went wrong in any hour'}</div>` : hours}</div>
+        <div class="hax">${ax}</div>
+        ${withL ? '' : calloutHTML(w, M)}
+      </div>
+
+      <div class="rows">${rows}</div>
+
+      <div class="low">
+        <div class="lab">${withL ? 'Right now' : 'As it happened'} <span>${withL ? '' : M.grouped}</span></div>
+        ${withL
+          ? `<div class="quiet"><div class="orb"><i></i><i></i><i></i><b></b></div>
+              <div><h3>${wt ? 'Mostly quiet' : 'All quiet'}</h3><p>Lumni stepped in <b class="qs">0 times</b> so far.${wt ? ` It only watched ${fmtN(wt)} more, so those went through.` : ' Nothing to clean up.'}</p></div></div>`
+          : `<div class="feed" id="feed"></div><div class="feed-empty" id="feedEmpty"></div>`}
+      </div>
+    </div>`;
+}
+
+function renderEmpty(w) {
+  $('#main').innerHTML = `
+  <section class="head rise">
+    <div class="eyebrow">${esc(w.dayLabel)}, the same day played twice</div>
+    <h1>Nothing to replay yet today. <span class="soft">No actions so far.</span></h1>
+    <p>Once your AIs act through Lumni, this page plays the day twice: once as it happened, and once with nothing stepping in.</p>
+  </section>
+  <section class="card diff rise" style="animation-delay:.1s">
+    <div><div class="eyebrow"><span class="wm2">lumni</span><span>The difference, by ${esc(w.timeLabel)}</span></div>
+      <p><span style="color:var(--ink3)">Nothing yet. The day starts with the first action.</span></p></div>
+    <div class="acts"><a class="btn" href="/flow">See the flow</a><a class="btn accent" href="/without?data=mock">See a sample day</a></div>
+  </section>`;
+}
+
+function render(w) {
+  cancelAnimationFrame(S.raf);
+  clearTimeout(S.hitT);
+  clearTimeout(S.startT);
+  NOW_H = w.nowH;
+  if (!w.total) { S.w = w; S.M = null; return renderEmpty(w); }
+  const M = w.key === 'real' ? realModel(w) : demoModel(w);
+  Object.assign(S, { w, M, playing: false, shown: -1, prevT: 0, t: 0 });
+  const real = M.real;
+  const wt = M.watchedTotal;
+
+  // The scrubber: today's volume as faint bars from midnight to now.
+  // Quarter hours, eased between the hourly numbers so the shape reads as a day.
+  const lastH = Math.floor(NOW_H);
+  const rateAt = (h) => { const i = Math.min(23, Math.floor(h)); return (w.hourly[i] ?? 0) / Math.max(1e-9, Math.min(i + 1, NOW_H) - i); };
+  const quarters = [];
+  for (let q = 0; q < NOW_H - 1e-9; q += 0.25) {
+    const mid = q + 0.125, i = Math.floor(mid), f = mid - i - 0.5;
+    const nb = f < 0 ? Math.max(0, i - 1) : Math.min(lastH, i + 1);
+    quarters.push([q, Math.min(q + 0.25, NOW_H), rateAt(i) * (1 - Math.abs(f)) + rateAt(nb) * Math.abs(f)]);
+  }
+  const peak = Math.max(1e-9, ...quarters.map((x) => x[2]));
+  const barHtml = quarters.map(([a, b, v]) => `<i style="left:calc(${(a / NOW_H) * 100}% + 1px);width:calc(${((b - a) / NOW_H) * 100}% - 2px);height:${v ? Math.max(10, Math.pow(v / peak, 0.8) * 100) : 4}%"></i>`).join('');
+  const axs = [0, 3, 6, 9, 12, 15, 18, 21].filter((h) => h < NOW_H - 1.4 && (NOW_H < 16 || h % 6 === 0)).map((h) => `<span style="left:${(h / NOW_H) * 100}%">${hourName(h)}</span>`).join('')
+    + `<span class="now" style="left:100%">Now, ${esc(w.timeLabel)}</span>`;
+  const mk = M.spike ? (M.spike.inc ? (real ? `Burst at ${esc(M.spike.inc.start)}` : 'Stripe timed out') : 'Busiest hour') : '';
+
+  $('#main').innerHTML = `
+  <section class="head rise">
+    <div class="eyebrow">${esc(w.dayLabel)}, the same day played twice</div>
+    <h1>Same ${fmtN(w.total)} ${plural(w.total, 'action', 'actions')}. <span class="soft">One world had Lumni.</span></h1>
+    <p>${real
+      ? `On the right, every step-in Lumni recorded today, replayed as if nothing had stepped in.${wt ? ` ${fmtN(wt)} of them happened anyway, because the rule was only watching.` : ' This is that record, not a guess.'}`
+      : 'Lumni starts in watch mode, so it records what would have happened. This is that record, not a guess.'}</p>
+  </section>
+
+  <section class="card scrub rise" style="animation-delay:.06s">
+    <button class="play" id="play"></button>
+    <div class="clk"><b id="clk">12:00 AM</b><small id="clkSub">0 actions so far</small></div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="Time of day" aria-valuemin="0" aria-valuemax="${NOW_H.toFixed(3)}">
+      <div class="bars">${barHtml}</div>
+      <div class="bars lit" id="lit">${barHtml}</div>
+      ${mk && M.spike.a < NOW_H ? `<span class="mk" style="left:${(M.spike.a / NOW_H) * 100}%">${mk}</span>` : ''}
+      <div class="head-line" id="thumb"></div>
+      <div class="ax">${axs}</div>
+    </div>
+    <div class="seg" id="speed"><button data-s="1" aria-pressed="true">1×</button><button data-s="4" aria-pressed="false">4×</button></div>
+  </section>
+
+  <section class="card split rise" id="split" style="animation-delay:.12s">
+    <div class="half with" id="with">${half('with', w, M)}</div>
+    <div class="half without" id="without">${half('without', w, M)}</div>
+    <div class="divider" id="divider">
+      <button class="grip" id="grip" role="slider" aria-label="Compare the two worlds" aria-valuemin="0" aria-valuemax="100">
+        <svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><path d="M6 1L1 6l5 5M16 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="hint" id="hint">Drag to<br>compare</span>
+    </div>
+  </section>
+
+  <section class="card diff rise" style="animation-delay:.18s">
+    <div>
+      <div class="eyebrow"><span class="wm2">lumni</span><span id="dWhen">The difference, by ${esc(w.timeLabel)}</span></div>
+      <p id="dText"></p>
+      ${real && wt ? `<div class="next">${fmtN(wt)} of these happened anyway because the rule was only watching. <span id="nextSay"></span></div>` : ''}
+    </div>
+    <div class="acts">
+      ${real && wt ? '<span id="nextAct" style="display:contents"></span>' : ''}
+      ${M.story ? `<a class="btn" href="${journey(M.story)}">${real ? 'Replay one' : 'See the receipts'}</a>` : ''}
+      <a class="btn accent" href="/share">Share this</a>
+    </div>
+  </section>`;
+
+  bind();
+  if (real && wt) nextStep(w);
+  const q = new URLSearchParams(location.search);
+  const shot = q.get('shot');
+  S.split = shot === 'wipe' ? 0.3 : shot === 'wipe2' ? 0.72 : 0.5;
+  applySplit();
+  if (shot === 'wipe' || shot === 'wipe2') $('#hint').classList.add('gone');
+  S.shown = -1;
+  if (shot === 'spike' && M.spike) setT(Math.min(NOW_H, M.spike.at + 1 / 60));
+  else if (shot === 'end' || shot === 'wipe' || shot === 'wipe2' || reduced) setT(NOW_H);
+  else { setT(0); S.startT = setTimeout(() => S.w === w && !S.touched && play(), 650); }
+  setPlayLabel();
+  // Both worlds are the same height, so the frame is too.
+  const ins = $$('.split .inner');
+  $('#split').style.height = Math.max(...ins.map((i) => i.offsetHeight)) + 'px';
+}
+
+/** What to do about the watched step-ins: protect watching rules, or raise the operation in Autonomy. */
+async function nextStep(w) {
+  let watching = 0;
+  try { watching = (await Shell.api.get('/v1/console/rules'))?.watching ?? 0; } catch {}
+  if (S.w !== w || !$('#nextAct')) return;
+  if (watching) {
+    $('#nextSay').textContent = `Protect the ${fmtN(watching)} watching ${plural(watching, 'rule', 'rules')} and Lumni steps in next time.`;
+    $('#nextAct').innerHTML = `<button class="btn" id="protect">Protect ${fmtN(watching)} watching ${plural(watching, 'rule', 'rules')}</button>`;
+    $('#protect').addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      b.disabled = true;
+      const out = await Shell.write('POST', '/v1/console/protect', {}, { ok: 'Every watching rule now protects. Lumni steps in from here on.' });
+      if (!out) b.disabled = false;
+    });
+    if (new URLSearchParams(location.search).get('shot') === 'protect' && !nextStep.clicked) { nextStep.clicked = true; $('#protect').click(); }
+  } else {
+    $('#nextSay').textContent = 'Their operations are set to watch or warn. Raise them in Autonomy and Lumni steps in next time.';
+    $('#nextAct').innerHTML = '<a class="btn" href="/autonomy">Open Autonomy</a>';
+  }
+}
+
+function bind() {
+  $('#play').onclick = () => { S.touched = true; S.playing ? pause() : play(); };
+  $('#speed').onclick = (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    S.speed = Number(b.dataset.s);
+    for (const x of $$('#speed button')) x.setAttribute('aria-pressed', String(x === b));
+  };
+  for (const x of $$('#speed button')) x.setAttribute('aria-pressed', String(Number(x.dataset.s) === S.speed));
+
+  // Scrub the shared clock.
+  const track = $('#track');
+  const fromX = (e) => clamp((e.clientX - track.getBoundingClientRect().left) / track.offsetWidth) * NOW_H;
+  track.onpointerdown = (e) => { S.touched = true; pause(); track.setPointerCapture(e.pointerId); track._drag = true; setT(fromX(e)); };
+  track.onpointermove = (e) => { if (track._drag) setT(fromX(e)); };
+  track.onpointerup = track.onpointercancel = () => (track._drag = false);
+  track.onkeydown = (e) => {
+    const d = { ArrowLeft: -0.25, ArrowRight: 0.25, Home: -99, End: 99 }[e.key];
+    if (d === undefined) return;
+    e.preventDefault(); S.touched = true; pause(); setT(clamp(S.t + d, 0, NOW_H));
+  };
+
+  // Wipe one world over the other.
+  const grip = $('#grip'), split = $('#split');
+  const fromG = (e) => clamp((e.clientX - split.getBoundingClientRect().left) / split.offsetWidth, 0.06, 0.94);
+  grip.onpointerdown = (e) => { grip.setPointerCapture(e.pointerId); grip._drag = true; grip.classList.add('drag'); $('#hint').classList.add('gone'); };
+  grip.onpointermove = (e) => { if (grip._drag) { S.split = fromG(e); applySplit(); } };
+  grip.onpointerup = grip.onpointercancel = () => { grip._drag = false; grip.classList.remove('drag'); };
+  grip.ondblclick = () => { S.split = 0.5; applySplit(); };
+  grip.onkeydown = (e) => {
+    const d = { ArrowLeft: -0.05, ArrowRight: 0.05 }[e.key];
+    if (d === undefined) return;
+    e.preventDefault(); $('#hint').classList.add('gone');
+    S.split = clamp(S.split + d, 0.06, 0.94); applySplit();
+  };
+}
+
+function applySplit() {
+  const W = $('#split').offsetWidth, x = Math.round(W * S.split);
+  const a = $('#with'), b = $('#without');
+  a.style.width = x + 'px';
+  b.style.width = W - x + 'px';
+  // A world that grows reflows wider; a world that shrinks is wiped over.
+  a.querySelector('.inner').style.width = Math.max(HALF, x) + 'px';
+  b.querySelector('.inner').style.width = Math.max(HALF, W - x) + 'px';
+  $('#divider').style.left = x + 'px';
+  $('#grip').setAttribute('aria-valuenow', String(Math.round(S.split * 100)));
+}
+
+// ─── the clock ────────────────────────────────────────────────────────────
+
+const PLAY = '<svg width="12" height="14" viewBox="0 0 12 14"><path d="M1.5 1.2v11.6L11 7z" fill="currentColor"/></svg>';
+const PAUSE = '<svg width="12" height="14" viewBox="0 0 12 14"><rect x="1" y="1" width="3.6" height="12" rx="1" fill="currentColor"/><rect x="7.4" y="1" width="3.6" height="12" rx="1" fill="currentColor"/></svg>';
+const AGAIN = '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.2 7a4.8 4.8 0 1 0 1.5-3.5M2 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function setPlayLabel() {
+  const b = $('#play');
+  if (!b) return;
+  b.innerHTML = S.playing ? `${PAUSE}Pause` : S.t >= NOW_H - 1e-4 ? `${AGAIN}Replay` : `${PLAY}Play`;
+}
+
+/** Sim hours per real second: about 10 s for the day, slowing for the spike and for now. */
+function rate(t, ts) {
+  let r = (NOW_H / 8.4) * S.speed;
+  const sp = S.M.spike;
+  if (sp && t > sp.a - 0.12 && t < sp.b + 0.05) r *= sp.inc ? 0.3 : 0.6;
+  r *= Math.max(0.22, Math.min(1, NOW_H - t));
+  r *= Math.min(1, 0.2 + ((ts - S.began) / 1000) * 1.4);
+  return r;
+}
+
+function play() {
+  if (S.t >= NOW_H - 1e-4) { S.shown = -1; setT(0); }
+  S.playing = true;
+  S.began = S.last = performance.now();
+  setPlayLabel();
+  cancelAnimationFrame(S.raf);
+  const loop = (ts) => {
+    if (!S.playing) return;
+    const dt = Math.min(0.05, (ts - S.last) / 1000);
+    S.last = ts;
+    const nt = Math.min(NOW_H, S.t + rate(S.t, ts) * dt);
+    if (nt >= NOW_H) { S.playing = false; setT(NOW_H); setPlayLabel(); return; }
+    setT(nt);
+    S.raf = requestAnimationFrame(loop);
+  };
+  S.raf = requestAnimationFrame(loop);
+}
+
+function pause() {
+  S.playing = false;
+  cancelAnimationFrame(S.raf);
+  setT(S.t);
+  setPlayLabel();
+}
+
+// ─── draw one moment of the day ───────────────────────────────────────────
+
+function setT(t) {
+  const { w, M } = S;
+  const prev = S.t;
+  S.t = t;
+
+  // The clock.
+  $('#clk').textContent = clock(t);
+  const done = M.totalAt(t);
+  $('#clkSub').textContent = `${fmtN(done)} ${plural(done, 'action', 'actions')} so far`;
+  const f = (t / NOW_H) * 100;
+  $('#lit').style.clipPath = `inset(0 ${100 - f}% 0 0)`;
+  $('#thumb').style.left = f + '%';
+  $('#track').setAttribute('aria-valuenow', t.toFixed(3));
+  $('#track').setAttribute('aria-valuetext', clock(t));
+
+  const A = $('#with'), B = $('#without');
+  const nowMs = performance.now();
+
+  // The tallies, side by side.
+  let lumniSteps = 0;
+  for (const r of M.rows) {
+    const v = r.count(t), seen = r.watched(t);
+    lumniSteps += v - seen;
+    const a = A.querySelector(`[data-r="${r.id}"]`), b = B.querySelector(`[data-r="${r.id}"]`);
+    const an = a.querySelector('.n');
+    an.textContent = v ? r.calm(fmtN(v - seen), t) : r.has ? 'nothing to catch yet' : 'none today';
+    an.classList.toggle('zero', !v);
+    const ab = a.querySelector('b');
+    ab.textContent = fmtN(seen);
+    ab.classList.toggle('zero', !seen);
+    const bb = b.querySelector('b');
+    const old = Number(bb.dataset.v ?? 0);
+    bb.textContent = fmtN(v);
+    bb.dataset.v = v;
+    bb.classList.toggle('zero', !v);
+    b.querySelector('.n').classList.toggle('zero', !r.has);
+    if (!r.has) b.querySelector('.n').textContent = 'none today';
+    if (S.playing && v > old) { bb.classList.add('up'); bb._until = nowMs + 320; }
+    else if (bb._until && nowMs > bb._until) bb.classList.remove('up');
+    if (!S.playing) bb.classList.remove('up');
+  }
+
+  // The damage odometer, and its zero twin.
+  const money = M.money(t, S.playing);
+  odo(B.querySelector('[data-odo]'), money, S.playing);
+  odo(A.querySelector('[data-odo]'), 0, false);
+  const paid = M.paid(t), hrs = M.hours(t);
+  B.querySelector('[data-c="cust"]').textContent = fmtN(paid);
+  B.querySelector('[data-c="hours"]').textContent = hoursText(hrs);
+  A.querySelector('[data-c="cust"]').textContent = '0';
+  A.querySelector('[data-c="hours"]').textContent = '0 min';
+  if (!M.real) {
+    B.querySelector('[data-c="tix"]').textContent = fmtN(M.tix(t));
+    A.querySelector('[data-c="tix"]').textContent = '0';
+  }
+  A.querySelector('.kept').innerHTML = money >= 1 ? `Lumni stopped <b>${fmtMoney(money)}</b> of repeats at the gate` : 'Nothing has tried to go out twice yet';
+  const twice = M.real ? paid : M.paid(t) / 0.93;
+  B.querySelector('.dnote').textContent = money >= 1 ? `across ${fmtN(Math.round(twice))} ${plural(Math.round(twice), 'action', 'actions')} that ran a second time` : 'Nothing has gone out twice yet';
+
+  // Things that went wrong, by the hour.
+  const bars = B.querySelectorAll('.hours i');
+  const sh = w.stepHourly, peak = Math.max(1, ...sh);
+  bars.forEach((el, h) => {
+    if (h > NOW_H) return;
+    const end = Math.min(h + 1, NOW_H);
+    const p = clamp((t - h) / Math.max(1e-6, end - h));
+    el.style.height = p > 0 && sh[h] ? `${Math.max(3, (sh[h] / peak) * p * 100)}%` : '0';
+  });
+  const wrong = M.wrong(t);
+  B.querySelector('[data-c="wrong"]').textContent = `${fmtN(wrong)} so far`;
+  const seenAll = M.rows.reduce((s, r) => s + r.watched(t), 0);
+  A.querySelector('[data-c="wrong"]').textContent = `${fmtN(seenAll)} so far`;
+  A.querySelector('.flat').style.width = (t / 24) * 100 + '%';
+  A.querySelector('.qs').textContent = `${fmtN(lumniSteps)} ${plural(lumniSteps, 'time', 'times')}`;
+
+  // The world without Lumni slowly turns.
+  const chaos = clamp(wrong / Math.max(1, M.wrong(NOW_H)));
+  B.querySelector('.tint').style.opacity = (M.real && M.wrong(NOW_H) < 20 ? Math.min(0.5, chaos) : Math.pow(chaos, 0.8)).toFixed(3);
+  const pill = B.querySelector('.pill');
+  pill.classList.toggle('on', wrong > 0);
+  pill.querySelector('.pv').textContent = wrong ? `${fmtN(wrong)} ${plural(wrong, 'thing', 'things')} went wrong` : 'Nothing yet';
+
+  // The moment worth calling out, when the day has one.
+  const co = $('#callout');
+  if (co && M.spike) {
+    const at = M.spike.a + 0.02;
+    co.classList.toggle('on', t >= at);
+    if (S.playing && prev < at && t >= at) {
+      B.classList.remove('hit'); void B.offsetWidth; B.classList.add('hit');
+      clearTimeout(S.hitT); S.hitT = setTimeout(() => B.classList.remove('hit'), 1000);
+    }
+  }
+
+  feed(t);
+  sentence(t, money, paid, hrs, wrong);
+}
+
+function feed(t) {
+  const { M } = S;
+  const box = $('#feed');
+  let n = 0;
+  while (n < M.events.length && M.events[n].t <= t) n++;
+  const row = (e, anim) => `<div class="fr ${e.spike ? 'spk' : ''} ${anim ? 'in' : ''}">
+      <time>${e.when}</time><i style="background:${KC[e.kind] ?? KC.any}"></i>
+      <span>${e.text}</span><small>${e.who}</small></div>`;
+  if (n !== S.shown) {
+    const fresh = n - S.shown;
+    if (S.shown >= 0 && fresh > 0 && fresh <= 5 && S.playing) {
+      box.insertAdjacentHTML('afterbegin', M.events.slice(S.shown, n).reverse().map((e) => row(e, true)).join(''));
+      while (box.children.length > 7) box.lastElementChild.remove();
+    } else {
+      box.innerHTML = M.events.slice(Math.max(0, n - 6), n).reverse().map((e) => row(e, false)).join('');
+    }
+    S.shown = n;
+  }
+  const empty = $('#feedEmpty');
+  empty.style.top = n ? `${28 + Math.min(n, 5) * 37 + 14}px` : '40px';
+  empty.textContent = n === 0 ? (M.real ? 'Quiet so far.' : 'Quiet so far. The night shift is light.') : '';
+}
+
+function sentence(t, money, paid, hrs, wrong) {
+  const { M } = S;
+  const end = t >= NOW_H - 1e-4;
+  $('#dWhen').textContent = `The difference, by ${end ? S.w.timeLabel : clock(t)}`;
+  const when = end ? 'today' : 'today so far';
+  if (!M.real) {
+    $('#dText').innerHTML = `Without Lumni, ${when} would have cost <mark>${fmtMoney(money)}</mark> in double payouts,
+      <mark>${fmtN(paid)} ${plural(paid, 'customer', 'customers')}</mark> hit twice and <mark>${hoursText(hrs)}</mark> of cleanup.`;
+    return;
+  }
+  if (!wrong) {
+    $('#dText').innerHTML = `Without Lumni, ${when} <span style="color:var(--ink3)">would have gone the same. Nothing has needed a step-in yet.</span>`;
+    return;
+  }
+  if (money >= 1 || paid) {
+    $('#dText').innerHTML = `Without Lumni, ${when} would have cost <mark>${fmtMoney(money)}</mark> in double payouts,
+      <mark>${fmtN(paid)} ${plural(paid, 'repeat', 'repeats')}</mark> that paid out twice and <mark>${hoursText(hrs)}</mark> of cleanup.`;
+    return;
+  }
+  $('#dText').innerHTML = `Without Lumni, ${when} would have had <mark>${fmtN(wrong)} ${plural(wrong, 'thing', 'things')}</mark> go wrong and <mark>${hoursText(hrs)}</mark> of cleanup.`;
+}
+
+Shell.boot({ nav: 'Without Lumni', onWorld: (w) => render(w) });
+</script>
+</body>
+</html>

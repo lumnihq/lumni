@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Flow</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --sky: #3b9eff; }
+  .head { display: flex; align-items: flex-end; gap: 24px; padding: 32px 40px 0; }
+  .head h1 { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1.08; }
+  .head h1 .live { color: var(--accent); }
+  .head p { margin-top: 8px; font-size: 16px; color: var(--ink2); max-width: 820px; }
+  .head .controls { margin-left: auto; display: flex; gap: 8px; flex: none; align-items: center; }
+
+  .bar { display: flex; align-items: center; gap: 10px; padding: 20px 40px 14px; }
+  .seg { display: flex; padding: 3px; border-radius: 10px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 30px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .seg button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,14,20,.12); }
+  .focus { display: none; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 650; }
+  .focus.on { display: inline-flex; animation: rise .3s var(--ease) both; }
+  .focus button { width: 22px; height: 22px; border-radius: 6px; color: var(--accent); }
+  .legend { margin-left: auto; display: flex; gap: 16px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  .mapcard { position: relative; margin: 0 40px; height: 600px; overflow: hidden; }
+  .mapcard svg, .mapcard canvas { position: absolute; inset: 0; width: 1360px; height: 600px; }
+  .mapcard canvas { pointer-events: none; }
+
+  .pipe { fill: none; stroke-linecap: round; stroke-linejoin: round; transition: opacity .35s, stroke .35s; }
+  .rail { fill: none; stroke: rgba(13,14,20,.18); stroke-width: 1; stroke-linecap: round; transition: opacity .35s; }
+  .hit { fill: none; stroke: transparent; stroke-linecap: round; cursor: pointer; pointer-events: stroke; }
+  svg.dim .grp { opacity: .18; }
+  svg.dim .grp.hot { opacity: 1; }
+  .grp { transition: opacity .35s; }
+  .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.4s var(--ease) var(--delay, 0s) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  .stn circle { fill: #fff; stroke: var(--ink); stroke-width: 2.5; }
+  .stn text, .lab text { font-family: var(--sans); }
+  .t1 { font-size: 13.5px; font-weight: 700; fill: var(--ink); }
+  .t2 { font-size: 12px; font-weight: 550; fill: var(--ink2); }
+  .big { font-size: 22px; font-weight: 750; letter-spacing: -.02em; fill: var(--ink); font-variant-numeric: tabular-nums; }
+  .term { cursor: pointer; }
+  .term circle.core { transition: r .3s var(--spring); }
+  .term:hover circle.core { r: 11; }
+  .hub circle { fill: #fff; stroke: var(--ink); stroke-width: 3; }
+  .appdot { fill: #fff; stroke-width: 2.5; }
+  .fadein { opacity: 0; animation: fade .6s var(--ease) var(--delay, 1s) forwards; }
+  @keyframes fade { to { opacity: 1; } }
+
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none;
+    min-width: 220px; max-width: 300px; padding: 12px 14px;
+    border-radius: 14px; background: var(--ink); color: #fff;
+    font-size: 13px; line-height: 1.4;
+    box-shadow: 0 20px 40px -12px rgba(13,14,20,.5);
+    transform: translate(-50%, calc(-100% - 14px));
+    opacity: 0; transition: opacity .15s;
+  }
+  .tip.on { opacity: 1; }
+  .tip b { font-size: 15px; }
+  .tip small { display: block; color: #b9bccb; margin-top: 3px; }
+
+  .moment {
+    position: absolute; z-index: 4;
+    padding: 12px 16px; border-radius: 16px;
+    background: var(--accent); color: #fff;
+    font-size: 14px; font-weight: 600; line-height: 1.35;
+    box-shadow: 0 20px 44px -12px rgba(91,75,245,.6);
+    max-width: 330px;
+    animation: pop .5s var(--spring) both;
+  }
+  .moment b { font-size: 22px; display: block; letter-spacing: -.02em; }
+  @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.9); } }
+
+  /* Drill in. */
+  .drawer {
+    position: absolute; top: 64px; right: 0; bottom: 0; width: 440px; z-index: 25;
+    background: #fff; box-shadow: -30px 0 80px -30px rgba(30,20,90,.3);
+    transform: translateX(105%); transition: transform .5s var(--spring);
+    padding: 26px 26px; overflow: auto;
+  }
+  .drawer.on { transform: none; }
+  .drawer .x { position: absolute; right: 18px; top: 18px; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; color: var(--ink2); }
+  .drawer h2 { font-size: 30px; font-weight: 750; letter-spacing: -.025em; margin-top: 12px; }
+  .drawer h2 + p { color: var(--ink2); margin-top: 4px; }
+  .drawer h4 { font-size: 13px; font-weight: 650; color: var(--ink2); margin: 22px 0 10px; }
+  .spark { width: 100%; height: 70px; }
+  .pat { padding: 12px 14px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 8px; }
+  .pat .r1 { display: flex; gap: 10px; align-items: baseline; }
+  .pat .r1 b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .pat .r1 span { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+  .pat .track { height: 5px; border-radius: 3px; background: var(--wash); margin-top: 10px; overflow: hidden; }
+  .pat .track i { display: block; height: 100%; border-radius: 3px; animation: grow .8s var(--ease) both; transform-origin: left; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .pat .r2 { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; color: var(--ink2); }
+  .pat .r2 a { margin-left: auto; font-weight: 650; color: var(--accent); }
+
+  /* Sentences worth sharing. */
+  .insights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px 40px 40px; }
+  .ins { padding: 20px 22px; }
+  .ins .k { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--ink2); }
+  .ins .k i { width: 9px; height: 9px; border-radius: 50%; }
+  .ins p { font-size: 17px; font-weight: 600; line-height: 1.35; margin-top: 8px; letter-spacing: -.01em; }
+  .ins p em { font-style: normal; color: var(--accent); }
+  .ins a, .ins button.lnk { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 650; color: var(--accent); }
+  .ins.calm p { color: var(--ink2); font-weight: 550; }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.confirm { background: var(--ink); color: #fff; box-shadow: none; }
+  .pat .r2 button { margin-left: auto; font-weight: 650; color: var(--accent); font-size: 12.5px; }
+  .empty-map { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+  .empty-map div { pointer-events: auto; max-width: 420px; padding: 22px 26px; border-radius: 18px; background: #fff; box-shadow: var(--shadow-lg); text-align: center; }
+  .empty-map b { display: block; font-size: 20px; letter-spacing: -.01em; }
+  .empty-map p { color: var(--ink2); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+
+  <section class="head">
+    <div>
+      <h1><span class="live num" id="count">0</span> actions went through Lumni today</h1>
+      <p id="sub">&nbsp;</p>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="resumeAll" style="display:none">Resume every AI</button>
+      <button class="btn" id="pause">Pause</button>
+      <button class="btn accent" id="moment" style="display:none">Replay</button>
+    </div>
+  </section>
+
+  <section class="bar">
+    <div class="seg" id="range">
+      <button data-r="hour">Last hour</button><button data-r="day" aria-pressed="true">Today</button><button data-r="week">7 days</button>
+    </div>
+    <span class="focus" id="focus"><span id="focustext"></span><button id="unfocus" aria-label="Show all">×</button></span>
+    <div class="legend">
+      <span><i style="background:var(--ink)"></i>Went through</span>
+      <span><i style="background:var(--orange)"></i>Looked again</span>
+      <span><i style="background:var(--sky)"></i>Waited its turn</span>
+      <span><i style="background:var(--accent)"></i>Lumni stopped it</span>
+      <span><i style="background:var(--red)"></i>Didn’t happen</span>
+      <span style="color:var(--ink3)">Hover or click any line</span>
+    </div>
+  </section>
+
+  <section class="card mapcard" id="mapcard">
+    <svg id="map" viewBox="0 0 1360 600"></svg>
+    <canvas id="cv" width="1360" height="600"></canvas>
+    <div class="tip" id="tip"></div>
+  </section>
+
+  <section class="insights" id="insights"></section>
+
+  <aside class="drawer" id="drawer"><button class="x" id="dx" aria-label="Close">×</button><div id="dbody"></div></aside>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('#map');
+const cv = $('#cv');
+const ctx = cv.getContext('2d');
+const DPR = Math.min(2, devicePixelRatio || 1);
+cv.width = 1360 * DPR; cv.height = 600 * DPR; ctx.scale(DPR, DPR);
+
+const COL = { ink: '#0d0e14', recheck: '#f08a24', wait: '#3b9eff', stop: '#5b4bf5', ask: '#0d0e14', bad: '#ff3b30', blind: '#a3a7b3', proven: '#5b4bf5' };
+const SOFT = { trunk: '#e9e8f3', recheck: '#fde7d1', wait: '#d8ebff', stop: '#dcd7ff', ask: '#dedee6', bad: '#ffd9d6', blind: '#ececf1', proven: '#dcd7ff' };
+
+let w, paths = {}, groups = {}, range = 'day', focusTeam = null, paused = false;
+const el = (tag, attrs = {}, parent = svg) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+};
+const width = (share) => 1.6 + 20 * Math.sqrt(Math.max(0, share));
+/** The last 60 minutes, from the hour so far and the end of the hour before. */
+const lastHour = () => {
+  const h = Math.min(23, Math.floor(w.nowH)), f = w.nowH - h;
+  return (w.hourly[h] ?? 0) + (h > 0 ? w.hourly[h - 1] * (1 - f) : 0);
+};
+/** Your workspace: the last seven days, today included, from the daily history. */
+const week7 = () => (w.week?.days ?? []).slice(-7);
+const weekSum = (k) => week7().reduce((s, d) => s + (d[k] ?? 0), 0);
+// The demo scales its day; your workspace uses today's hours and the real week,
+// and splits those totals across the map in today's proportions.
+const RANGE = {
+  hour: () => lastHour() / Math.max(1, w.total),
+  day: () => 1,
+  week: () => (Shell.isReal ? weekSum('total') / Math.max(1, w.total) : 6.4),
+};
+const scaleN = (n) => n * RANGE[range]();
+/** The headline count for the range: exact for today and the real week. */
+const rangeTotal = (live) => (Shell.isReal && range === 'week' ? weekSum('total') : scaleN(live));
+/** Money kept in the range: the real week sums its days. */
+const rangeKept = () => (Shell.isReal && range === 'week' ? weekSum('kept') : scaleN(w.kept));
+/** One pattern's share of the money kept, in the range. */
+const scaleKept = (v) => (w.kept ? (v * rangeKept()) / w.kept : scaleN(v));
+const provenN = () => (Shell.isReal ? Math.round(w.total * w.proven) : Math.max(0, w.total - w.kinds.stop - w.kinds.ask - w.kinds.blind - w.kinds.bad));
+const upper1 = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+const plural = (n, one, many) => (Math.round(n) === 1 ? one : many);
+const trunc = (s, n = 96) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const hourName = (h) => { h = Math.floor(h) % 24; return h === 0 ? '12 AM' : h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`; };
+/** Demo stories are named; real ones are action ids. */
+const storyHref = (s) => (Shell.isReal ? `/journey?id=${encodeURIComponent(s)}` : `/journey?story=${encodeURIComponent(s)}`);
+/** Switch an app's checker on: a real write in your workspace, a toast in the demo. */
+async function checkApp(a) {
+  if (!Shell.isReal) return Shell.toast(`In your workspace, this switches the checker for ${a.name} on.`);
+  await Shell.write('POST', `/v1/console/apps/${encodeURIComponent(a.id)}/checker`, { on: true }, { ok: `Lumni now checks ${a.name}.` });
+}
+
+// ─── the map ────────────────────────────────────────
+
+const Y = 300, X0 = 330;
+const TERM = { stop: [620, 540], ask: [860, 540], proven: [1198, 200], blind: [1198, 300], bad: [1198, 400] };
+const ST = { fresh: 420, done: 540, other: 660, rule: 780 };
+
+function layout() {
+  svg.innerHTML = '';
+  paths = {}; groups = {};
+  const total = w.total;
+  const share = (n) => n / Math.max(1, total);
+  const k = w.kinds;
+  const teams = w.teams;
+  const apps = w.apps;
+
+  const grp = (id, cls = '') => (groups[id] = el('g', { class: 'grp ' + cls, 'data-id': id }));
+  const pipe = (g, id, d, wdt, color, delay = 0, dash) => {
+    const p = el('path', { class: 'pipe draw', d, 'stroke-width': wdt, stroke: color, style: `--delay:${delay}s` }, g);
+    const len = p.getTotalLength();
+    p.style.setProperty('--len', len);
+    if (dash) { p.classList.remove('draw'); p.setAttribute('stroke-dasharray', dash); p.classList.add('fadein'); p.style.setProperty('--delay', delay + 's'); }
+    el('path', { class: 'rail fadein', d, style: `--delay:${delay + 0.6}s` }, g);
+    el('path', { class: 'hit', d, 'stroke-width': Math.max(14, wdt + 10), 'data-id': g.dataset.id }, g);
+    paths[id] = sample(p);
+    return p;
+  };
+
+  // Teams flow in from the left.
+  const n = teams.length;
+  teams.forEach((t, i) => {
+    const y = n === 1 ? Y : 100 + (400 * i) / (n - 1);
+    const g = grp('team-' + t.id, 'team');
+    pipe(g, 'team-' + t.id, `M200,${y} C268,${y} 262,${Y} ${X0},${Y}`, width(share(t.n)), SOFT.trunk, 0.05 * i);
+    const lg = el('g', { class: 'lab fadein', style: `--delay:${0.3 + 0.05 * i}s;cursor:pointer`, 'data-id': 'team-' + t.id }, g);
+    el('rect', { x: 40, y: y - 11, width: 22, height: 22, rx: 6, fill: t.id === 'other' ? '#a3a7b3' : COL.ink }, lg);
+    const a = el('text', { x: 51, y: y + 4, 'text-anchor': 'middle', style: 'font:700 9.5px var(--sans);fill:#fff' }, lg); a.textContent = t.ai;
+    const tt = el('text', { x: 70, y: y - 1, class: 't1' }, lg); tt.textContent = t.name;
+    const tn = el('text', { x: 70, y: y + 14, class: 't2', 'data-count': 'team-' + t.id }, lg); tn.textContent = fmtN(scaleN(t.n));
+    lg.addEventListener('click', () => setFocus(t));
+  });
+
+  // The trunk and its four checks.
+  const tg = grp('trunk');
+  pipe(tg, 's0', `M${X0},${Y} H${ST.fresh}`, width(1), SOFT.trunk, 0.35);
+  pipe(tg, 's1', `M${ST.fresh},${Y} H${ST.done}`, width(1), SOFT.trunk, 0.45);
+  pipe(tg, 's2', `M${ST.done},${Y} H${ST.other}`, width(1), SOFT.trunk, 0.55);
+  pipe(tg, 's3', `M${ST.other},${Y} H${ST.rule}`, width(1), SOFT.trunk, 0.65);
+
+  // Step-ins peel off the trunk.
+  const gr = grp('recheck', 'kind');
+  pipe(gr, 'recheck', `M${ST.fresh},${Y} C${ST.fresh},176 ${X0},176 ${X0},${Y}`, width(Math.min(share(k.recheck) * 6, 0.2)), SOFT.recheck, 0.9);
+  label(gr, 375, 168, k.recheck, 'looked again', 'recheck', 'middle');
+
+  const gs = grp('stop', 'kind');
+  pipe(gs, 'stop', `M${ST.done},${Y} C${ST.done},440 ${ST.done + 20},540 ${ST.done + 80},540`, width(Math.min(share(k.stop) * 8, 0.2)), SOFT.stop, 1.0);
+  terminal(gs, ST.done + 80, 540, 'stop', k.stop, plural(k.stop, 'repeat stopped', 'repeats stopped'), w.kept ? fmtMoney(rangeKept()) + ' kept' : '');
+
+  const gw = grp('wait', 'kind');
+  pipe(gw, 'wait', `M${ST.other},${Y} C${ST.other + 50},${Y} ${ST.other + 58},392 ${ST.other},392 C${ST.other - 58},392 ${ST.other - 50},${Y} ${ST.other},${Y}`, width(Math.min(share(k.wait) * 6, 0.2)), SOFT.wait, 1.1);
+  label(gw, ST.other, 420, k.wait, 'waited their turn', 'wait', 'middle');
+
+  const ga = grp('ask', 'kind');
+  pipe(ga, 'ask', `M${ST.rule},${Y} C${ST.rule},440 ${ST.rule + 20},540 ${ST.rule + 80},540`, width(Math.min(Math.max(share(k.ask) * 40, 0.0004), 0.2)), SOFT.ask, 1.2);
+  terminal(ga, ST.rule + 80, 540, 'ask', k.ask, k.ask === 1 ? 'decision asked you' : 'decisions asked you', 'Open Needs you');
+
+  // Out to the apps, then back to proof.
+  const m = apps.length;
+  apps.forEach((a, i) => {
+    const y = m === 1 ? Y : 110 + (340 * i) / (m - 1);
+    const g = grp('app-' + a.id, 'app');
+    const wd = width(share(a.n));
+    pipe(g, 'fan-' + a.id, `M${ST.rule},${Y} C840,${Y} 840,${y} 900,${y} H960`, wd, SOFT.trunk, 1.3 + 0.04 * i);
+    pipe(g, 'merge-' + a.id, `M960,${y} C1010,${y} 1010,${Y} 1046,${Y}`, wd, SOFT.trunk, 1.5 + 0.04 * i);
+    const lg = el('g', { class: 'fadein', style: `--delay:${1.6 + 0.04 * i}s` }, g);
+    el('circle', { cx: 930, cy: y, r: 6, class: 'appdot', stroke: a.blind ? '#a3a7b3' : COL.ink, 'stroke-dasharray': a.blind ? '3 3' : '' }, lg);
+    const t = el('text', { x: 930, y: y - 13, class: 't1', 'text-anchor': 'middle', style: 'font-size:12.5px' }, lg); t.textContent = a.name;
+    const c = el('text', { x: 930, y: y + 22, class: 't2', 'text-anchor': 'middle', 'data-count': 'app-' + a.id }, lg); c.textContent = fmtN(scaleN(a.n)) + (a.blind ? ', can’t check' : '');
+  });
+
+  // Your workspace counts proofs directly; the demo derives them.
+  const proven = provenN();
+  const reached = Math.max(1, w.total - k.stop - k.ask);
+  const gp = grp('proven', 'kind');
+  pipe(gp, 'proven', `M1094,${Y} C1136,${Y} 1132,200 1176,200 H1190`, width(share(proven)), SOFT.proven, 1.8);
+  terminal(gp, TERM.proven[0], 200, 'proven', proven, 'proven in the app', pct(proven / reached) + ' of what ran', true);
+  const gb = grp('blind', 'kind');
+  pipe(gb, 'blind', `M1094,${Y} H1190`, width(share(k.blind)), SOFT.blind, 1.85, '5 6');
+  terminal(gb, TERM.blind[0], Y, 'blind', k.blind, 'can’t be checked', k.blind ? 'no checker covers it' : '', true);
+  const gx = grp('bad', 'kind');
+  pipe(gx, 'bad', `M1094,${Y} C1136,${Y} 1132,400 1176,400 H1190`, width(Math.min(Math.max(share(k.bad) * 10, 0.0004), 0.2)), SOFT.bad, 1.9);
+  terminal(gx, TERM.bad[0], 400, 'bad', k.bad, 'didn’t happen', k.bad ? 'needs you' : '', true);
+
+  const hub = el('g', { class: 'hub fadein', style: '--delay:1.7s' });
+  el('circle', { cx: 1070, cy: Y, r: 24 }, hub);
+  const ht = el('text', { x: 1070, y: Y + 4.5, 'text-anchor': 'middle', class: 't1', style: 'font-size:12.5px' }, hub); ht.textContent = 'Proof';
+
+  // An empty day still shows the shape, with a next step on top.
+  $('#mapcard .empty-map')?.remove();
+  if (!w.total) {
+    const d = document.createElement('div');
+    d.className = 'empty-map';
+    d.innerHTML = '<div><b>Nothing has gone through Lumni yet today</b><p>Once your AIs act, each action flows from its AI, through the four checks, to its app. Rules decide where Lumni steps in.</p><a class="btn" href="/fixes" style="margin-top:14px">See the rules</a></div>';
+    $('#mapcard').appendChild(d);
+  }
+
+  // Branches with nothing today step back.
+  for (const kk of ['recheck', 'wait', 'stop', 'ask', 'bad', 'blind']) if (!k[kk]) groups[kk].style.opacity = 0.35;
+
+  // Station markers on top.
+  const names = [['fresh', 'Up to date?', 'below'], ['done', 'Done already?', 'above'], ['other', 'Anyone else on it?', 'above'], ['rule', 'Allowed?', 'above']];
+  for (const [id, t, where] of names) {
+    const g = el('g', { class: 'stn fadein', style: '--delay:.8s' });
+    el('circle', { cx: ST[id], cy: Y, r: 8 }, g);
+    const tx = el('text', { x: ST[id], y: where === 'below' ? Y + 38 : Y - 26, 'text-anchor': 'middle', class: 't1' }, g);
+    tx.textContent = t;
+  }
+
+  bindHover();
+}
+
+function label(g, x, y, n, text, kind, anchor) {
+  const lg = el('g', { class: 'lab fadein term', style: '--delay:1.4s', 'data-id': kind }, g);
+  const b = el('text', { x, y: y, 'text-anchor': anchor, class: 'big', style: 'font-size:19px', 'data-count': kind }, lg); b.textContent = fmtN(scaleN(n));
+  const t = el('text', { x, y: y + 16, 'text-anchor': anchor, class: 't2' }, lg); t.textContent = text;
+  lg.addEventListener('click', () => drill(kind));
+}
+
+function terminal(g, x, y, kind, n, text, sub, right) {
+  const tg = el('g', { class: 'term fadein', style: '--delay:1.6s', 'data-id': kind }, g);
+  el('circle', { cx: x, cy: y, r: 16, fill: COL[kind], opacity: kind === 'blind' ? 0 : 0.14 }, tg);
+  el('circle', { class: 'core', cx: x, cy: y, r: 8, fill: kind === 'blind' ? '#fff' : COL[kind], stroke: kind === 'blind' ? '#a3a7b3' : '#fff', 'stroke-width': 2.5, 'stroke-dasharray': kind === 'blind' ? '3 3' : '' }, tg);
+  const tx = x + 20;
+  const b = el('text', { x: tx, y: y + 2, class: 'big', 'data-count': kind }, tg); b.textContent = fmtN(scaleN(n));
+  const t = el('text', { x: tx, y: y + 19, class: 't2' }, tg); t.textContent = text;
+  if (sub) { const s = el('text', { x: tx, y: y + 34, class: 't2', ...(kind === 'stop' && w.kept ? { 'data-kept': 1 } : {}), style: `fill:${kind === 'bad' ? 'var(--red)' : kind === 'blind' ? 'var(--ink3)' : 'var(--accent)'};font-weight:650` }, tg); s.textContent = sub; }
+  tg.addEventListener('click', () => (kind === 'ask' ? (location.href = '/needs-you') : drill(kind)));
+}
+
+/** Points every 1.5px, so particles never call into SVG per frame. */
+function sample(p) {
+  const L = p.getTotalLength();
+  const n = Math.max(2, Math.ceil(L / 1.5));
+  const xs = new Float32Array(n + 1), ys = new Float32Array(n + 1);
+  for (let i = 0; i <= n; i++) { const q = p.getPointAtLength((L * i) / n); xs[i] = q.x; ys[i] = q.y; }
+  return { L, n, xs, ys };
+}
+
+// ─── particles ──────────────────────────────────────
+
+let parts = [], bursts = [], spawnAcc = 0, surge = 0, story = null;
+
+function pick(arr, f) {
+  let x = Math.random() * arr.reduce((s, a) => s + f(a), 0);
+  for (const a of arr) { x -= f(a); if (x < 0) return a; }
+  return arr[arr.length - 1];
+}
+
+/** Visible rates: rare things shown often enough to see; counts stay exact. */
+function vis(kind) {
+  const r = w.kinds[kind] / Math.max(1, w.total);
+  const floor = { recheck: 0.07, wait: 0.06, stop: 0.055, ask: 0.02, bad: 0.025, blind: 0.06 }[kind];
+  // Only kinds that happened today get a floor.
+  return w.kinds[kind] ? Math.max(r, floor) : 0;
+}
+
+function route(forced) {
+  const team = focusTeam ?? pick(w.teams, (t) => t.n);
+  const r = [{ p: 'team-' + team.id }, { p: 's0' }];
+  // Every AI paused: actions get as far as the first check, and wait there.
+  if (held()) return { r, end: 'held', team };
+  let end = null;
+  const f = forced ?? {};
+  if (f.recheck ?? Math.random() < vis('recheck')) r.push({ p: 'recheck', c: 'recheck' }, { p: 's0', c: 'recheck' });
+  r.push({ p: 's1' });
+  const stopP = vis('stop') + (surge > 0 ? 0.45 : 0);
+  if (f.stop ?? Math.random() < stopP) { r.push({ p: 'stop', c: 'stop' }); end = 'stop'; return { r, end, team }; }
+  r.push({ p: 's2' });
+  if (f.wait ?? Math.random() < vis('wait')) r.push({ p: 'wait', c: 'wait' });
+  r.push({ p: 's3' });
+  if (f.ask ?? Math.random() < vis('ask')) { r.push({ p: 'ask', c: 'ask' }); end = 'ask'; return { r, end, team }; }
+  const app = f.app ?? pick(w.apps, (a) => a.n);
+  r.push({ p: 'fan-' + app.id }, { p: 'merge-' + app.id });
+  if (app.blind || (f.blind ?? Math.random() < vis('blind') * 0.4)) { r.push({ p: 'blind', c: 'blind' }); end = 'blind'; }
+  else if (f.bad ?? Math.random() < vis('bad')) { r.push({ p: 'bad', c: 'bad' }); end = 'bad'; }
+  else { r.push({ p: 'proven', c: 'proven' }); end = 'proven'; }
+  return { r, end, team };
+}
+
+function spawn(forced, extra = {}) {
+  if (!w.teams.length || !w.apps.length) return;
+  const { r, end } = route(forced);
+  const a = w.scale.actions;
+  parts.push({ r, i: 0, d: 0, v: 150 + Math.random() * 70, end, rad: a > 500000 ? 1.7 : a > 20000 ? 2.2 : 2.8, ...extra });
+}
+
+/** Particles a second: busier days run denser, an empty one runs none. */
+const rate = () => (w.total ? Math.max(2, Math.min(95, 16 * Math.pow(w.scale.actions / 2236, 0.33))) : 0);
+
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000);
+  last = t;
+  if (!paused && w) {
+    spawnAcc += dt * rate() * (focusTeam ? 0.6 : 1);
+    while (spawnAcc >= 1) { spawnAcc--; spawn(); }
+    if (surge > 0) surge -= dt;
+    tickCounts(dt);
+  }
+  // Fade the last frame a little, for short trails.
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = `rgba(0,0,0,${paused ? 0 : 0.34})`;
+  ctx.fillRect(0, 0, 1360, 600);
+  ctx.globalCompositeOperation = 'source-over';
+
+  const keep = [];
+  for (const p of parts) {
+    if (!paused) p.d += p.v * dt;
+    let seg = paths[p.r[p.i].p];
+    while (seg && p.d > seg.L) {
+      p.d -= seg.L;
+      p.i++;
+      if (p.i >= p.r.length) { seg = null; break; }
+      seg = paths[p.r[p.i].p];
+    }
+    if (!seg) { arrive(p); continue; }
+    const k = Math.min(seg.n, Math.round((p.d / seg.L) * seg.n));
+    const x = seg.xs[k], y = seg.ys[k];
+    const c = p.r[p.i].c ?? (p.r.slice(0, p.i).some((s) => s.c === 'recheck') ? 'recheck' : null);
+    const color = c && c !== 'proven' ? COL[c] : c === 'proven' ? COL.proven : COL.ink;
+    if (p.label) {
+      drawLabel(x, y, p.label, c === 'stop' ? COL.stop : COL.ink);
+    } else {
+      if (c && c !== 'blind' && c !== 'proven') {
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(x, y, p.rad * 3, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = c === 'blind' ? 0.45 : c ? 0.95 : 0.5;
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x, y, c ? p.rad * 1.25 : p.rad, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    keep.push(p);
+  }
+  parts = keep;
+
+  // Arrivals ring out at the terminals.
+  bursts = bursts.filter((b) => {
+    b.t += dt;
+    const q = b.t / 0.6;
+    if (q >= 1) return false;
+    ctx.globalAlpha = (1 - q) * 0.8;
+    ctx.strokeStyle = b.c;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(b.x, b.y, 8 + q * 22, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+  requestAnimationFrame(frame);
+}
+
+function drawLabel(x, y, text, color) {
+  ctx.font = '700 12px ' + getComputedStyle(document.body).fontFamily;
+  const tw = ctx.measureText(text).width + 20;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(x - tw / 2, y - 12, tw, 24, 12); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y + 0.5);
+}
+
+function arrive(p) {
+  if (p.end === 'held') { bursts.push({ x: ST.fresh, y: Y, t: 0, c: '#a3a7b3' }); return; }
+  if (!p.end || p.end === 'blind') return;
+  if (p.end === 'proven' && Math.random() > 0.25) return;
+  const [x, y] = TERM[p.end];
+  bursts.push({ x, y, t: 0, c: COL[p.end] });
+  if (p.onArrive) p.onArrive();
+}
+
+// ─── live counts ────────────────────────────────────
+
+let live = {}, tickAcc = 0;
+function resetCounts() {
+  live = { total: w.total, ...w.kinds, kept: w.kept };
+  for (const t of w.teams) live['team-' + t.id] = t.n;
+  for (const a of w.apps) live['app-' + a.id] = a.n;
+  live.proven = provenN();
+}
+function tickCounts(dt) {
+  // Real time: actions per second at this volume.
+  // The demo keeps counting; your workspace shows what was read, until you read it again.
+  const perSec = Shell.isReal ? 0 : w.scale.actions / 86400 * 1.6;
+  tickAcc += perSec * dt;
+  if (tickAcc < 1) return;
+  const n = Math.floor(tickAcc);
+  tickAcc -= n;
+  live.total += n;
+  live.proven += n * w.proven;
+  for (const t of w.teams) live['team-' + t.id] += n * t.w;
+  for (const a of w.apps) live['app-' + a.id] += n * a.w;
+  for (const k of ['recheck', 'wait', 'stop', 'blind', 'bad']) live[k] += n * (w.kinds[k] / w.total);
+  paint();
+}
+function paint() {
+  $('#count').textContent = fmtN(rangeTotal(live.total));
+  for (const e of $$('[data-kept]')) e.textContent = fmtMoney(rangeKept()) + ' kept';
+  for (const e of $$('[data-count]')) {
+    const id = e.dataset.count;
+    if (live[id] === undefined) continue;
+    const suffix = id.startsWith('app-') && w.app(id.slice(4))?.blind ? ', can’t check' : '';
+    e.textContent = fmtN(scaleN(live[id])) + suffix;
+  }
+}
+
+// ─── hover, focus, drill ────────────────────────────
+
+const TIPS = {
+  recheck: () => [`${fmtN(scaleN(live.recheck))} looked again`, 'Their info was old, so Lumni sent them back to read the latest before acting.'],
+  wait: () => [`${fmtN(scaleN(live.wait))} waited their turn`, 'Another AI or a person was changing the same thing.'],
+  stop: () => [`${fmtN(scaleN(live.stop))} ${plural(scaleN(live.stop), 'repeat', 'repeats')} stopped`, w.kept ? `They had already happened. ${fmtMoney(rangeKept())} never went out twice.` : 'They had already happened, so none of them ran twice.'],
+  ask: () => [`${fmtN(scaleN(w.kinds.ask))} asked you`, 'A rule says a person decides these. Click to open Needs you.'],
+  proven: () => [`${fmtN(scaleN(live.proven))} proven`, 'Lumni read the app back and the change is really there.'],
+  blind: () => [`${fmtN(scaleN(live.blind))} can’t be checked`, 'No checker covers the app, so Lumni only has the AI’s word.'],
+  bad: () => [`${fmtN(scaleN(live.bad))} didn’t happen`, 'The AI said done. The app shows nothing.'],
+  trunk: () => [`${fmtN(scaleN(live.total))} actions`, 'Every action passes the same four checks.'],
+};
+
+function bindHover() {
+  const tip = $('#tip');
+  const box = $('#mapcard').getBoundingClientRect.bind($('#mapcard'));
+  svg.onmousemove = (e) => {
+    const g = e.target.closest('.grp');
+    $$('.grp.hot').forEach((x) => x !== g && x.classList.remove('hot'));
+    if (!g) { svg.classList.remove('dim'); tip.classList.remove('on'); return; }
+    g.classList.add('hot');
+    svg.classList.add('dim');
+    const id = g.dataset.id;
+    let t;
+    if (id.startsWith('team-')) { const tm = w.teams.find((x) => 'team-' + x.id === id); t = [`${tm.name}: ${fmtN(scaleN(live[id]))}`, `${pct(tm.n / Math.max(1, w.total))} of all actions. Click to follow only ${tm.name}.`]; }
+    else if (id.startsWith('app-')) { const a = w.apps.find((x) => 'app-' + x.id === id); t = [`${a.name}: ${fmtN(scaleN(live[id]))}`, a.blind ? 'No checker covers it, so Lumni can’t check these.' : 'Lumni reads each one back after.']; }
+    else t = (TIPS[id] ?? TIPS.trunk)();
+    tip.innerHTML = `<b>${Shell.esc(t[0])}</b><small>${Shell.esc(t[1])}</small>`;
+    const r = box();
+    tip.style.left = e.clientX - r.left + 'px';
+    tip.style.top = e.clientY - r.top + 'px';
+    tip.classList.add('on');
+  };
+  svg.onmouseleave = () => { svg.classList.remove('dim'); $$('.grp.hot').forEach((x) => x.classList.remove('hot')); tip.classList.remove('on'); };
+  svg.onclick = (e) => {
+    const g = e.target.closest('.grp');
+    if (!g) return;
+    const id = g.dataset.id;
+    if (id.startsWith('team-')) setFocus(w.teams.find((x) => 'team-' + x.id === id));
+    else if (['recheck', 'wait', 'stop', 'bad', 'proven', 'blind'].includes(id)) drill(id);
+    else if (id === 'ask') location.href = '/needs-you';
+  };
+}
+
+function setFocus(t) {
+  focusTeam = t;
+  parts = [];
+  $('#focus').classList.toggle('on', !!t);
+  if (t) $('#focustext').textContent = `Following ${t.name} only`;
+  $$('.grp.team').forEach((g) => (g.style.opacity = !t || g.dataset.id === 'team-' + t.id ? 1 : 0.15));
+}
+$('#unfocus').onclick = () => setFocus(null);
+
+const KIND = {
+  stop: ['Lumni stopped it', 'var(--accent)', ['repeat stopped', 'repeats stopped'], () => (w.kept ? `${fmtMoney(rangeKept())} never went out twice.` : 'Each one had already happened, so none of them ran twice.')],
+  recheck: ['Looked again', 'var(--orange)', ['looked again', 'looked again'], () => 'Their info was old. They read the latest, then went ahead.'],
+  wait: ['Waited its turn', 'var(--sky)', ['waited its turn', 'waited their turn'], () => 'Nothing clashed. Each went once the thing was free.'],
+  bad: ['Didn’t happen', 'var(--red)', ['didn’t happen', 'didn’t happen'], () => 'The AI said done. The app shows nothing. These need you.'],
+  proven: ['Proven', 'var(--accent)', ['proven in the app', 'proven in the app'], () => `${pct(w.proven)} of everything today is proven in the app itself.`],
+  blind: ['Can’t be checked', 'var(--ink3)', ['can’t be checked', 'can’t be checked'], () => 'Switch a checker on for these apps and Lumni checks every one.'],
+};
+const EMPTY = {
+  stop: 'No repeats today. When an AI tries something twice, Lumni stops the copy and it shows up here.',
+  recheck: 'No AI acted on old info today.',
+  wait: 'No AI had to wait for another today.',
+  bad: 'Every change Lumni could check is really there.',
+  proven: 'Nothing proven yet. Lumni reads each change back once an app is checked.',
+  blind: 'Every app your AIs used today is checked.',
+};
+
+function drill(kind) {
+  const [tag, color, [one, many], line] = KIND[kind];
+  const n = live[kind] ?? w.kinds[kind];
+  const pats = w.patterns[kind] ?? [];
+  // Step-ins by hour, or every action for proof.
+  const hours = kind === 'proven' || kind === 'blind' ? w.hourly : w.stepHourly;
+  const hm = Math.max(1, ...hours);
+  const nowI = Math.min(23, Math.floor(w.nowH));
+  const bars = hours.map((v, h) => `<rect x="${h * 16.5}" y="${66 - (v / hm) * 60}" width="12" height="${(v / hm) * 60 + 1}" rx="3" fill="${h === nowI ? color : '#dedde8'}"/>`).join('');
+  const extra = {
+    proven: w.apps.filter((a) => !a.blind).map((a) => ({ t: `${a.name} is read back after every change`, n: a.n, app: a.id })),
+    blind: w.apps.filter((a) => a.blind).map((a) => ({ t: `No checker covers ${a.name}`, n: a.n, app: a.id, check: a })),
+  }[kind];
+  const list = (pats.length ? pats : extra ?? []).slice(0, 6);
+  const max = Math.max(1, ...list.map((p) => p.n));
+  $('#dbody').innerHTML = `
+    <span class="tag" style="background:${color};color:#fff">${tag}</span>
+    <h2>${fmtN(scaleN(n))} ${plural(scaleN(n), one, many)}</h2>
+    <p>${Shell.esc(line(n))}</p>
+    <h4>${kind === 'proven' || kind === 'blind' ? 'Every action, by the hour' : 'When Lumni stepped in, by the hour'}</h4>
+    <svg class="spark" viewBox="0 0 396 70" preserveAspectRatio="none">${bars}</svg>
+    <h4>${pats.length ? `Why, in ${pats.length} ${plural(pats.length, 'reason', 'reasons')}` : 'Where'}</h4>
+    ${list.map((p, i) => {
+      const app = w.apps.find((a) => a.id === p.app);
+      const team = w.teams.find((t) => t.id === p.team);
+      return `<div class="pat rise" style="animation-delay:${0.05 * i}s">
+        <div class="r1"><b>${fmtN(scaleN(p.n))}</b><span title="${Shell.esc(p.t)}">${Shell.esc(trunc(p.t))}</span></div>
+        <div class="track"><i style="width:${(p.n / max) * 100}%;background:${color};animation-delay:${0.1 + 0.05 * i}s"></i></div>
+        <div class="r2">${team ? `<span class="ai" style="width:18px;height:18px;font-size:8px;border-radius:5px">${Shell.esc(team.ai)}</span>${Shell.esc(team.name)}` : ''}${app ? ` in ${Shell.esc(app.name)}` : ''}${p.kept ? `, ${fmtMoney(scaleKept(p.kept))} kept` : ''}
+          ${p.check ? `<button data-check="${Shell.esc(p.check.id)}">Check it</button>` : p.story ? `<a href="${storyHref(p.story)}">Replay one</a>` : ''}</div>
+      </div>`;
+    }).join('') || `<p style="color:var(--ink2)">${Shell.esc(EMPTY[kind])}</p>`}`;
+  $$('#dbody [data-check]').forEach((b) => (b.onclick = () => checkApp(w.apps.find((a) => a.id === b.dataset.check))));
+  $('#drawer').classList.add('on');
+}
+$('#dx').onclick = () => $('#drawer').classList.remove('on');
+addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').classList.remove('on'); if (e.key === ' ' && e.target === document.body) { e.preventDefault(); $('#pause').click(); } });
+
+// ─── the moment ─────────────────────────────────────
+
+let timers = [];
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+function momentBox(html, x, y, ms = 4200) {
+  const d = document.createElement('div');
+  d.className = 'moment';
+  d.style.left = x + 'px';
+  d.style.top = y + 'px';
+  d.innerHTML = html;
+  $('#mapcard').appendChild(d);
+  later(() => { d.style.transition = 'opacity .5s'; d.style.opacity = 0; later(() => d.remove(), 600); }, ms);
+}
+
+/** The day's moment, from the data: a burst, a spike, or one stopped repeat. */
+function plan() {
+  const inc = w.incident;
+  if (inc && (inc.burst >= 5 || inc.total >= 5)) return { kind: 'burst', label: `Replay the ${inc.start} burst`, inc };
+  const p = w.patterns.stop.find((x) => x.spike != null && x.n >= 5);
+  if (p) return { kind: 'spike', label: `Replay the ${hourName(p.spike)} spike`, p };
+  const one = w.patterns.stop[0];
+  if (one) return { kind: 'one', label: 'Replay a stopped repeat', p: one };
+  return null;
+}
+
+/** A short name for one repeat: what it was, from the data. */
+function repeatLabel(p) {
+  const quoted = /“([^”]+)”/.exec(p.sample ?? '')?.[1];
+  if (quoted) return trunc(quoted, 30) + ', again';
+  const head = String(p.t).split(':')[0];
+  return trunc(head, 30) + ', again';
+}
+
+function runMoment() {
+  const m = plan();
+  if (!m) return;
+  if (m.kind === 'one') {
+    const p = m.p;
+    spawn({ recheck: false, stop: true }, {
+      label: repeatLabel(p), v: 120,
+      onArrive: () => momentBox(`<b>${p.kept ? `${fmtMoney(p.kept)} kept` : 'Stopped'}</b>${Shell.esc(trunc(p.t, 110))}. Lumni stopped ${p.n === 1 ? 'it' : `all ${fmtN(p.n)} like it`} today.`, 500, 36),
+    });
+    return;
+  }
+  surge = 4;
+  if (m.kind === 'burst') {
+    const { inc } = m;
+    // The burst as the backend recorded it: its real window and counts.
+    const mins = inc.startAt && inc.endAt ? Math.max(1, Math.round((inc.endAt - inc.startAt) / 60000)) : null;
+    const title = String(inc.title || 'A burst').replace(/^./, (c) => c.toUpperCase());
+    const total = inc.total || inc.burst;
+    momentBox(`<b>${Shell.esc(inc.start)} to ${Shell.esc(inc.end)}</b>${Shell.esc(title)}: ${inc.burst && inc.burst >= total
+      ? `${fmtN(total)} ${plural(total, 'repeat', 'repeats')} in ${mins ? `${fmtN(mins)} ${plural(mins, 'minute', 'minutes')}` : 'a few minutes'}. Watch Lumni stop every one.`
+      : `Lumni stepped in ${fmtN(total)} ${plural(total, 'time', 'times')}${mins ? ` in ${fmtN(mins)} ${plural(mins, 'minute', 'minutes')}` : ''}.${inc.burst ? ` Watch it stop ${fmtN(inc.burst)} ${plural(inc.burst, 'repeat', 'repeats')}.` : ''}`}`, 500, 36, 3800);
+    const who = [inc.customers ? `${fmtN(inc.customers)} ${plural(inc.customers, 'customer', 'customers')}` : '', inc.ais ? `${fmtN(inc.ais)} ${plural(inc.ais, 'AI', 'AIs')}` : ''].filter(Boolean).join(' and ');
+    const bk = inc.byKind ?? {};
+    const others = [bk.wait ? `${fmtN(bk.wait)} waited` : '', bk.recheck ? `${fmtN(bk.recheck)} looked again` : '', bk.ask ? `${fmtN(bk.ask)} asked you` : ''].filter(Boolean).join(', ');
+    later(() => momentBox(inc.burst
+      ? `<b>${inc.kept ? `${fmtMoney(inc.kept)} kept` : `${fmtN(inc.burst)} stopped`}</b>${fmtN(inc.burst)} ${plural(inc.burst, 'repeat', 'repeats')} stopped${who ? `, across ${who}` : ''}. None of them ran twice.${others ? ` Also ${others}.` : ''}`
+      : `<b>${fmtN(total)} step-ins</b>${others ? `${upper1(others)}` : 'Lumni stepped in'}${who ? `, across ${who}` : ''}.`, 500, 36, 4600), 3600);
+    return;
+  }
+  const { p } = m;
+  momentBox(`<b>${hourName(p.spike)} was its busiest hour</b>${Shell.esc(trunc(p.t, 110))}. Watch them get stopped.`, 500, 36, 3800);
+  later(() => momentBox(`<b>${p.kept ? `${fmtMoney(p.kept)} kept` : `${fmtN(p.n)} stopped`}</b>Lumni stopped all ${fmtN(p.n)} today. None of them ran twice.`, 500, 36, 4600), 3600);
+}
+$('#moment').onclick = runMoment;
+
+$('#pause').onclick = () => { paused = !paused; $('#pause').textContent = paused ? 'Play' : 'Pause'; };
+$('#range').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  setRange(b.dataset.r);
+};
+function subline() {
+  if (!w) return;
+  const s = w.steps;
+  const teams = w.teams.filter((t) => !/^(ai:|other$)/.test(t.id)).length;
+  let t = !w.total
+    ? 'Nothing has gone through Lumni yet today. Once your AIs act, every action flows across this map.'
+    : `${fmtN(w.scale.ais)} ${plural(w.scale.ais, 'AI', 'AIs')}${teams > 1 ? ` across ${teams} teams` : ''}, in ${fmtN(w.apps.length)} ${plural(w.apps.length, 'app', 'apps')}. Lumni stepped in ${fmtN(s)} ${plural(s, 'time', 'times')}. The thicker the line, the busier.`;
+  if (Shell.isReal && range !== 'day' && w.total) {
+    t = range === 'hour'
+      ? 'Counted from this hour and the end of the last one. Each line’s count is about: today’s mix, scaled to the hour.'
+      : `Lumni stepped in ${fmtN(weekSum('steps'))} times over these 7 days. Each line’s count is about: today’s mix, scaled to the week.`;
+  }
+  if (Shell.isReal && w.paused) t = 'Every AI is paused. New actions wait at the first check until you resume.';
+  $('#sub').textContent = t;
+}
+
+function setRange(r) {
+  range = r;
+  $$('#range button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.r === r)));
+  paint();
+  insights();
+  const unit = { hour: 'in the last hour', day: 'today', week: Shell.isReal ? 'in 7 days, today included' : 'in the last 7 days' }[range];
+  const n = rangeTotal(live.total);
+  // Your workspace's last hour is read from hourly totals, so it's about.
+  const about = Shell.isReal && range === 'hour';
+  $('.head h1').innerHTML = `${about ? 'About ' : ''}<span class="live num" id="count">${fmtN(n)}</span> ${plural(n, 'action', 'actions')} went through Lumni ${unit}`;
+  subline();
+}
+
+// ─── every AI paused ────────────────────────────────
+
+const held = () => !!(Shell.isReal && w?.paused);
+function pausedState() {
+  const on = held();
+  $$('.paused-at').forEach((x) => x.remove());
+  // Everything past the first check goes quiet.
+  for (const [id, g] of Object.entries(groups)) if (!id.startsWith('team-')) g.style.opacity = on ? 0.3 : g.style.opacity;
+  if (on) {
+    const g = el('g', { class: 'paused-at fadein', style: '--delay:.9s' });
+    el('rect', { x: ST.fresh - 46, y: Y - 64, width: 92, height: 28, rx: 14, fill: COL.ink }, g);
+    const pz = el('g', {}, g);
+    el('rect', { x: ST.fresh - 31, y: Y - 56, width: 3.5, height: 12, rx: 1.5, fill: '#fff' }, pz);
+    el('rect', { x: ST.fresh - 25, y: Y - 56, width: 3.5, height: 12, rx: 1.5, fill: '#fff' }, pz);
+    const t = el('text', { x: ST.fresh + 7, y: Y - 45.5, 'text-anchor': 'middle', style: 'font:700 12.5px var(--sans);fill:#fff' }, g);
+    t.textContent = 'Paused';
+    el('line', { x1: ST.fresh, x2: ST.fresh, y1: Y - 36, y2: Y - 10, stroke: COL.ink, 'stroke-width': 1.5, 'stroke-dasharray': '2 3' }, g);
+  }
+  const b = $('#resumeAll');
+  b.style.display = on ? '' : 'none';
+  b.disabled = w.source === 'snapshots';
+  b.title = b.disabled ? 'Needs a newer Lumni API' : '';
+  b.classList.remove('confirm');
+  b.textContent = 'Resume every AI';
+}
+$('#resumeAll').onclick = async () => {
+  const b = $('#resumeAll');
+  if (!b.classList.contains('confirm')) {
+    b.classList.add('confirm');
+    b.textContent = 'Confirm, resume all';
+    later(() => { if (!b.disabled) { b.classList.remove('confirm'); b.textContent = 'Resume every AI'; } }, 4000);
+    return;
+  }
+  b.disabled = true;
+  SHOT_PAUSED = false;
+  const out = await Shell.write('POST', '/v1/config/pause', { paused: false }, { ok: 'Every AI is running again.' });
+  if (!out) { b.disabled = false; b.classList.remove('confirm'); b.textContent = 'Resume every AI'; }
+};
+
+// ─── sentences worth sharing ────────────────────────
+
+function insights() {
+  const save = [...w.patterns.stop].sort((a, b) => b.kept - a.kept || b.n - a.n)[0];
+  const blindApp = w.apps.find((a) => a.blind);
+  const cards = [
+    save
+      ? { c: 'var(--accent)', k: 'Biggest save', p: `${Shell.esc(trunc(save.t))}. <em>Lumni stopped ${save.n === 1 ? 'it' : `all ${fmtN(scaleN(save.n))}`}</em>${save.kept ? `, and ${fmtMoney(scaleKept(save.kept))} never went out twice` : ', so none of them ran twice'}.`, a: 'Replay one', href: storyHref(save.story) }
+      : { c: 'var(--ink3)', k: 'Biggest save', calm: true, p: 'No repeats yet today. When an AI tries the same thing twice, Lumni stops the copy and it shows up here.', a: 'See the rules', href: '/fixes' },
+    w.total
+      ? { c: 'var(--accent)', k: 'Proven', p: `<em>${pct(w.proven)}</em> of ${fmtN(scaleN(w.total))} ${plural(w.total, 'action is', 'actions are')} proven in the app itself, not just on the AI’s word.`, a: w.kinds.blind ? 'See what isn’t' : '', drill: 'blind' }
+      : { c: 'var(--ink3)', k: 'Proven', calm: true, p: 'Nothing to prove yet. Once your AIs act, Lumni reads each change back from the app.' },
+    blindApp
+      ? { c: 'var(--ink3)', k: 'Blind spot', p: `No checker covers ${Shell.esc(blindApp.name)}, so <em>${fmtN(scaleN(blindApp.n))} ${plural(blindApp.n, 'action', 'actions')}</em> can’t be checked.`, a: `Check ${Shell.esc(blindApp.name)}`, check: blindApp }
+      : { c: 'var(--accent)', k: 'Blind spot', calm: !w.apps.length, p: w.apps.length ? `None. Lumni can check every one of the ${fmtN(w.apps.length)} ${plural(w.apps.length, 'app', 'apps')} your AIs used today.` : 'No apps yet today. Each app your AIs use shows up here, with whether Lumni can check it.' },
+  ];
+  $('#insights').innerHTML = cards.map((x, i) => `<article class="card ins rise ${x.calm ? 'calm' : ''}" style="animation-delay:${0.15 + i * 0.07}s"><div class="k"><i style="background:${x.c}"></i>${x.k}</div><p>${x.p}</p>${
+    x.a && (x.check || x.drill) ? `<button class="lnk" data-i="${i}">${x.a}</button>` : x.a ? `<a href="${x.href}">${x.a}</a>` : ''}</article>`).join('');
+  $$('#insights button.lnk').forEach((b) => (b.onclick = () => { const x = cards[b.dataset.i]; x.check ? checkApp(x.check) : drill(x.drill); }));
+}
+
+// ─── boot ───────────────────────────────────────────
+
+// The fake API doesn't report a pause back on GET /v1/config, so a shot that
+// paused for real carries it into the world it reads next.
+let SHOT_PAUSED = false;
+function load(world) {
+  if (SHOT_PAUSED) world.paused = true;
+  w = world;
+  timers.forEach(clearTimeout); timers = [];
+  $$('.moment').forEach((d) => d.remove());
+  parts = []; bursts = []; focusTeam = null; surge = 0;
+  $('#focus').classList.remove('on');
+  $('#drawer').classList.remove('on');
+  ctx.clearRect(0, 0, 1360, 600);
+  // Your workspace: the week needs the daily history.
+  for (const b of $$('#range button')) {
+    const off = Shell.isReal && b.dataset.r === 'week' && !w.week;
+    b.disabled = off;
+    b.title = off ? (w.source === 'snapshots' ? 'Needs a newer Lumni API' : 'No daily history yet') : Shell.isReal && b.dataset.r === 'week' ? '7 days, today included' : '';
+  }
+  if (Shell.isReal && range === 'week' && !w.week) range = 'day';
+  layout();
+  resetCounts();
+  setRange(range);
+  countUp($('#count'), rangeTotal(w.total), { ms: 1600 });
+  // fmtN after the count-up lands.
+  later(paint, 1700);
+  subline();
+  pausedState();
+  const m = plan();
+  $('#moment').style.display = m ? '' : 'none';
+  if (m) $('#moment').textContent = m.label;
+  insights();
+}
+
+Shell.boot({ nav: 'Flow', onWorld: (world) => load(world) });
+requestAnimationFrame(frame);
+
+// Screenshots: let the river fill up first.
+Shell.ready.then(() => {
+  const shot = new URLSearchParams(location.search).get('shot');
+  if (shot === 'moment') setTimeout(() => $('#moment').click(), 2600);
+  if (shot === 'drill') setTimeout(() => drill('stop'), 2600);
+  if (shot === 'blind') setTimeout(() => drill('blind'), 1200);
+  if (shot === 'check') setTimeout(() => $('#insights button.lnk[data-i="2"]')?.click(), 1200);
+  if (shot === 'hour' || shot === 'week') setTimeout(() => $(`#range button[data-r="${shot}"]`).click(), 600);
+  // Pause every AI for real, then show it; 'resume' also clicks Resume and confirms.
+  if (Shell.isReal && (shot === 'paused' || shot === 'resume') && !w.paused) {
+    Shell.write('POST', '/v1/config/pause', { paused: true }, { reload: false }).then((out) => {
+      if (!out) return;
+      SHOT_PAUSED = true;
+      Shell.refresh();
+      if (shot === 'resume') setTimeout(() => { $('#resumeAll').click(); setTimeout(() => $('#resumeAll').click(), 500); }, 1400);
+    });
+  }
+});
+</script>
+</body>
+</html>

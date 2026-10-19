@@ -1,0 +1,24 @@
+name: lumni-validation
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lumni
+      POSTGRES_PASSWORD: lumni-test-only
+      POSTGRES_DB: lumni_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumni -d lumni_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+  tests:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.test
+    environment:
+      LUMNI_TEST_DATABASE_URL: postgres://lumni:lumni-test-only@postgres:5432/lumni_test?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy

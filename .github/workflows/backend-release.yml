@@ -1,0 +1,94 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish lumni and @lumniverse/sdk to npm, lumni-sdk to PyPI, and draft a GitHub binary release
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with: {go-version: "1.27.x", cache: true}
+      - uses: actions/setup-node@v5
+        with: {node-version: 22, cache: npm, cache-dependency-path: sdk/typescript/package-lock.json}
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - run: npm ci --prefix sdk/typescript
+      - run: python -m pip install build wheel pytest pytest-asyncio './sdk/python[langgraph,openai]'
+      - run: go test -race ./...
+      - run: npm test --prefix sdk/typescript
+      - run: python -m pytest
+        working-directory: sdk/python
+      - run: sh scripts/package-backend-release.sh
+      # npx lumniverse: its pack step builds the console into the package (needs Bun).
+      - uses: oven-sh/setup-bun@v2
+      - run: npm test && npm pack --pack-destination ../../dist/backend-release
+        working-directory: packages/lumni
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-release
+          path: |
+            dist/backend-release/*.tar.gz
+            dist/backend-release/*.tgz
+            dist/backend-release/*.whl
+            dist/backend-release/SHA256SUMS
+  publish:
+    if: inputs.publish
+    needs: prepare
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: backend-release, path: release}
+      - uses: actions/setup-node@v5
+        with: {node-version: 22, registry-url: "https://registry.npmjs.org"}
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.12"}
+      - run: python -m pip install twine
+      - name: Validate artifacts and the npm token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN" || { echo 'Set the NPM_TOKEN secret'; exit 1; }
+          cd release
+          sha256sum -c SHA256SUMS
+          python -m twine check ./*.whl
+          mkdir ../pypi && cp ./*.whl ../pypi/
+      - name: Publish TypeScript SDK
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Skip a version that's already published, so a failed release can be run again.
+          f=$(ls ./release/lumniverse-sdk-*.tgz); id=$(tar -xOzf "$f" package/package.json | node -pe 'const p=JSON.parse(require("fs").readFileSync(0,"utf8"));p.name+"@"+p.version')
+          if npm view "$id" version >/dev/null 2>&1; then echo "$id is already on npm"; else npm publish "$f" --access public ${{ github.event.repository.private && ' ' || '--provenance' }}; fi
+      - name: Publish npx lumniverse
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Skip a version that's already published, so a failed release can be run again.
+          f=$(ls ./release/lumniverse-[0-9]*.tgz); id=$(tar -xOzf "$f" package/package.json | node -pe 'const p=JSON.parse(require("fs").readFileSync(0,"utf8"));p.name+"@"+p.version')
+          if npm view "$id" version >/dev/null 2>&1; then echo "$id is already on npm"; else npm publish "$f" --access public ${{ github.event.repository.private && ' ' || '--provenance' }}; fi
+      # PyPI trusts this workflow directly (Trusted Publishing: project lumni-sdk,
+      # workflow backend-release.yml, environment release); no token is stored.
+      - name: Publish Python SDK
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi/
+          skip-existing: true
+      - name: Create draft binary release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          version=$(python -c 'import glob,os; print(os.path.basename(glob.glob("release/lumni_sdk-*.whl")[0]).split("-")[1])')
+          gh release view "v$version" >/dev/null 2>&1 || gh release create "v$version" --draft --target "$RELEASE_COMMIT" --title "Lumni $version" --notes 'Backend binaries include lumni init, the gateway, API service, and worker. See the bundled onboarding guide.' release/*.tar.gz release/SHA256SUMS

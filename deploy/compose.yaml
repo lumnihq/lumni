@@ -1,0 +1,153 @@
+# Lumni, self-hosted: the API, its worker, the console and Postgres, from
+# published images. See docs/self-hosting.md:
+#
+#   cp .env.example .env      # then fill in the secrets it asks for
+#   docker compose up -d      # console on http://localhost:5200, API on :8080
+#
+#   With a domain   COMPOSE_PROFILES=https: Caddy serves app.<domain> (the
+#                   console) and api.<domain> (the API) with automatic HTTPS.
+#   Without one     the console on http://localhost:5200, the API on :8080.
+#
+# Optional: COMPOSE_PROFILES=https,analytics adds ClickHouse for analytics
+# at large volume (set LUMNI_ANALYTICS_BACKEND=clickhouse).
+
+name: lumni
+
+x-api-env: &api-env
+  LUMNI_DATABASE_URL: postgres://lumni:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (see .env.example)}@postgres:5432/lumni?sslmode=disable
+  LUMNI_SECRET_ENCRYPTION_KEY: ${LUMNI_SECRET_ENCRYPTION_KEY:?set LUMNI_SECRET_ENCRYPTION_KEY in .env}
+  LUMNI_ANALYTICS_BACKEND: ${LUMNI_ANALYTICS_BACKEND:-postgres}
+  LUMNI_CLICKHOUSE_URL: http://clickhouse:8123
+  LUMNI_CLICKHOUSE_DATABASE: lumni
+  LUMNI_CLICKHOUSE_USER: default
+  LUMNI_CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+  LUMNI_COMPOSIO_API_KEY: ${LUMNI_COMPOSIO_API_KEY:-}
+  LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID:-}
+  LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID:-}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lumni
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: lumni
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumni -d lumni"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  lumnid:
+    image: ${LUMNI_IMAGE:-ghcr.io/lumnihq/lumni}:${LUMNI_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      LUMNI_HTTP_ADDR: :8080
+      LUMNI_BOOTSTRAP_TENANT_NAME: ${LUMNI_WORKSPACE_NAME:-My workspace}
+      LUMNI_BOOTSTRAP_TENANT_SLUG: main
+      LUMNI_BOOTSTRAP_ADMIN_KEY: ${LUMNI_ADMIN_KEY:?set LUMNI_ADMIN_KEY in .env}
+      LUMNI_MODE: SHADOW
+      LUMNI_PUBLIC_BASE_URL: ${LUMNI_API_URL:-http://localhost:8080}
+      # Lets the console create a workspace per sign-up (LUMNI_SIGNUP=open). Unset: no such route.
+      LUMNI_PLATFORM_KEY: ${LUMNI_PLATFORM_KEY:-}
+      # Limits for workspaces made by sign-up (Lumni Cloud).
+      LUMNI_TENANT_CHECKS_PER_DAY: ${LUMNI_TENANT_CHECKS_PER_DAY:-2000}
+      LUMNI_TENANT_CHECKS_PER_SECOND: ${LUMNI_TENANT_CHECKS_PER_SECOND:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${LUMNI_BIND:-127.0.0.1}:${LUMNI_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/lumni", "get", "health/ready", "--url", "http://127.0.0.1:8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+
+  worker:
+    image: ${LUMNI_IMAGE:-ghcr.io/lumnihq/lumni}:${LUMNI_VERSION:-latest}
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/worker"]
+    environment:
+      <<: *api-env
+      LUMNI_SMTP_ADDR: ${LUMNI_SMTP_ADDR:-}
+      LUMNI_SMTP_FROM: ${LUMNI_SMTP_FROM:-}
+      LUMNI_SMTP_USER: ${LUMNI_SMTP_USER:-}
+      LUMNI_SMTP_PASSWORD: ${LUMNI_SMTP_PASSWORD:-}
+    depends_on:
+      lumnid:
+        condition: service_healthy
+
+  console:
+    image: ${LUMNI_CONSOLE_IMAGE:-ghcr.io/lumnihq/lumni-console}:${LUMNI_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      LUMNI_API_URL: http://lumnid:8080
+      LUMNI_CONSOLE_PUBLIC_API_URL: ${LUMNI_API_URL:-http://localhost:8080}
+      LUMNI_CONSOLE_PUBLIC_URL: ${LUMNI_APP_URL:-http://localhost:5200}
+      LUMNI_CONSOLE_HOSTS: ${LUMNI_APP_HOST:-localhost:5200}
+      LUMNI_CONSOLE_ADMIN_KEY: ${LUMNI_ADMIN_KEY}
+      LUMNI_CONSOLE_SECRET: ${LUMNI_CONSOLE_SECRET:?set LUMNI_CONSOLE_SECRET in .env}
+      LUMNI_CONSOLE_WORKSPACE_NAME: ${LUMNI_WORKSPACE_NAME:-My workspace}
+      LUMNI_CONSOLE_SIGNUP: ${LUMNI_SIGNUP:-invite}
+      LUMNI_CONSOLE_PLATFORM_KEY: ${LUMNI_PLATFORM_KEY:-}
+      LUMNI_CONSOLE_GITHUB_CLIENT_ID: ${LUMNI_GITHUB_CLIENT_ID:-}
+      LUMNI_CONSOLE_GITHUB_CLIENT_SECRET: ${LUMNI_GITHUB_CLIENT_SECRET:-}
+      LUMNI_CONSOLE_GOOGLE_CLIENT_ID: ${LUMNI_GOOGLE_CLIENT_ID:-}
+      LUMNI_CONSOLE_GOOGLE_CLIENT_SECRET: ${LUMNI_GOOGLE_CLIENT_SECRET:-}
+      LUMNI_CONSOLE_PRICE_PER_ACTION: ${LUMNI_PRICE_PER_ACTION:-}
+    depends_on:
+      lumnid:
+        condition: service_healthy
+    ports:
+      - "${LUMNI_BIND:-127.0.0.1}:${LUMNI_APP_PORT:-5200}:5200"
+    volumes:
+      - console:/data
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    environment:
+      LUMNI_APP_HOST: ${LUMNI_APP_HOST:-}
+      LUMNI_API_HOST: ${LUMNI_API_HOST:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - console
+      - lumnid
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.7-alpine
+    profiles: ["analytics"]
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: lumni
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  postgres:
+  console:
+  clickhouse:
+  caddy-data:
+  caddy-config:

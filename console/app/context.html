@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Context</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root { --orange: #f08a24; --orange-soft: #fff2e5; --orange-line: #fbd6ae; }
+  .wrap { padding: 34px 40px 56px; }
+
+  /* Headline. */
+  .head { display: flex; align-items: flex-end; gap: 32px; }
+  .head h1 { font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.16; max-width: 1060px; }
+  .head h1 .soft { color: var(--ink3); }
+  .head h1 mark { background: var(--orange-soft); color: var(--orange); border-radius: 12px; padding: 0 10px; white-space: nowrap; }
+  .head h1 mark.calm { background: var(--accent-soft); color: var(--accent); }
+  .head p { margin-top: 10px; font-size: 16px; color: var(--ink2); }
+  .head .controls { margin-left: auto; flex: none; display: flex; gap: 8px; padding-bottom: 4px; }
+
+  .main { display: grid; grid-template-columns: 960px minmax(0, 1fr); gap: 20px; margin-top: 28px; align-items: stretch; }
+
+  /* The truth constellation. */
+  .cst-card { padding: 22px 24px 18px; display: flex; flex-direction: column; }
+  .cst-head { display: flex; align-items: flex-start; gap: 20px; }
+  .cst-head h2 { font-size: 18px; font-weight: 700; letter-spacing: -.015em; }
+  .cst-head p { font-size: 13.5px; color: var(--ink2); margin-top: 3px; max-width: 520px; }
+  .legend { margin-left: auto; display: grid; grid-template-columns: auto auto; gap: 6px 18px; font-size: 12.5px; font-weight: 600; color: var(--ink2); flex: none; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .legend i { width: 11px; height: 11px; border-radius: 3.5px; display: inline-block; }
+  .legend i.ring { border: 1.5px dashed var(--ink3); border-radius: 50%; background: none; width: 12px; height: 12px; }
+
+  .cst { position: relative; width: 912px; margin: 14px 0 auto; flex: none; }
+  .cst svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .cst svg text { font-family: var(--sans); }
+
+  .lk { stroke: rgba(13,14,20,.16); stroke-width: 1; transition: stroke .3s; }
+  .lk.stale { stroke: rgba(240,138,36,.6); stroke-dasharray: 3 3; }
+  .lk.caught { stroke: rgba(91,75,245,.45); }
+  .rd { cursor: pointer; }
+  .rd rect { fill: var(--ink); transition: fill .3s var(--ease); }
+  .rd.stale rect { fill: var(--orange); }
+  .rd.caught rect { fill: var(--accent); }
+  .rd.sel rect { stroke: var(--ink); stroke-width: 2; paint-order: stroke; }
+  .rd text { fill: #fff; font-size: 8.5px; font-weight: 750; text-anchor: middle; pointer-events: none; }
+  .rd:hover rect { filter: drop-shadow(0 3px 6px rgba(13,14,20,.3)); }
+  .ghost { font-size: 10.5px; font-weight: 650; fill: var(--orange); text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+  .ghost.caught { fill: var(--accent); }
+  .horizon { fill: none; stroke: var(--ink3); stroke-width: 1; stroke-dasharray: 2 4; opacity: .9; }
+  .wave { fill: none; stroke: var(--orange); }
+  .halo { fill: url(#halo); }
+  .ping { fill: none; stroke: var(--accent); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ping .7s var(--ease) forwards; }
+  @keyframes ping { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(2.2); } }
+
+  .disc circle.d { transition: fill .3s; }
+  .disc .n { fill: #fff; font-size: 12.5px; font-weight: 750; text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+  .dlab { font-size: 10.5px; font-weight: 650; text-anchor: middle; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+
+  /* A truth node: one fact, its current version. */
+  .node {
+    position: absolute; width: 172px; height: 116px; padding: 11px 13px 10px;
+    border-radius: 16px; background: #fff;
+    box-shadow: 0 0 0 1px var(--accent-line), 0 0 0 6px rgba(240,238,255,.85), 0 18px 40px -14px rgba(91,75,245,.45);
+    display: flex; flex-direction: column; z-index: 2;
+  }
+  .node .r1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 1px; }
+  .node .thing { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .ver { flex: none; font-size: 11px; font-weight: 750; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums; transition: background .3s, color .3s; }
+  .node .field { font-size: 11.5px; color: var(--ink2); line-height: 1.2; }
+  .node .val { font-size: 15px; font-weight: 750; letter-spacing: -.015em; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .val.long { font-size: 13.5px; }
+  .node .by { font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .r5 { margin-top: auto; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; color: var(--ink2); white-space: nowrap; }
+  .node .r5 .st { color: var(--orange); }
+  .node .r5 .ca { color: var(--accent); }
+  .node .chg { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--accent); padding: 2px 7px; border-radius: 6px; background: var(--accent-soft); }
+  .node .chg:hover { background: var(--accent); color: #fff; }
+  .node.changed .ver { background: var(--accent); color: #fff; }
+  .node.flash { animation: flash 1.1s var(--ease); }
+  @keyframes flash {
+    0% { box-shadow: 0 0 0 1px var(--accent), 0 0 0 14px rgba(91,75,245,.28), 0 18px 40px -14px rgba(91,75,245,.6); transform: scale(1.04); }
+    100% { box-shadow: 0 0 0 1px var(--accent-line), 0 0 0 6px rgba(240,238,255,.85), 0 18px 40px -14px rgba(91,75,245,.45); transform: none; }
+  }
+  .node .val.swap { animation: swap .5s var(--spring); }
+  @keyframes swap { from { opacity: 0; transform: translateY(8px); } }
+
+  .calmbox { position: absolute; width: 400px; }
+  .calmbox h3 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; }
+  .calmbox p { font-size: 14.5px; color: var(--ink2); margin-top: 10px; }
+  .calmbox .acts { display: flex; gap: 8px; margin-top: 18px; }
+
+  .evt { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13.5px; font-weight: 600; color: var(--ink2); min-height: 36px; }
+  .evt i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+  .evt b { color: var(--ink); }
+  .evt.live i { background: var(--orange); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .evt .reset { margin-left: auto; font-size: 13px; font-weight: 650; color: var(--accent); }
+
+  /* One AI's view. */
+  .panel { padding: 22px 24px; display: flex; flex-direction: column; min-width: 0; }
+  .panel .ph { display: flex; align-items: baseline; justify-content: space-between; }
+  .panel h2 { font-size: 18px; font-weight: 700; letter-spacing: -.015em; }
+  .panel .ph small { font-size: 12.5px; color: var(--ink3); font-weight: 600; }
+  .picker { display: flex; gap: 4px; margin-top: 14px; flex-wrap: wrap; }
+  .picker button { position: relative; width: 23px; height: 23px; border-radius: 7px; background: var(--wash); color: var(--ink2); font-size: 9px; font-weight: 750; box-shadow: inset 0 0 0 1px var(--line2); transition: transform .15s var(--ease); }
+  .picker button:hover { transform: translateY(-2px); }
+  .picker button.slow { background: var(--orange-soft); color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange-line); }
+  .picker button[aria-pressed='true'] { background: var(--ink); color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+  .who { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+  .who .ai { width: 40px; height: 40px; border-radius: 11px; font-size: 13px; }
+  .who b { display: block; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .who small { font-size: 12.5px; color: var(--ink2); }
+  .gauge { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 12px 14px 10px; border-radius: 14px; background: var(--wash); }
+  .gauge svg { flex: none; }
+  .gauge .gv { font-size: 30px; font-weight: 750; letter-spacing: -.03em; line-height: 1; }
+  .gauge .gv small { font-size: 15px; font-weight: 650; color: var(--ink2); margin-left: 2px; }
+  .gauge .gl { font-size: 12.5px; color: var(--ink2); margin-top: 4px; line-height: 1.35; }
+  .ages { margin-top: 12px; }
+  .abar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
+  .abar i { display: block; height: 100%; animation: grow .8s var(--ease) both; transform-origin: left; }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .agel { display: flex; justify-content: space-between; margin-top: 7px; font-size: 11.5px; color: var(--ink2); white-space: nowrap; }
+  .agel span { display: inline-flex; align-items: center; gap: 5px; }
+  .agel i { width: 7px; height: 7px; border-radius: 2px; }
+  .agel b { color: var(--ink); font-weight: 700; }
+  .sect { font-size: 13px; font-weight: 650; color: var(--ink2); margin: 18px 0 8px; display: flex; justify-content: space-between; }
+  .diff { display: flex; flex-direction: column; gap: 6px; }
+  .drow { border-radius: 12px; padding: 9px 12px 9px; background: var(--wash); animation: rise .5s var(--ease) both; }
+  .drow.stale { background: var(--orange-soft); box-shadow: inset 3px 0 0 var(--orange); }
+  .drow .t { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 650; }
+  .drow .t span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .more { font-size: 12.5px; color: var(--ink2); padding: 2px 4px 0; }
+  .drow .t small { font-size: 12px; font-weight: 650; color: var(--ink2); white-space: nowrap; }
+  .drow.stale .t small { color: var(--orange); }
+  .drow .ln { display: grid; grid-template-columns: 94px 38px 1fr; align-items: baseline; font-size: 12.5px; margin-top: 3px; }
+  .drow .ln span:first-child { color: var(--ink2); }
+  .drow .ln .v { font-weight: 750; font-variant-numeric: tabular-nums; }
+  .drow .ln.old .v, .drow .ln.old span:last-child { color: var(--orange); }
+  .drow .ln.old span:last-child { text-decoration: line-through; text-decoration-thickness: 1px; }
+  .drow .ln.now .v { color: var(--accent); }
+  .drow .ln.now span:last-child { font-weight: 650; }
+  .none { font-size: 13px; color: var(--ink2); padding: 12px; border-radius: 12px; background: var(--wash); }
+  .sent { margin: 14px 0 18px; font-size: 13.5px; color: var(--ink2); line-height: 1.45; }
+  .sent b { color: var(--ink); }
+  .fix { margin-top: auto; display: block; padding: 13px 14px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); transition: transform .2s var(--ease); }
+  .fix:hover { transform: translateY(-2px); }
+  .fix .k { font-size: 12px; font-weight: 650; color: var(--accent); }
+  .fix b { display: block; font-size: 14.5px; margin-top: 2px; }
+  .fix small { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink2); margin-top: 3px; }
+  .fix small em { font-style: normal; font-weight: 650; color: var(--accent); }
+  .fix.ok { background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .fix.ok .k { color: var(--ink2); }
+
+  /* Freshness of your fleet. */
+  .fresh { margin-top: 20px; padding: 22px 28px 16px; }
+  .fresh .fh { display: flex; align-items: baseline; gap: 20px; }
+  .fresh h2 { font-size: 18px; font-weight: 700; letter-spacing: -.015em; white-space: nowrap; }
+  .fresh .cap { font-size: 14px; color: var(--ink2); }
+  .fresh .cap b { color: var(--ink); font-weight: 650; }
+  .fresh .fl { margin-left: auto; display: flex; gap: 16px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  .fresh .fl span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .fresh .fl { flex: none; }
+  .fresh .fl i { width: 9px; height: 9px; border-radius: 50%; }
+  .fresh svg { display: block; margin-top: 6px; overflow: visible; }
+  .fresh svg text { font-family: var(--sans); }
+  .dot { cursor: pointer; transition: transform .2s var(--spring); transform-box: fill-box; transform-origin: center; }
+  .dot:hover { transform: scale(1.18); }
+  .dot.sel { stroke: var(--ink); stroke-width: 2.5; }
+  .ax { font-size: 11.5px; font-weight: 600; fill: var(--ink3); }
+  .dl { font-size: 12px; font-weight: 650; fill: var(--ink); text-anchor: middle; }
+  .dl small, .dl tspan.s { fill: var(--ink2); font-weight: 600; }
+  /* Real mode: counts instead of read ages, and calm empty states. */
+  .cbox { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 14px; border-radius: 14px; background: var(--wash); }
+  .cbox > div { padding: 12px 14px 11px; min-width: 0; }
+  .cbox > div + div { border-left: 1px solid var(--line2); }
+  .cbox b { display: block; font-size: 28px; font-weight: 750; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .cbox b.o { color: var(--orange); }
+  .cbox small { display: block; font-size: 12.5px; color: var(--ink2); margin-top: 4px; line-height: 1.35; }
+  .nolag { margin-top: 10px; font-size: 12.5px; color: var(--ink3); line-height: 1.4; }
+  .why { display: flex; flex-direction: column; gap: 6px; }
+  .why a { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-radius: 12px; padding: 9px 12px; background: var(--orange-soft); box-shadow: inset 3px 0 0 var(--orange); font-size: 13px; font-weight: 650; animation: rise .5s var(--ease) both; }
+  .why a span { min-width: 0; line-height: 1.35; }
+  .why a small { flex: none; font-size: 12px; color: var(--orange); font-weight: 700; }
+  .cst-empty { display: grid; place-items: center; text-align: center; height: 300px; }
+  .cst-empty b { display: block; font-size: 20px; letter-spacing: -.02em; }
+  .cst-empty p { font-size: 14px; color: var(--ink2); margin: 6px auto 0; max-width: 460px; }
+  .cst-empty .btn { margin-top: 16px; }
+  .fresh-empty { margin-top: 12px; padding: 18px 20px; border-radius: 14px; background: var(--wash); font-size: 14px; color: var(--ink2); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <div class="wrap">
+    <section class="head">
+      <div>
+        <h1 id="h1">&nbsp;</h1>
+        <p id="sub">Every fact has one current version. Lumni knows which version each AI read.</p>
+      </div>
+      <div class="controls">
+        <button class="btn accent" id="play">Watch one change spread</button>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="card cst-card">
+        <div class="cst-head">
+          <div>
+            <h2 id="cst-h">Shared facts, and who read which version</h2>
+            <p id="cst-p">Each square is an AI that read the fact. The farther out it sits, the older its copy. Inside the dashed line, it has the current version.</p>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="cst" id="cst"></div>
+        <div class="evt" id="evt"></div>
+      </div>
+
+      <aside class="card panel" id="panel"></aside>
+    </section>
+
+    <section class="card fresh" id="fresh"></section>
+  </div>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const ORANGE = '#f08a24', ACCENT = '#5b4bf5', INK = '#0d0e14';
+let shotPending = new URLSearchParams(location.search).get('shot');
+const E = (s) => Shell.esc(s);
+const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + '…' : String(s));
+const plural = (n, one, many = one + 's') => `${fmtN(n)} ${n === 1 ? one : many}`;
+
+// The demo: which roster AIs read each fact, in order of how often.
+const AFF = {
+  f1: ['pricer', 'invoice', 'dunning', 'refund', 'quote', 'accounts', 'recon', 'misc'],
+  f2: ['accounts', 'invoice', 'dunning', 'router', 'quote', 'misc'],
+  f3: ['pricer', 'quote', 'router', 'invoice', 'accounts', 'misc'],
+  f4: ['deploy', 'triage', 'misc', 'refund'],
+  f5: ['refund', 'ledger', 'recon', 'triage'],
+  f6: ['router', 'accounts', 'quote', 'misc'],
+};
+// The demo: what a click on "Change it" changes each fact to.
+const NEXT = { f1: 'Business, $900 a year', f2: 'finance@acme.com', f3: '$44 a seat', f4: 'update 2.5', f5: 'refund closed', f6: 'Kai Moreno' };
+const INI = { refund: 'Ra', triage: 'Tt', invoice: 'In', dunning: 'Du', quote: 'Qw', router: 'Lr', deploy: 'Db', accounts: 'Au', ledger: 'Lb', recon: 'Rc', pricer: 'Ps', misc: '+' };
+const NOUN = { refund: 'orders', triage: 'tickets', invoice: 'invoices', dunning: 'subscriptions', quote: 'prices', router: 'account owners', deploy: 'releases', accounts: 'accounts', ledger: 'refunds', recon: 'ledgers', pricer: 'prices', misc: 'shared facts' };
+const ini = (a) => a.initials ?? INI[a.id] ?? a.name.slice(0, 2);
+
+function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10007) / 10007; }
+const short = (v) => String(v ?? '').replace(/ a year$/, '');
+const secs = (s) => s < 90 ? `${Math.round(s)} s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} d`;
+/** Who changed a fact, and when, in the words the data allows. */
+const byLine = (f) => [f.changedBy ? E(f.changedBy) : null, f.ago != null ? `${secs(f.ago)} ago` : null].filter(Boolean).join(', ') || 'Not changed today';
+/** Real: the change has a before worth saying when the summaries differ. */
+const hasWas = (f) => f.was != null && String(f.was) !== String(f.value);
+/** Real AIs whose read age the API reports. */
+const timed = (w) => w.fleet.filter((a) => a.lag != null);
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
+
+// Geometry: readers sit on a rounded square around the card. In the demo, distance
+// out grows with how old their copy is (log seconds), the same scale for every fact.
+const HW = 86, HH = 58, GAP = 18, DMAX = 36, AGEMAX = 300, CELL_H = 300, CLUSTER = 12;
+const dOf = (age) => DMAX * Math.min(1, Math.log1p(Math.max(0, age)) / Math.log1p(AGEMAX));
+function radius(th, d) {
+  const a = HW + GAP + d, b = HH + GAP + d, p = 5;
+  return 1 / Math.pow(Math.pow(Math.abs(Math.cos(th)) / a, p) + Math.pow(Math.abs(Math.sin(th)) / b, p), 1 / p);
+}
+const at = (c, th, d) => { const r = radius(th, d); return [c.x + Math.cos(th) * r, c.y + Math.sin(th) * r]; };
+function contour(c, d) {
+  let s = '';
+  for (let k = 0; k <= 96; k++) { const th = (k / 96) * Math.PI * 2; const [x, y] = at(c, th, d); s += (k ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }
+  return s + 'Z';
+}
+
+let W, sel, gen = 0, raf = 0, timers = [];
+const real = () => Shell.isReal;
+const stop = () => { gen++; cancelAnimationFrame(raf); timers.forEach(clearTimeout); timers = []; };
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+/**
+ * The AIs that worked on a fact, which version each holds, and where it sits.
+ * Real: the API says how many AIs worked on it and how many were sent back to
+ * look again, not who or how old their reads were, so the squares are unnamed
+ * and all sit at the same distance.
+ */
+function readersOf(w, f) {
+  const list = [];
+  if (real()) {
+    for (let i = 0; i < f.readers; i++) list.push({ i, ai: null, h: hash(f.id + ':' + i), d: 10, stale: i < f.stale });
+  } else {
+    const aff = AFF[f.id] ?? w.fleet.map((a) => a.id);
+    const byId = Object.fromEntries(w.fleet.map((a) => [a.id, a]));
+    const copies = {};
+    for (let i = 0; i < f.readers; i++) {
+      const ai = byId[aff[i % aff.length]] ?? w.fleet[0];
+      copies[ai.id] = (copies[ai.id] ?? 0) + 1;
+      list.push({ i, ai, copy: copies[ai.id], h: hash(f.id + ':' + i) });
+    }
+    [...list].sort((a, b) => (b.ai.lag + b.h * 6) - (a.ai.lag + a.h * 6)).slice(0, f.stale).forEach((r) => (r.stale = true));
+    const ring = dOf(f.ago);
+    for (const r of list) {
+      if (r.stale) {
+        r.age = f.ago + Math.round(r.ai.lag * (0.6 + 1.2 * r.h));
+        r.d = Math.min(DMAX, Math.max(dOf(r.age), ring + 6 + r.h * 4));
+        r.ver = f.v - 1; r.val = f.was;
+      } else {
+        r.age = Math.max(1, Math.round(Math.min(f.ago, r.ai.lag * 1.6) * (0.2 + 0.7 * r.h)));
+        r.d = Math.max(0, Math.min(dOf(r.age), ring - 5));
+        r.ver = f.v; r.val = f.value;
+      }
+    }
+  }
+  // Old copies take the slots nearest top and bottom, where labels fit.
+  const n = list.length;
+  const off = (hash(f.id) - 0.5) * (Math.PI / Math.max(1, n)) * 0.5;
+  const slots = Array.from({ length: n }, (_, k) => -Math.PI / 2 + off + (k * 2 * Math.PI) / n)
+    .sort((a, b) => Math.abs(Math.sin(b)) - Math.abs(Math.sin(a)));
+  [...list.filter((r) => r.stale), ...list.filter((r) => !r.stale)].forEach((r, k) => (r.th = slots[k]));
+  // The order Lumni catches them in, once they try to act.
+  [...list].sort((a, b) => a.h - b.h).forEach((r, k) => (r.order = k));
+  return list;
+}
+
+// ─── headline ───────────────────────────────────────
+
+function renderHead(w) {
+  const facts = w.facts;
+  if (real()) {
+    const n = w.kinds.recheck;
+    $('#h1').innerHTML = n
+      ? `<mark><span class="num" id="hn">0</span> ${n === 1 ? 'time' : 'times'}</mark> today, Lumni caught an AI about to act on an old copy. <span class="soft">${n === 1 ? 'It was' : 'Each was'} sent back to read the latest.</span>`
+      : `<mark class="calm">No AI</mark> was caught on an old copy today. <span class="soft">${facts.length ? `${plural(facts.length, 'fact is', 'facts are')} shared.` : 'Nothing is shared yet.'}</span>`;
+    $('#sub').textContent = 'Every fact has one current version. Lumni checks that an AI read it before it acts, and sends it back if not.';
+    if (n) countUp($('#hn'), n, { ms: 900 });
+    return;
+  }
+  const stale = facts.reduce((s, f) => s + f.stale, 0);
+  $('#h1').innerHTML = `<mark><span class="num" id="hn">0</span> ${stale === 1 ? 'AI' : 'AIs'}</mark> ${stale === 1 ? 'is' : 'are'} working from an old copy of something right now. <span class="soft">Lumni will catch them before they act.</span>`;
+  $('#sub').textContent = 'Every fact has one current version. Lumni knows which version each AI read.';
+  countUp($('#hn'), stale, { ms: 900 });
+}
+
+function renderLegend() {
+  const items = real()
+    ? [['var(--ink)', 'Worked on it today'], ['var(--orange)', 'Held an old copy'], ['var(--accent)', 'Sent back to look again']]
+    : [['var(--ink)', 'Has the current version'], ['var(--orange)', 'Working from an old copy'], ['var(--accent)', 'Caught, read it again'], [null, 'When the fact last changed']];
+  $('#legend').innerHTML = items.map(([c, t]) => `<span><i ${c ? `style="background:${c}"` : 'class="ring"'}></i>${t}</span>`).join('');
+  $('#cst-h').textContent = real() ? 'Shared facts, and who was sent back' : 'Shared facts, and who read which version';
+  $('#cst-p').textContent = real()
+    ? 'Each square is an AI that worked on the fact today. Lumni’s API doesn’t say how old each read was, so they all sit at the same distance.'
+    : 'Each square is an AI that read the fact. The farther out it sits, the older its copy. Inside the dashed line, it has the current version.';
+}
+
+// ─── the constellation ──────────────────────────────
+
+let C; // the constellation state: facts, readers, svg parts
+
+function renderConstellation(w) {
+  const facts = w.facts;
+  const host = $('#cst');
+  host.innerHTML = '';
+  C = { w, facts, cells: [] };
+  if (!facts.length) {
+    host.style.height = '';
+    host.innerHTML = `<div class="cst-empty"><div><b>No fact is shared yet</b>
+      <p>When two AIs work on the same thing, or one is sent back to look again, the thing shows up here with who changed it last.</p>
+      <a class="btn" href="/tower">See what your AIs share</a></div></div>`;
+    idleEvent();
+    return;
+  }
+  const n = facts.length;
+  const cols = n === 1 ? 1 : n <= 4 ? 2 : 3;
+  const rows = Math.ceil(n / cols);
+  const cw = 912 / cols;
+  const H = rows * CELL_H;
+  host.style.height = H + 'px';
+  const svg = el('svg', { width: 912, height: H, viewBox: `0 0 912 ${H}` }, host);
+  const defs = el('defs', {}, svg);
+  defs.innerHTML = `<radialGradient id="halo"><stop offset="0" stop-color="#5b4bf5" stop-opacity=".16"/><stop offset=".55" stop-color="#5b4bf5" stop-opacity=".05"/><stop offset="1" stop-color="#5b4bf5" stop-opacity="0"/></radialGradient>`;
+  C.svg = svg;
+  facts.forEach((f, idx) => {
+    const col = idx % cols, row = Math.floor(idx / cols);
+    const c = n === 1 ? { x: 250, y: CELL_H / 2 } : { x: cw * col + cw / 2, y: CELL_H * row + CELL_H / 2 };
+    const box = n === 1 ? { x0: 40, x1: 460 } : { x0: cw * col + 4, x1: cw * (col + 1) - 4 };
+    const readers = readersOf(w, f);
+    const g = el('g', {}, svg);
+    el('ellipse', { class: 'halo', cx: c.x, cy: c.y, rx: 150, ry: 128 }, g);
+    // Real: read ages aren't known, so there's no "changed" ring to sit inside.
+    const horizon = el('path', { class: 'horizon', d: contour(c, dOf(f.ago)), style: real() ? 'display:none' : '' }, g);
+    const waves = [0, 1, 2].map(() => el('path', { class: 'wave', opacity: 0 }, g));
+    const lines = el('g', {}, g), dots = el('g', {}, g), labels = el('g', {}, g);
+    const cell = { f, c, box, readers, g, horizon, waves, lines, dots, labels, cluster: readers.length > CLUSTER };
+    C.cells.push(cell);
+    host.appendChild(nodeCard(cell));
+    drawReaders(cell, null);
+  });
+
+  if (n === 1 && real()) {
+    // One fact: say what's known about it, beside it.
+    const f = facts[0];
+    const calm = document.createElement('div');
+    calm.className = 'calmbox';
+    calm.style.cssText = `left:500px; top:${CELL_H / 2 - 96}px`;
+    calm.innerHTML = `<h3>${f.changedBy ? `${E(f.changedBy)} changed ${E(f.thing)}${hasWas(f) ? ` from “${E(cut(f.was, 40))}” to “${E(cut(f.value, 40))}”` : ''}${f.ago != null ? ` ${secs(f.ago)} ago` : ''}.` : `${E(f.thing)} hasn’t changed today.`}</h3>
+      <p>${plural(f.readers, 'AI')} worked on it today. ${f.stale ? `Lumni sent ${fmtN(f.stale)} of them back to look again, ${plural(f.caught, 'time')} in all.` : 'None of them had to be sent back to look again.'}</p>
+      <div class="acts"><button class="btn primary" id="try">Replay how it spread</button><a class="btn" href="/tower">See it in the tower</a></div>`;
+    host.appendChild(calm);
+    $('#try').onclick = () => play(0);
+  }
+  idleEvent();
+}
+
+function nodeCard(cell) {
+  const { f, c } = cell;
+  const d = document.createElement('div');
+  d.className = 'node rise';
+  d.style.cssText = `left:${c.x - HW}px; top:${c.y - HH}px; animation-delay:${C.cells.indexOf(cell) * 70}ms`;
+  const value = String(f.value ?? '');
+  // Real values already read "version 12", so the version tag would only repeat it.
+  const ver = !real() && f.v != null ? `<span class="ver">v${f.v}</span>` : '';
+  d.innerHTML = `
+    <div class="thing" title="${E(f.thing)}">${E(f.thing)}</div>
+    <div class="r1"><span class="field">${E(f.field)}</span>${ver}</div>
+    <div class="val ${value.length > 16 ? 'long' : ''}" title="${E(value)}">${E(value)}</div>
+    <div class="by">${byLine(f)}</div>
+    <div class="r5"><span class="cnt"></span><button class="chg" title="${real() ? 'Replay how the last change spread' : 'Change it and watch'}">${real() ? 'Replay' : 'Change it'}</button></div>`;
+  d.querySelector('.chg').onclick = () => play(C.cells.indexOf(cell));
+  cell.node = d;
+  return d;
+}
+
+function setCounts(cell, read, stale, caught) {
+  const key = `${read}/${stale}/${caught}`;
+  if (cell.countKey === key) return;
+  cell.countKey = key;
+  const t = real()
+    ? `${fmtN(read)} worked on it${caught ? `, <span class="ca">${fmtN(caught)} sent back</span>` : stale ? `, <span class="st">${fmtN(stale)} old</span>` : ''}`
+    : caught
+      ? `${fmtN(read)} read it, ${stale ? `<span class="st">${fmtN(stale)} stale</span>, ` : ''}<span class="ca">${fmtN(caught)} caught</span>`
+      : `${fmtN(read)} read it${stale ? `, <span class="st">${fmtN(stale)} stale</span>` : ', all current'}`;
+  cell.node.querySelector('.cnt').innerHTML = t;
+}
+
+/** Where a reader stands: at rest, or at time s.t of a replay. */
+function stateOf(cell, r, s) {
+  const f = cell.f;
+  if (real()) {
+    // At rest, the ones Lumni sent back today show as caught.
+    if (!s) return { st: r.stale ? 'caught' : 'cur', d: r.d };
+    if (!r.stale) return { st: 'cur', d: r.d };
+    const tc = s.catch0 + r.order * s.gap;
+    if (s.t >= tc) return { st: 'caught', d: r.d + (2 - r.d) * Math.min(1, (s.t - tc) / 520), ping: true };
+    return { st: s.wave >= r.d ? 'stale' : 'cur', d: r.d };
+  }
+  let d = r.d, st = r.stale ? 'stale' : 'cur', ver = r.ver, val = r.val;
+  if (s) {
+    if (r.stale || s.wave >= r.d) { st = 'stale'; if (!r.stale) { ver = f.v; val = f.value; } }
+    const tc = s.catch0 + r.order * s.gap;
+    if (s.t >= tc) {
+      const p = Math.min(1, (s.t - tc) / 520);
+      const e = p >= 1 ? 1 : 1 - Math.exp(-6 * p) * Math.cos(9 * p);
+      d = r.d + (2 + r.h * 3 - r.d) * e;
+      st = 'caught'; ver = f.v + 1; val = NEXT[f.id];
+      return { st, d, ver, val, ping: true };
+    }
+  }
+  return { st, d, ver, val };
+}
+
+/** Draws a fact's readers. `s` is the play state, or null at rest. */
+function drawReaders(cell, s) {
+  if (cell.cluster) return drawCluster(cell, s);
+  const { c, readers, f } = cell;
+  if (!cell.parts) {
+    cell.parts = readers.map((r) => {
+      const line = el('line', { class: 'lk' }, cell.lines);
+      const g = el('g', { class: 'rd' }, cell.dots);
+      el('rect', { x: -10, y: -10, width: 20, height: 20, rx: 6 }, g);
+      const t = el('text', { y: 3 }, g); t.textContent = r.ai ? ini(r.ai) : '';
+      const title = el('title', {}, g);
+      if (r.ai) g.addEventListener('click', () => select(r.ai.id));
+      else g.style.cursor = 'default';
+      return { line, g, title };
+    });
+    // Label the reader nearest the top and the one nearest the bottom.
+    const bySin = [...readers].sort((a, b) => Math.sin(a.th) - Math.sin(b.th));
+    cell.lab = [bySin[0], bySin.length > 1 ? bySin[bySin.length - 1] : null].filter(Boolean);
+    cell.labEls = cell.lab.map(() => el('text', { class: 'ghost' }, cell.labels));
+  }
+  let nStale = 0, nCaught = 0;
+  readers.forEach((r, k) => {
+    const { st, d, ver, val, ping } = stateOf(cell, r, s);
+    if (ping && s && !r.pinged && !s.frozen) { r.pinged = true; const [x, y] = at(c, r.th, r.d); el('circle', { class: 'ping', cx: x, cy: y, r: 12 }, cell.labels); }
+    if (st === 'stale') nStale++;
+    if (st === 'caught') nCaught++;
+    const [x, y] = at(c, r.th, d);
+    const P = cell.parts[k];
+    P.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+    P.g.setAttribute('class', `rd ${st === 'cur' ? '' : st} ${r.ai && sel === r.ai.id ? 'sel' : ''}`);
+    P.line.setAttribute('x1', c.x); P.line.setAttribute('y1', c.y);
+    P.line.setAttribute('x2', x.toFixed(1)); P.line.setAttribute('y2', y.toFixed(1));
+    P.line.setAttribute('class', `lk ${st === 'cur' ? '' : st}`);
+    P.title.textContent = r.ai
+      ? `${r.ai.name}${r.ai.copies > 1 ? `, copy ${r.copy}` : ''}: ${st === 'caught' ? `caught, read v${ver}` : `read v${ver}, ${secs(r.age)} ago`}`
+      : `An AI that worked on ${f.thing} today${r.stale ? `, sent back to look again${hasWas(f) ? `: it still had “${f.was}”` : ''}` : ''}`;
+    const li = cell.lab.indexOf(r);
+    if (li >= 0) {
+      const t = cell.labEls[li];
+      const top = Math.sin(r.th) < 0;
+      const txt = real()
+        ? (st === 'stale' ? (hasWas(f) ? `still thought: ${cut(short(f.was), 30)}` : 'had an old copy') : st === 'caught' ? 'sent back to look again' : '')
+        : (st === 'stale' ? `still thinks: ${short(val)}` : st === 'caught' ? `caught, read v${ver}` : '');
+      t.textContent = txt;
+      t.setAttribute('class', `ghost ${st === 'caught' ? 'caught' : ''}`);
+      const half = txt.length * 2.9;
+      t.setAttribute('x', Math.max(cell.box.x0 + half, Math.min(cell.box.x1 - half, x)).toFixed(1));
+      t.setAttribute('y', (top ? y - 15 : y + 23).toFixed(1));
+    }
+  });
+  setCounts(cell, readers.length, nStale, nCaught);
+  return { nStale, nCaught, n: readers.length };
+}
+
+/** At volume, a fact's readers become discs: current, old copy, caught. */
+function drawCluster(cell, s) {
+  const { c, readers, f } = cell;
+  const n = readers.length;
+  const cur0 = readers.filter((r) => !r.stale);
+  const stale0 = n - cur0.length;
+  const med = (a) => a.length ? a.map((r) => r.d).sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0;
+  if (!cell.discs) {
+    const mk = (cls, th, d) => {
+      const g = el('g', { class: 'disc ' + cls }, cell.dots);
+      const lines = [0, 1, 2].map(() => el('line', { class: 'lk ' + cls }, cell.lines));
+      const sats = Array.from({ length: 7 }, () => el('rect', { width: 5, height: 5, rx: 1.5 }, g));
+      el('circle', { class: 'd' }, g);
+      el('text', { class: 'n' }, g);
+      const lab = el('text', { class: 'dlab' }, cell.labels);
+      const title = el('title', {}, g);
+      const who = (cls === 'stale' ? readers.find((r) => r.stale) : readers[0])?.ai;
+      if (who) { g.addEventListener('click', () => select(who.id)); g.style.cursor = 'pointer'; }
+      return { g, lines, sats, lab, title, th, d };
+    };
+    cell.discs = {
+      cur: mk('cur', -Math.PI * 0.72, med(cur0)),
+      stale: mk('stale', Math.PI * 0.36, Math.min(DMAX, med(readers.filter((r) => r.stale)))),
+      caught: mk('caught', -Math.PI * 0.2, 3),
+    };
+  }
+  let cur = cur0.length, st = stale0, caught = 0;
+  if (real() && !s) { st = 0; caught = stale0; }
+  if (s) {
+    const dc = cell.discs.cur.d;
+    if (!real() && s.wave >= dc) { const p = Math.min(1, (s.wave - dc) / 10); st = stale0 + Math.round(cur * p); cur = cur0.length - (st - stale0); }
+    const pool = real() ? stale0 : n;
+    caught = pool ? Math.max(0, Math.min(pool, Math.round(((s.t - s.catch0) / (s.gap * pool)) * pool))) : 0;
+    if (s.t >= s.catch0 + s.gap * pool) caught = pool;
+    st = Math.max(0, (real() ? stale0 : st) - caught);
+    if (!real() && caught) { cur = 0; st = n - caught; }
+  }
+  const put = (D, count, color, label, labelColor) => {
+    const show = count > 0;
+    D.g.style.display = show ? '' : 'none';
+    D.lab.style.display = show ? '' : 'none';
+    D.lines.forEach((l) => (l.style.display = show ? '' : 'none'));
+    if (!show) return;
+    const rr = 9 + 2.6 * Math.sqrt(count);
+    const [x, y] = at(c, D.th, D.d + rr - 10);
+    D.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)})`);
+    const circ = D.g.querySelector('circle');
+    circ.setAttribute('r', rr.toFixed(1)); circ.setAttribute('fill', color);
+    circ.setAttribute('stroke', '#fff'); circ.setAttribute('stroke-width', 3);
+    D.g.querySelector('.n').textContent = fmtN(count);
+    D.sats.forEach((q, k) => {
+      const show2 = k < Math.min(7, Math.ceil(count / 3));
+      q.style.display = show2 ? '' : 'none';
+      const a = k * 0.9 + hash(f.id + k) * 0.5, rq = rr + 7 + (k % 2) * 4;
+      q.setAttribute('x', (Math.cos(a) * rq - 2.5).toFixed(1)); q.setAttribute('y', (Math.sin(a) * rq - 2.5).toFixed(1));
+      q.setAttribute('fill', color); q.setAttribute('opacity', .55);
+    });
+    D.lines.forEach((l, k) => {
+      const da = (k - 1) * 0.08;
+      const [lx, ly] = at(c, D.th + da, D.d + rr - 10);
+      l.setAttribute('x1', c.x); l.setAttribute('y1', c.y); l.setAttribute('x2', lx.toFixed(1)); l.setAttribute('y2', ly.toFixed(1));
+    });
+    const top = Math.sin(D.th) < 0;
+    D.lab.textContent = label;
+    D.lab.setAttribute('fill', labelColor);
+    const half = label.length * 2.9;
+    D.lab.setAttribute('x', Math.max(cell.box.x0 + half, Math.min(cell.box.x1 - half, x)).toFixed(1));
+    D.lab.setAttribute('y', (top ? y - rr - 9 : y + rr + 15).toFixed(1));
+    D.title.textContent = `${fmtN(count)} AIs: ${label}`;
+  };
+  if (real()) {
+    put(cell.discs.cur, cur, INK, `${fmtN(cur)} worked on it`, 'var(--ink2)');
+    put(cell.discs.stale, st, ORANGE, hasWas(f) ? `still thought: ${cut(short(f.was), 30)}` : 'had an old copy', ORANGE);
+    put(cell.discs.caught, caught, ACCENT, 'sent back to look again', ACCENT);
+  } else {
+    const prev = s && s.wave >= cell.discs.cur.d ? f.value : f.was;
+    put(cell.discs.cur, cur, INK, `${fmtN(cur)} current`, 'var(--ink2)');
+    put(cell.discs.stale, st, ORANGE, `still think: ${short(caught || (s && st > stale0) ? prev : f.was)}`, ORANGE);
+    put(cell.discs.caught, caught, ACCENT, `caught, read v${f.v + 1}`, ACCENT);
+  }
+  setCounts(cell, n, st, caught);
+  return { nStale: st, nCaught: caught, n };
+}
+
+// ─── the signature motion: one change spreads ───────
+// Demo: you change a fact and watch Lumni catch every old copy.
+// Real: a replay of the last real change, with today's real counts.
+
+const RIP = 1500, CATCH0 = 2100;
+
+function play(idx, freezeAt) {
+  stop();
+  const my = gen;
+  // Start from the resting world, then change one fact.
+  renderConstellation(C.w);
+  const cell = C.cells[idx];
+  if (!cell) return;
+  const pool = real() ? Math.max(1, cell.readers.filter((r) => r.stale).length) : cell.readers.length;
+  const gap = cell.cluster ? 2600 / pool : Math.min(420, 2600 / pool);
+  const end = CATCH0 + gap * pool + 700;
+  const change = () => {
+    const nd = cell.node;
+    nd.classList.remove('rise');
+    nd.classList.add('changed');
+    if (freezeAt == null) nd.classList.add('flash');
+    if (real()) {
+      // A replay of the real change: the card goes from what it was to what it is.
+      if (!hasWas(cell.f)) return;
+      const v = nd.querySelector('.val');
+      v.textContent = cell.f.value; v.title = cell.f.value;
+      v.classList.toggle('long', String(cell.f.value).length > 16);
+      if (freezeAt == null) v.classList.add('swap');
+      return;
+    }
+    nd.querySelector('.ver').textContent = 'v' + (cell.f.v + 1);
+    const v = nd.querySelector('.val');
+    v.textContent = NEXT[cell.f.id]; v.title = NEXT[cell.f.id];
+    v.classList.toggle('long', NEXT[cell.f.id].length > 16);
+    if (freezeAt == null) v.classList.add('swap');
+    nd.querySelector('.by').textContent = 'You, just now';
+  };
+  const step = (t, frozen) => {
+    const s = { t, wave: -8 + (t / RIP) * (DMAX + 44), catch0: CATCH0, gap, frozen };
+    cell.waves.forEach((p, k) => {
+      const tk = t - k * 170;
+      if (tk < 0 || tk > RIP) { p.setAttribute('opacity', 0); return; }
+      const q = tk / RIP;
+      p.setAttribute('d', contour(cell.c, -8 + q * (DMAX + 44)));
+      p.setAttribute('opacity', ((1 - q * 0.85) * (0.95 - k * 0.28)).toFixed(3));
+      p.setAttribute('stroke-width', (3.2 - k * 0.9).toFixed(1));
+    });
+    if (!real()) cell.horizon.setAttribute('d', contour(cell.c, Math.max(-4, dOf(t / 1000) - 4)));
+    const r = drawReaders(cell, s);
+    narrate(cell, t, r);
+  };
+  if (real() && hasWas(cell.f)) {
+    // Before the replayed change, the card shows the old value.
+    const v = cell.node.querySelector('.val');
+    v.textContent = cell.f.was; v.title = cell.f.was;
+    v.classList.toggle('long', String(cell.f.was).length > 16);
+  }
+  if (freezeAt != null) { change(); step(freezeAt, true); return; }
+  later(() => {
+    if (my !== gen) return;
+    change();
+    const t0 = performance.now();
+    const loop = (now) => {
+      if (my !== gen) return;
+      const t = now - t0;
+      step(t, false);
+      if (t < end) raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }, 120);
+}
+
+function idleEvent() {
+  const w = C.w, facts = C.facts;
+  const ev = $('#evt');
+  ev.className = 'evt';
+  ev.dataset.k = '';
+  const reads = facts.reduce((s, f) => s + f.reads, 0);
+  const caught = facts.reduce((s, f) => s + f.caught, 0);
+  if (real()) {
+    ev.innerHTML = facts.length
+      ? `<i></i><span>${plural(facts.length, 'fact')} shared across your AIs. They were worked on <b>${plural(reads, 'time')}</b> today, and Lumni sent an AI back to look again <b>${plural(caught, 'time')}</b> on them.</span>`
+      : `<i></i><span>Nothing shared yet. Lumni sent an AI back to look again <b>${plural(w.kinds.recheck, 'time')}</b> today.</span>`;
+    return;
+  }
+  ev.innerHTML = `<i></i><span>${facts.length} facts shared across your AIs. They were read <b>${fmtN(reads)} times</b> today, and Lumni caught <b>${fmtN(caught)}</b> AIs about to act on an old version.</span>`;
+}
+
+function narrate(cell, t, r) {
+  const f = cell.f, ev = $('#evt');
+  const n = r.n;
+  let html, live = true;
+  if (real()) {
+    const pool = f.stale;
+    if (t < CATCH0) html = `${f.changedBy ? E(f.changedBy) : 'Someone'} changed <b>${E(f.thing)}</b>${hasWas(f) ? ` from “${E(cut(f.was, 48))}” to “${E(cut(f.value, 48))}”` : ''}${f.ago != null ? ` ${secs(f.ago)} ago` : ''}. Any AI that read it before then holds an old copy.`;
+    else if (pool && r.nCaught < pool) html = `As they tried to act, Lumni sent <b>${fmtN(r.nCaught)} of ${fmtN(pool)}</b> back to look again.`;
+    else {
+      live = false;
+      html = pool
+        ? `${pool >= n ? (n === 1 ? 'The one AI on it was' : `All ${fmtN(n)} AIs on it were`) : `${fmtN(pool)} of the ${plural(n, 'AI')} on it ${pool === 1 ? 'was' : 'were'}`} sent back to look again today, ${plural(f.caught, 'time')} in all.${pool < n ? ' The rest weren’t.' : ''}`
+        : `None of the ${plural(n, 'AI')} on it had to be sent back to look again today.`;
+    }
+  } else {
+    const nv = f.v + 1;
+    const who = `${f.thing} ${f.field}`;
+    if (t < CATCH0) html = `You changed <b>${E(who)}</b> to v${nv}. <b>${fmtN(r.nStale)} of ${fmtN(n)}</b> ${n === 1 ? 'AI that read it now holds' : 'AIs that read it now hold'} an old copy.`;
+    else if (r.nCaught < n) html = `They try to act. Lumni sent <b>${fmtN(r.nCaught)} of ${fmtN(n)}</b> back to look again, and each one read v${nv} first.`;
+    else { live = false; html = `${n === 1 ? 'The one AI' : `All ${fmtN(n)} AIs`} caught before acting. None of them used the old ${E(f.field)}.`; }
+  }
+  if (ev.dataset.k === html) return;
+  ev.dataset.k = html;
+  ev.className = 'evt' + (live ? ' live' : '');
+  ev.innerHTML = `<i></i><span>${html}</span>${live ? '' : '<button class="reset" id="reset">Back to now</button>'}`;
+  const b = $('#reset');
+  if (b) b.onclick = () => { stop(); renderConstellation(C.w); };
+}
+
+// ─── one AI's view ──────────────────────────────────
+
+function select(id) {
+  sel = id;
+  renderPanel(W);
+  renderFresh(W);
+  for (const cell of C.cells) {
+    if (cell.parts) cell.readers.forEach((r, k) => cell.parts[k].g.classList.toggle('sel', !!r.ai && r.ai.id === id));
+  }
+}
+
+const picker = (w, ai, slow, title) => `<div class="picker">${w.fleet.map((a) => `<button aria-pressed="${a.id === ai.id}" class="${slow(a) ? 'slow' : ''}" data-id="${E(a.id)}" title="${E(title(a))}">${E(ini(a))}</button>`).join('')}</div>`;
+
+function renderPanel(w) {
+  if (!w.fleet.length) {
+    $('#panel').innerHTML = `<div class="ph"><h2>One AI’s view</h2></div>
+      <div class="none" style="margin-top:16px">No AI has acted today yet. Once one does, this shows what it was sent back to look again on, and why.</div>
+      <a class="fix ok" href="/fixes"><div class="k">Nothing to fix</div><b>No look-agains yet</b><small><span>Lumni checks every action for old reads.</span><em>See fixes</em></small></a>`;
+    return;
+  }
+  if (real()) return renderPanelReal(w);
+  const ai = w.fleet.find((a) => a.id === sel) ?? w.fleet[0];
+  const team = w.team(ai.team);
+  const rows = [];
+  for (const cell of C.cells) {
+    const mine = cell.readers.filter((r) => r.ai && r.ai.id === ai.id);
+    if (!mine.length) continue;
+    const old = mine.filter((r) => r.stale);
+    rows.push({ f: cell.f, r: old[0] ?? mine[0], old: old.length, all: mine.length });
+  }
+  rows.sort((a, b) => (b.old ? 1 : 0) - (a.old ? 1 : 0));
+  const shown = rows.slice(0, 3), more = rows.slice(3);
+  const totalStale = w.fleet.reduce((s, a) => s + a.stale, 0);
+  const share = w.kinds.recheck * (ai.stale / Math.max(1, totalStale));
+  const lagSorted = w.fleet.map((a) => a.lag).sort((a, b) => a - b);
+  const median = lagSorted[Math.floor(lagSorted.length / 2)];
+  const limit = ai.lag > 30 ? 60 : 30;
+  const fixable = ai.lag > 10;
+
+  // The gauge: a half dial from 0 to 2 minutes; fresh is 10 s or less.
+  const G = 120, cx = 64, cy = 60, R = 50;
+  const ang = (s) => Math.PI * (1 - Math.min(G, s) / G);
+  const pt = (s, r = R) => [cx + Math.cos(ang(s)) * r, cy - Math.sin(ang(s)) * r];
+  const arc = (a, b, r = R) => { const [x1, y1] = pt(a, r), [x2, y2] = pt(b, r); return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`; };
+  const [nx, ny] = pt(ai.lag);
+  const col = ai.lag <= 10 ? ACCENT : ORANGE;
+  // If read ages are roughly exponential around the average, this is how they split.
+  const e10 = Math.exp(-10 / ai.lag), e60 = Math.exp(-60 / ai.lag);
+  const ages = [[1 - e10, ACCENT, 'under 10 s'], [e10 - e60, 'rgba(240,138,36,.45)', '10 s to 1 min'], [e60, ORANGE, 'over 1 min']];
+  const fewer = Math.max(1, Math.round(share * 0.8));
+
+  $('#panel').innerHTML = `
+    <div class="ph"><h2>One AI’s view</h2><small>Pick an AI</small></div>
+    ${picker(w, ai, (a) => a.lag > 30, (a) => `${a.name}, reads ${a.lag} s old`)}
+    <div class="who"><span class="ai">${E(ini(ai))}</span><div><b>${E(ai.name)}</b><small>${E(team?.name ?? 'Support')}${ai.copies > 1 ? `, ${fmtN(ai.copies)} copies` : ''}, ${fmtN(ai.n)} actions today</small></div></div>
+    <div class="gauge">
+      <svg width="128" height="80" viewBox="0 0 128 80">
+        <path d="${arc(0, G)}" fill="none" stroke="#dfe0e7" stroke-width="9" stroke-linecap="round"/>
+        <path d="${arc(0, 10)}" fill="none" stroke="${ACCENT}" stroke-opacity=".35" stroke-width="9" stroke-linecap="round"/>
+        <path id="garc" d="${arc(0, Math.max(0.5, ai.lag))}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="6.5" fill="#fff" stroke="${col}" stroke-width="3"/>
+        <text x="${cx - R}" y="79" font-size="10" font-weight="600" fill="#a3a7b3" text-anchor="middle">0</text>
+        <text x="${cx + R}" y="79" font-size="10" font-weight="600" fill="#a3a7b3" text-anchor="middle">2 min</text>
+      </svg>
+      <div><div class="gv num"><span id="lagn">0</span><small>s</small></div>
+        <div class="gl">average read age<br><span style="color:var(--ink3)">Fresh is 10 s or less<br>Fleet median is ${median} s</span></div></div>
+    </div>
+    <div class="ages">
+      <div class="abar">${ages.map(([p, c]) => `<i style="width:${(p * 100).toFixed(1)}%;background:${c}"></i>`).join('')}</div>
+      <div class="agel">${ages.map(([p, c, t]) => `<span><i style="background:${c}"></i><b>${pct(p, 0)}</b> ${t}</span>`).join('')}</div>
+    </div>
+    <div class="sect"><span>What it believes, and what’s true</span><span>${rows.length ? `${rows.filter((r) => r.old).length} of ${rows.length} out of date` : ''}</span></div>
+    <div class="diff">${rows.length ? shown.map(({ f, r, old, all }, k) => old ? `
+      <div class="drow stale" style="animation-delay:${k * 60}ms">
+        <div class="t"><span>${E(f.thing)}, ${E(f.field)}</span><small>${secs(r.age)} old</small></div>
+        <div class="ln old"><span>${all > 1 ? `${old} of ${all} believe` : 'It believes'}</span><span class="v">v${r.ver}</span><span>${E(r.val)}</span></div>
+        <div class="ln now"><span>True now</span><span class="v">v${f.v}</span><span>${E(f.value)}</span></div>
+      </div>` : `
+      <div class="drow" style="animation-delay:${k * 60}ms">
+        <div class="t"><span>${E(f.thing)}, ${E(f.field)}</span><small>${secs(r.age)} old</small></div>
+        <div class="ln now"><span>It has</span><span class="v">v${f.v}</span><span>${E(f.value)}</span></div>
+      </div>`).join('') + (more.length ? `<div class="more">And ${more.map((m) => E(m.f.thing)).join(', ')}, ${more.every((m) => m.old) ? 'also out of date' : 'up to date'}.</div>` : '') : `<div class="none">It hasn’t read any of the shared facts on this screen.</div>`}</div>
+    <div class="sent">Lumni sent it back to look again <b>${fmtN(share)} times</b> today, ${pct(ai.stale / Math.max(1, totalStale))} of all ${fmtN(w.kinds.recheck)} look-agains across your fleet. <a href="/journey?story=sam" style="color:var(--accent);font-weight:650;white-space:nowrap">Replay one</a></div>
+    ${fixable ? `<a class="fix" href="/fixes">
+        <div class="k">Suggested fix</div>
+        <b>Re-read ${NOUN[ai.id] ?? 'shared facts'} older than ${limit} s</b>
+        <small><span>About ${fmtN(fewer)} fewer ${fewer === 1 ? 'look-again' : 'look-agains'} a day</span><em>See fixes</em></small>
+      </a>` : `<a class="fix ok" href="/fixes">
+        <div class="k">Nothing to fix</div>
+        <b>It reads within ${ai.lag} seconds</b>
+        <small><span>Lumni will still check every action.</span><em>See fixes</em></small>
+      </a>`}`;
+  $$('#panel .picker button').forEach((b) => (b.onclick = () => select(b.dataset.id)));
+  countUp($('#lagn'), ai.lag, { ms: 700 });
+  $('#garc').animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 800, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
+}
+
+/** Your workspace: read age isn't reported, so this AI's look-agains stand in for it. */
+function renderPanelReal(w) {
+  const ai = w.fleet.find((a) => a.id === sel) ?? w.fleet[0];
+  const team = w.team(ai.team);
+  const all = Math.max(1, w.kinds.recheck);
+  const mine = Object.values(w.patterns ?? {}).flat()
+    .filter((p) => p.kind === 'recheck' && String(p.t ?? '').startsWith(`${ai.name}’s `))
+    .sort((a, b) => b.n - a.n);
+  const reason = (p) => { const r = String(p.t).split(': ').slice(1).join(': ') || p.t; return r[0].toUpperCase() + r.slice(1); };
+  const what = (p) => String(p.t).split(': ')[0].replace(`${ai.name}’s `, '');
+  $('#panel').innerHTML = `
+    <div class="ph"><h2>One AI’s view</h2><small>${w.fleet.length > 1 ? 'Pick an AI' : 'Your only AI'}</small></div>
+    ${picker(w, ai, (a) => a.stale > 0, (a) => `${a.name}, sent back to look again ${a.stale} ${a.stale === 1 ? 'time' : 'times'} today`)}
+    <div class="who"><span class="ai">${E(ini(ai))}</span><div><b>${E(ai.name)}</b><small>${E(team?.name ?? 'On its own')}${ai.copies > 1 ? `, ${fmtN(ai.copies)} copies` : ''}, ${plural(ai.n, 'action')} today</small></div></div>
+    ${ai.lag != null ? realGauge(w, ai) : ''}
+    <div class="cbox" ${ai.lag != null ? 'style="margin-top:12px"' : ''}>
+      <div><b class="${ai.stale ? 'o' : ''} num" ${ai.lag != null ? '' : 'id="lagn"'}>${fmtN(ai.stale)}</b><small>sent back to look again today</small></div>
+      <div><b class="num">${pct(ai.stale / Math.max(1, ai.n))}</b><small>of its ${plural(ai.n, 'action')}</small></div>
+    </div>
+    ${ai.lag != null ? '' : '<p class="nolag">It didn’t read anything versioned today, so Lumni has no read age for it. These are the times Lumni caught an old read before it acted.</p>'}
+    <div class="sect"><span>Why it looked again</span><span>${mine.length ? plural(mine.length, 'reason') : ''}</span></div>
+    <div class="why">${mine.length ? mine.slice(0, 3).map((p, k) => `<a href="/journey?id=${encodeURIComponent(p.story)}" style="animation-delay:${k * 60}ms" title="${E(p.t)}"><span>${E(cut(`${reason(p)}, on its ${what(p)}`, 64))}</span><small>×${fmtN(p.n)}</small></a>`).join('')
+      : `<div class="none">${ai.stale ? 'Its look-agains aren’t among today’s top reasons.' : 'It wasn’t sent back to look again today. Every read was current when it acted.'}</div>`}</div>
+    <div class="sent">${ai.stale
+      ? `That’s ${pct(ai.stale / all)} of all ${plural(w.kinds.recheck, 'look-again')} in your workspace today.${mine[0] ? ` <a href="/journey?id=${encodeURIComponent(mine[0].story)}" style="color:var(--accent);font-weight:650;white-space:nowrap">Replay one</a>` : ''}`
+      : `Your workspace had ${plural(w.kinds.recheck, 'look-again')} today${w.kinds.recheck ? ', none of them from this AI' : ''}.`}</div>
+    ${ai.stale ? `<a class="fix" href="/fixes">
+        <div class="k">Suggested fix</div>
+        <b>Have ${E(ai.name)} read again before it acts</b>
+        <small><span>Fixes has the rule for its look-agains</span><em>See fixes</em></small>
+      </a>` : `<a class="fix ok" href="/fixes">
+        <div class="k">Nothing to fix</div>
+        <b>No old reads caught today</b>
+        <small><span>Lumni still checks every action.</span><em>See fixes</em></small>
+      </a>`}`;
+  $$('#panel .picker button').forEach((b) => (b.onclick = () => select(b.dataset.id)));
+  if (ai.lag != null) {
+    countUp($('#lagn'), ai.lag, { ms: 700 });
+    $('#garc').animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 800, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
+  }
+}
+
+/** Your workspace: the real median read age, on the same dial as the demo. */
+function realGauge(w, ai) {
+  const lags = timed(w).map((a) => a.lag).sort((a, b) => a - b);
+  const median = lags[Math.floor(lags.length / 2)];
+  const G = 120, cx = 64, cy = 60, R = 50;
+  const ang = (s) => Math.PI * (1 - Math.min(G, s) / G);
+  const pt = (s, r = R) => [cx + Math.cos(ang(s)) * r, cy - Math.sin(ang(s)) * r];
+  const arc = (a, b, r = R) => { const [x1, y1] = pt(a, r), [x2, y2] = pt(b, r); return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`; };
+  const [nx, ny] = pt(ai.lag);
+  const col = ai.lag <= 10 ? ACCENT : ORANGE;
+  return `<div class="gauge">
+      <svg width="128" height="80" viewBox="0 0 128 80">
+        <path d="${arc(0, G)}" fill="none" stroke="#dfe0e7" stroke-width="9" stroke-linecap="round"/>
+        <path d="${arc(0, 10)}" fill="none" stroke="${ACCENT}" stroke-opacity=".35" stroke-width="9" stroke-linecap="round"/>
+        ${ai.lagP90 != null ? (() => { const [a1, b1] = pt(ai.lagP90, R - 9), [a2, b2] = pt(ai.lagP90, R + 9); return `<line x1="${a1.toFixed(1)}" y1="${b1.toFixed(1)}" x2="${a2.toFixed(1)}" y2="${b2.toFixed(1)}" stroke="${ORANGE}" stroke-width="2" stroke-linecap="round" stroke-opacity=".7"><title>9 in 10 reads were under ${secs(ai.lagP90)} old</title></line>`; })() : ''}
+        <path id="garc" d="${arc(0, Math.max(0.5, ai.lag))}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="6.5" fill="#fff" stroke="${col}" stroke-width="3"/>
+        <text x="${cx - R}" y="79" font-size="10" font-weight="600" fill="#a3a7b3" text-anchor="middle">0</text>
+        <text x="${cx + R}" y="79" font-size="10" font-weight="600" fill="#a3a7b3" text-anchor="middle">2 min</text>
+      </svg>
+      <div><div class="gv num"><span id="lagn">0</span><small>s</small></div>
+        <div class="gl">typical read age<br><span style="color:var(--ink3)">${ai.lagP90 != null ? `9 in 10 under ${secs(ai.lagP90)}<br>` : ''}Fleet median is ${median} s</span></div></div>
+    </div>`;
+}
+
+// ─── freshness of the fleet ─────────────────────────
+
+/** Labels go above their dot, or below if that spot is taken. */
+function placeLabels(pts, labelled, text, L, R) {
+  const boxes = [];
+  return labelled.map((p) => {
+    const [name, tail] = text(p);
+    const wd = (name.length + tail.length + 1) * 6.6;
+    const lx = Math.max(L + wd / 2, Math.min(R - wd / 2, p.x));
+    const near = pts.filter((q) => Math.abs(q.x - lx) < wd / 2 + q.r);
+    const top = Math.min(...near.map((q) => q.y - q.r));
+    const bot = Math.max(...near.map((q) => q.y + q.r));
+    const tries = [p.y - p.r - 8, p.y + p.r + 16, top - 8, bot + 16, top - 24, bot + 32];
+    const free = (t) => near.every((q) => q.y + q.r < t - 12 || q.y - q.r > t + 3)
+      && boxes.every((b) => Math.abs(b.y - t) > 14 || Math.abs(b.x - lx) > (b.w + wd) / 2 + 6);
+    const ly = tries.find(free) ?? tries[tries.length - 1];
+    boxes.push({ x: lx, y: ly, w: wd });
+    return `<text class="dl" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}">${E(name)} <tspan class="s">${E(tail)}</tspan></text>`;
+  });
+}
+
+/** A small beeswarm, so close AIs stack instead of hiding each other. */
+function swarm(fleet, xOf, rOf, Y) {
+  const placed = [];
+  return [...fleet].sort((a, b) => rOf(b) - rOf(a)).map((a) => {
+    const r = rOf(a), px = xOf(a);
+    let py = Y;
+    for (let k = 0; k < 40; k++) {
+      const off = Math.ceil(k / 2) * 4 * (k % 2 ? -1 : 1);
+      py = Y + off;
+      if (placed.every((p) => Math.hypot(p.x - px, p.y - py) >= p.r + r + 2)) break;
+    }
+    const p = { a, x: px, y: py, r };
+    placed.push(p);
+    return p;
+  });
+}
+
+function renderFresh(w) {
+  // Real: AIs that read something versioned have a real read age; the rest get a note.
+  if (real() && !timed(w).length) return renderFreshReal(w);
+  const fleet = real() ? timed(w) : w.fleet;
+  const untimed = real() ? w.fleet.filter((a) => a.lag == null) : [];
+  const nameList = (xs) => xs.length <= 1 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+  const lags = fleet.map((a) => a.lag).sort((a, b) => a - b);
+  const most = lags[Math.max(0, Math.ceil(lags.length * 0.6) - 1)];
+  const slow = fleet.filter((a) => a.lag >= 30).sort((a, b) => b.lag - a.lag);
+  const names = slow.map((a) => a.name);
+  const list = names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  const minSlow = slow.length ? slow[slow.length - 1].lag : 0;
+  const when = minSlow >= 60 ? 'minutes ago' : minSlow >= 40 ? 'nearly a minute ago' : `${minSlow} seconds ago or more`;
+  const cap = real()
+    ? `${fleet.length === 1 ? `<b>${E(fleet[0].name)}</b> reads` : 'Most AIs read'} within <b>${most} seconds</b>, typically.${slow.length && fleet.length > 1 ? ` <b>${E(list)}</b> read from ${when}.` : ''}`
+    : `Most AIs read within <b>${most} seconds</b>.${slow.length ? ` <b>${E(list)}</b> read from ${when}.` : ''}`;
+
+  const PW = 1304, PH = 156, L = 16, R = 1288, Y = 76, AX = PH - 30;
+  // Square-root scale, so the crowd under 20 s spreads out and the slow ones still sit far right.
+  const x = (s) => L + Math.sqrt(Math.min(120, s) / 120) * (R - L);
+  const maxC = Math.max(...fleet.map((a) => a.copies));
+  const pts = swarm(fleet, (a) => x(a.lag), (a) => 5 + 10 * Math.sqrt(a.copies / maxC), Y);
+  const ticks = [[0, '0 s'], [5, '5 s'], [10, '10 s'], [20, '20 s'], [30, '30 s'], [60, '1 min'], [90, '90 s'], [120, '2 min']];
+  const fastest = fleet.reduce((m, a) => (a.lag < m.lag ? a : m), fleet[0]);
+  const labelled = pts.filter((p) => p.a.lag >= 30 || p.a.id === sel || p.a.id === fastest.id).sort((a, b) => b.a.lag - a.a.lag);
+  const labels = placeLabels(pts, labelled, (p) => [p.a.name, `${p.a.lag} s`], L, R);
+
+  $('#fresh').innerHTML = `
+    <div class="fh"><h2>Freshness of your fleet</h2><span class="cap">${cap}</span>
+      <div class="fl"><span><i style="background:var(--accent)"></i>10 s or fresher</span><span><i style="background:var(--orange)"></i>Older</span><span style="color:var(--ink3)">Size is how many copies run</span></div></div>
+    <svg width="${PW}" height="${PH}" viewBox="0 0 ${PW} ${PH}">
+      <rect x="${L}" y="8" width="${x(10) - L}" height="${AX - 8}" rx="8" fill="${ACCENT}" fill-opacity=".06"/>
+      <text x="${L + 10}" y="24" class="ax" style="fill:var(--accent)">fresh</text>
+      <line x1="${L}" x2="${R}" y1="${Y}" y2="${Y}" stroke="#e8e9ee" stroke-width="1"/>
+      ${ticks.map(([s, t]) => `<line x1="${x(s)}" x2="${x(s)}" y1="${AX}" y2="${AX + 5}" stroke="#c9cad3"/><text class="ax" x="${x(s)}" y="${PH - 6}" text-anchor="middle">${t}</text>`).join('')}
+      <line x1="${L}" x2="${R}" y1="${AX}" y2="${AX}" stroke="#d9dae2"/>
+      ${pts.map((p) => {
+        const a = p.a, fresh = a.lag <= 10;
+        const op = fresh ? 1 : a.lag >= 30 ? 1 : 0.5;
+        return `<circle class="dot ${a.id === sel ? 'sel' : ''}" data-id="${E(a.id)}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.r.toFixed(1)}" fill="${fresh ? ACCENT : ORANGE}" fill-opacity="${op}" ${a.id === sel ? '' : 'stroke="#fff" stroke-width="2"'}><title>${E(a.name)}: reads are ${a.lag} s old ${real() ? 'typically' : 'on average'}, ${fmtN(a.copies)} ${a.copies === 1 ? 'copy' : 'copies'}</title></circle>`;
+      }).join('')}
+      ${labels.join('')}
+    </svg>${untimed.length ? `<p class="nolag" style="margin-top:4px">${E(nameList(untimed.map((a) => a.name)))} didn’t read anything versioned today, so ${untimed.length === 1 ? 'it has' : 'they have'} no read age here.</p>` : ''}`;
+  $$('#fresh .dot').forEach((d) => (d.onclick = () => select(d.dataset.id)));
+}
+
+/** Your workspace: read age isn't reported, so the strip counts look-agains per AI. */
+function renderFreshReal(w) {
+  const fleet = [...w.fleet].sort((a, b) => b.stale - a.stale || b.n - a.n);
+  const sent = fleet.filter((a) => a.stale > 0);
+  const cap = `Lumni’s API doesn’t report how old each read was yet, so this counts how often each AI was sent back to look again today.${fleet.length ? sent.length ? ` <b>${plural(sent.length, 'AI')}</b> ${sent.length === 1 ? 'was' : 'were'} sent back at least once.` : ' None was sent back.' : ''}`;
+  const head = `<div class="fh"><h2>Look-agains across your fleet</h2><span class="cap">${cap}</span>
+      <div class="fl"><span><i style="background:var(--accent)"></i>Never sent back</span><span><i style="background:var(--orange)"></i>Sent back</span></div></div>`;
+  if (!fleet.length) {
+    $('#fresh').innerHTML = head + '<div class="fresh-empty">No AI has acted today yet.</div>';
+    return;
+  }
+  // One column per AI: a bar for its look-agains, its name underneath.
+  const PW = 1304, PH = 150, base = 104, maxH = 70;
+  const max = Math.max(1, ...fleet.map((a) => a.stale));
+  const cw = Math.min(150, PW / fleet.length);
+  const x0 = (PW - cw * fleet.length) / 2;
+  const cols = fleet.map((a, i) => {
+    const cx = x0 + cw * i + cw / 2;
+    const h = a.stale ? 8 + (a.stale / max) * (maxH - 8) : 3;
+    const col = a.stale ? ORANGE : ACCENT;
+    const name = cut(a.name, Math.max(6, Math.floor(cw / 7.2)));
+    return `<g class="fcol" data-id="${E(a.id)}" style="cursor:pointer">
+      <rect x="${(cx - cw / 2 + 4).toFixed(1)}" y="6" width="${(cw - 8).toFixed(1)}" height="${PH - 8}" rx="10" fill="${a.id === sel ? 'var(--accent-soft)' : 'transparent'}"/>
+      <rect x="${(cx - 14).toFixed(1)}" y="${(base - h).toFixed(1)}" width="28" height="${h.toFixed(1)}" rx="6" fill="${col}" fill-opacity="${a.stale ? 1 : 0.5}"/>
+      <text class="dl" x="${cx.toFixed(1)}" y="${(base - h - 8).toFixed(1)}">${a.stale ? `×${fmtN(a.stale)}` : 'none'}</text>
+      <text class="ax" x="${cx.toFixed(1)}" y="${base + 20}" text-anchor="middle" style="fill:var(--ink);font-weight:650">${E(name)}</text>
+      <text class="ax" x="${cx.toFixed(1)}" y="${base + 36}" text-anchor="middle">${a.n ? pct(a.stale / a.n) : '0%'} of ${fmtN(a.n)}</text>
+      <title>${E(a.name)}: sent back to look again ${plural(a.stale, 'time')}, out of ${plural(a.n, 'action')} today</title>
+    </g>`;
+  }).join('');
+  $('#fresh').innerHTML = `${head}
+    <svg width="${PW}" height="${PH}" viewBox="0 0 ${PW} ${PH}">
+      <line x1="0" x2="${PW}" y1="${base + 0.5}" y2="${base + 0.5}" stroke="#d9dae2"/>
+      ${cols}
+    </svg>`;
+  $$('#fresh .fcol').forEach((d) => (d.onclick = () => select(d.dataset.id)));
+}
+
+// ─── boot ───────────────────────────────────────────
+
+function render(w) {
+  stop();
+  W = w;
+  if (!w.fleet.find((a) => a.id === sel)) {
+    sel = real() ? [...w.fleet].sort((a, b) => b.stale - a.stale)[0]?.id : 'pricer';
+  }
+  const play0 = $('#play');
+  play0.style.display = w.facts.length ? '' : 'none';
+  play0.textContent = real() ? 'Replay how the last change spread' : 'Watch one change spread';
+  play0.onclick = () => play(0);
+  renderHead(w);
+  renderLegend();
+  renderConstellation(w);
+  renderPanel(w);
+  renderFresh(w);
+  const shot = shotPending;
+  shotPending = null;
+  if (shot === 'ripple' && w.facts.length) play(0, 430);
+  if (shot === 'caught' && w.facts.length) play(0, 9000);
+}
+
+Shell.boot({ nav: 'Context', onWorld: (w) => render(w) });
+</script>
+</body>
+</html>

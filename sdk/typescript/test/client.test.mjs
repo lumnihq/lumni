@@ -1,0 +1,6 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+import {LumniClient,shouldExecute} from "../dist/index.js";
+
+test("keeps retry identity and decodes the shared forward-compatible fixture",async()=>{const fixture=JSON.parse(await readFile(new URL("../../../api/fixtures/decision-wait.json",import.meta.url),"utf8"));let attempts=0,actionID,requestID;const client=new LumniClient("http://lumni.test","secret",undefined,async(_url,init)=>{attempts++;const body=JSON.parse(init.body);if(attempts===1){actionID=body.action_id;requestID=init.headers["X-Request-ID"];return new Response(JSON.stringify({error:{code:"UNAVAILABLE",message:"retry",request_id:"req"}}),{status:503,headers:{"content-type":"application/json"}})}assert.equal(body.action_id,actionID);assert.equal(init.headers["X-Request-ID"],requestID);return new Response(JSON.stringify(fixture),{status:200,headers:{"content-type":"application/json"}})});const decision=await client.checkAction({work_id:"w",actor_id:"a",operation:"read",resources:[{type:"x",external_id:"1",mode:"READ"}]});assert.equal(attempts,2);assert.equal(decision.decision,"WAIT");assert.equal(shouldExecute(decision),false)});

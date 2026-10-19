@@ -1,0 +1,1032 @@
+{
+  "$defs": {
+    "ActionCheckInput": {
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "arguments": {},
+        "effect_key": {
+          "type": "string"
+        },
+        "idempotency_key": {
+          "type": "string"
+        },
+        "metadata": {},
+        "observe_only": {
+          "type": "boolean"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/ResourceIntent"
+          },
+          "type": "array"
+        },
+        "risk": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "verification": {
+          "$ref": "#/$defs/OutcomeSpec"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "work_id",
+        "actor_id",
+        "operation"
+      ],
+      "type": "object"
+    },
+    "ActionResultInput": {
+      "properties": {
+        "compensation": {},
+        "created_resources": {
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          },
+          "type": "array"
+        },
+        "external_result_id": {
+          "type": "string"
+        },
+        "lease_token": {
+          "type": "string"
+        },
+        "output": {},
+        "resource_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "result_metadata": {},
+        "retryable": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "ClaimInput": {
+      "properties": {
+        "handlers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "worker_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "worker_id",
+        "handlers"
+      ],
+      "type": "object"
+    },
+    "CostInput": {
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "amount_micros_usd": {
+          "type": "integer"
+        },
+        "compute_units": {
+          "type": "number"
+        },
+        "cost_type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input_units": {
+          "type": "integer"
+        },
+        "metadata": {},
+        "model": {
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "output_units": {
+          "type": "integer"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "cost_type",
+        "amount_micros_usd"
+      ],
+      "type": "object"
+    },
+    "Decision": {
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "approval_id": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "conflicting_action_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "enforced": {
+          "type": "boolean"
+        },
+        "evaluations": {
+          "items": {
+            "$ref": "#/$defs/DecisionEvaluation"
+          },
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "type": "array"
+        },
+        "existing_action_id": {
+          "type": "string"
+        },
+        "existing_result_id": {
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kernel_version": {
+          "type": "string"
+        },
+        "lease_token": {
+          "type": "string"
+        },
+        "leases": {
+          "items": {
+            "$ref": "#/$defs/LeaseGrant"
+          },
+          "type": "array"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "receipt_id": {
+          "type": "string"
+        },
+        "resolver_version": {
+          "type": "string"
+        },
+        "retry_after_ms": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "action_id",
+        "receipt_id",
+        "decision",
+        "reason_code",
+        "enforced",
+        "confidence",
+        "kernel_version",
+        "resolver_version",
+        "policy_version",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "DecisionEvaluation": {
+      "properties": {
+        "details": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "duration_us": {
+          "type": "integer"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "subject_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "outcome"
+      ],
+      "type": "object"
+    },
+    "DependencyInput": {
+      "properties": {
+        "entity_type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "relationship": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_id",
+        "target_id",
+        "entity_type",
+        "relationship"
+      ],
+      "type": "object"
+    },
+    "EffectIdentityResolution": {
+      "properties": {
+        "current_key": {
+          "type": "string"
+        },
+        "evidence": {},
+        "legacy_key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "legacy_key",
+        "current_key",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "EnforcementRule": {
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "rule",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "Evidence": {
+      "properties": {
+        "data": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "LeaseGrant": {
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fencing_token": {
+          "type": "integer"
+        },
+        "resource_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_id",
+        "fencing_token",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "ObservationInput": {
+      "properties": {
+        "confidence": {
+          "type": "number"
+        },
+        "evidence_type": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "metadata": {},
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ResourceRef"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "step_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "version_source": {
+          "type": "string"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "work_id",
+        "resource",
+        "version",
+        "version_source"
+      ],
+      "type": "object"
+    },
+    "OperationVerifier": {
+      "properties": {
+        "expected_template": {},
+        "operation": {
+          "type": "string"
+        },
+        "verifier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "verifier_id",
+        "expected_template"
+      ],
+      "type": "object"
+    },
+    "OutcomeSpec": {
+      "properties": {
+        "expected": {},
+        "verifier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "verifier_id",
+        "expected"
+      ],
+      "type": "object"
+    },
+    "ReconciliationHandler": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "ReconciliationInput": {
+      "properties": {
+        "handler": {
+          "type": "string"
+        },
+        "handler_version": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input": {},
+        "outcome_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "outcome_id",
+        "handler",
+        "handler_version"
+      ],
+      "type": "object"
+    },
+    "ResourceIntent": {
+      "properties": {
+        "confidence": {
+          "type": "number"
+        },
+        "evidence": {},
+        "evidence_type": {
+          "type": "string"
+        },
+        "expected_version": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "metadata": {},
+        "mode": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "observed_version": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "version_source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "ResourceMapping": {
+      "properties": {
+        "id_pointer": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "observed_version_pointer": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "version_source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "type",
+        "id_pointer"
+      ],
+      "type": "object"
+    },
+    "ResourceRef": {
+      "properties": {
+        "external_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "metadata": {},
+        "namespace": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "RetryPolicy": {
+      "properties": {
+        "initial_delay_ms": {
+          "type": "integer"
+        },
+        "max_attempts": {
+          "type": "integer"
+        },
+        "max_delay_ms": {
+          "type": "integer"
+        },
+        "multiplier": {
+          "type": "number"
+        },
+        "retry_on": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "RunClaim": {
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fence": {
+          "type": "integer"
+        },
+        "handler": {
+          "type": "string"
+        },
+        "handler_version": {
+          "type": "string"
+        },
+        "input": {},
+        "token": {
+          "type": "string"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "work_id",
+        "actor_id",
+        "handler",
+        "handler_version",
+        "input",
+        "token",
+        "fence",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "RunInput": {
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "string"
+        },
+        "base_commit": {
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expected_effects": {
+          "additionalProperties": {
+            "$ref": "#/$defs/OutcomeSpec"
+          },
+          "type": "object"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "handle_child_failure": {
+          "type": "boolean"
+        },
+        "handler": {
+          "type": "string"
+        },
+        "handler_version": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input": {},
+        "issue_ref": {
+          "type": "string"
+        },
+        "metadata": {},
+        "parent_work_id": {
+          "type": "string"
+        },
+        "pr_ref": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "repository_id": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "actor_id",
+        "goal",
+        "handler",
+        "handler_version"
+      ],
+      "type": "object"
+    },
+    "RuntimeAuth": {
+      "properties": {
+        "fence": {
+          "type": "integer"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "fence"
+      ],
+      "type": "object"
+    },
+    "SignalInput": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "payload": {}
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "Step": {
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "attempt": {
+          "type": "integer"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "error": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "input_hash": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {},
+        "output_hash": {
+          "type": "string"
+        },
+        "replay": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "work_id",
+        "key",
+        "type",
+        "name",
+        "status",
+        "attempt",
+        "input_hash"
+      ],
+      "type": "object"
+    },
+    "StepInput": {
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ActionCheckInput"
+        },
+        "fence": {
+          "type": "integer"
+        },
+        "input": {},
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "retry_policy": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "token": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "wait": {
+          "$ref": "#/$defs/WaitInput"
+        }
+      },
+      "required": [
+        "token",
+        "fence",
+        "key",
+        "type"
+      ],
+      "type": "object"
+    },
+    "StepResult": {
+      "properties": {
+        "attempt": {
+          "type": "integer"
+        },
+        "effect_absent": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        },
+        "external_result_id": {
+          "type": "string"
+        },
+        "fence": {
+          "type": "integer"
+        },
+        "output": {},
+        "retryable": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "fence",
+        "attempt",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ToolMapping": {
+      "properties": {
+        "effect_key_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/ResourceMapping"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "tool",
+        "operation",
+        "resources"
+      ],
+      "type": "object"
+    },
+    "VerificationEvidence": {
+      "properties": {
+        "effect_absent": {
+          "type": "boolean"
+        },
+        "external_result_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "observed": {},
+        "prior_attempt_terminated": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "Verifier": {
+      "properties": {
+        "config": {},
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version",
+        "config",
+        "enabled"
+      ],
+      "type": "object"
+    },
+    "WaitInput": {
+      "properties": {
+        "approval_id": {
+          "type": "string"
+        },
+        "delay_ms": {
+          "type": "integer"
+        },
+        "resource_id": {
+          "type": "string"
+        },
+        "signal": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "wake_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "work_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lumni durable protocol additive v1"
+}
