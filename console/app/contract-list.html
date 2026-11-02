@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Your contracts</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root {
+    --k-when: #6a6f7d; --k-before: var(--accent); --k-verify: #2563eb; --k-match: #0f766e; --k-within: #b45309;
+    --good: #059669; --good-bg: #ecfdf5; --good-line: #a7f3d0; --amber: #b45309; --amber-bg: #fffbeb; --amber-line: #fde68a;
+  }
+  .wrap { padding: 34px 40px 90px; max-width: 1240px; margin: 0 auto; }
+  @keyframes blurin { from { opacity: 0; filter: blur(5px); transform: translateY(6px); } }
+  @keyframes grow { from { transform: scaleY(0); } }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+  .in { animation: blurin .5s var(--ease) both; }
+  .banner { margin-bottom: 18px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--accent-line); font-size: 14px; color: var(--ink2); }
+  .banner b { color: var(--ink); }
+
+  /* Head. */
+  .head { display: flex; align-items: flex-end; gap: 20px; }
+  .head .eyebrow { font-size: 14px; }
+  .head h1 { font-size: 38px; font-weight: 750; letter-spacing: -0.035em; line-height: 1.1; margin-top: 6px; }
+  .head p { margin-top: 8px; font-size: 16px; color: var(--ink2); }
+  .new { margin-left: auto; height: 42px; padding: 0 18px; border-radius: 13px; background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 8px; transition: transform .15s; flex: none; }
+  .new:hover { transform: translateY(-1px); }
+
+  /* Totals. */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .tile { padding: 18px 20px; border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); animation: blurin .5s var(--ease) both; }
+  .tile .l { font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .tile .v { margin-top: 6px; font-size: 32px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 15px; font-weight: 600; color: var(--ink3); letter-spacing: 0; margin-left: 4px; }
+  .tile .s { margin-top: 4px; font-size: 13px; color: var(--ink3); }
+  .tile.hl { background: linear-gradient(135deg, #f5f3ff, var(--paper) 70%); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .tile.hl .v { color: var(--accent); }
+
+  /* Filters. */
+  .bar { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--wash); gap: 2px; box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13.5px; font-weight: 650; color: var(--ink3); display: inline-flex; align-items: center; gap: 7px; transition: background .2s, color .2s, box-shadow .2s; }
+  .seg button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(13,14,20,.08), 0 0 0 1px var(--line); }
+  .seg button i { font-style: normal; font-size: 12px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+  .seg button:disabled { cursor: default; }
+  .seg.sm button { height: 28px; padding: 0 11px; font-size: 12.5px; }
+  .search { margin-left: auto; position: relative; }
+  .search input { width: 280px; height: 38px; padding: 0 14px 0 36px; border: 0; border-radius: 12px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font: 14px var(--sans); color: var(--ink); outline: 0; transition: box-shadow .2s; }
+  .search input:focus { box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .search svg { position: absolute; left: 12px; top: 11px; color: var(--ink3); }
+
+  /* The list. */
+  .list { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .k { border-radius: 20px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); animation: blurin .5s var(--ease) both; transition: box-shadow .25s; }
+  .k:hover { box-shadow: inset 0 0 0 1px var(--line2), var(--shadow); }
+  .k.open { box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow-lg); }
+  .k.paused { background: #fbfbfc; }
+  .k.gone { animation: gone .35s var(--ease) forwards; }
+  @keyframes gone { to { opacity: 0; transform: translateX(-12px); filter: blur(4px); } }
+  .row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 150px 120px auto; gap: 22px; align-items: center; padding: 16px 18px 16px 20px; cursor: pointer; }
+  .who { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; position: relative; }
+  .dot.protect { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .dot.watch { box-shadow: inset 0 0 0 2.5px var(--accent), 0 0 0 4px var(--accent-soft); }
+  .dot.paused { background: var(--ink3); box-shadow: 0 0 0 4px var(--wash); }
+  .dot.protect::after, .dot.watch::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--accent-2); opacity: 0; animation: ring 2.4s var(--ease) infinite; }
+  @keyframes ring { 0% { transform: scale(.6); opacity: .6; } 70%, 100% { transform: scale(1.8); opacity: 0; } }
+  .who b { display: block; font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .state { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 650; margin-left: 8px; vertical-align: 2px; }
+  .state.protect { background: var(--accent-soft); color: var(--accent); }
+  .state.watch { background: var(--paper); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .state.paused { background: var(--wash); color: var(--ink2); }
+  .ints { display: flex; flex-wrap: wrap; gap: 6px; }
+  .int { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px 0 4px; border-radius: 999px; background: var(--wash); font-size: 12.5px; font-weight: 650; color: var(--ink2); }
+  .int .mk { width: 20px; height: 20px; border-radius: 6px; color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .int .mk.bot { background: var(--accent-soft); color: var(--accent); }
+  .int.ro::after { content: 'read-only'; font-size: 11px; font-weight: 600; color: var(--ink3); }
+  .runs { display: flex; align-items: flex-end; gap: 10px; }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 30px; }
+  .spark i { width: 6px; border-radius: 2px; background: var(--accent-2); transform-origin: bottom; animation: grow .6s var(--ease) both; }
+  .paused .spark i { background: var(--line2); }
+  .runs b { display: block; font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .runs small { display: block; font-size: 12px; color: var(--ink3); white-space: nowrap; }
+  .stop b { color: var(--accent); }
+  .paused .stop b { color: var(--ink3); }
+  .acts { display: flex; align-items: center; gap: 10px; }
+  .sw { width: 42px; height: 24px; border-radius: 999px; background: var(--line2); position: relative; transition: background .25s; flex: none; }
+  .sw::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(13,14,20,.25); transition: transform .3s var(--spring); }
+  .sw[aria-checked="true"] { background: var(--good); }
+  .sw[aria-checked="true"]::after { transform: translateX(18px); }
+  .sw:disabled { opacity: .45; cursor: default; }
+  .chev { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--ink3); transition: transform .3s var(--ease), background .15s; }
+  .chev:hover { background: var(--wash); color: var(--ink); }
+  .open .chev { transform: rotate(180deg); }
+
+  /* Expanded. */
+  .more { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .42s var(--ease); }
+  .open .more { grid-template-rows: 1fr; }
+  .more > div { overflow: hidden; min-height: 0; }
+  .detail { margin: 0 12px 12px; padding: 18px 20px; border-radius: 16px; background: #fafafc; box-shadow: inset 0 0 0 1px var(--line); display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 26px; }
+  .detail h4 { font-size: 12.5px; font-weight: 700; color: var(--ink2); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .detail h4 button { margin-left: auto; font-size: 12.5px; font-weight: 650; color: var(--accent); }
+  .open .detail > div { animation: blurin .45s var(--ease) both; }
+  .open .detail > div:nth-child(2) { animation-delay: .06s; }
+  .open .detail > div:nth-child(3) { animation-delay: .12s; }
+  .sp { display: grid; grid-template-columns: 58px 1fr; gap: 7px 10px; align-items: start; font-size: 13.5px; line-height: 1.45; }
+  .sp + .sp { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line2); }
+  .kk { justify-self: start; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); font-size: 11px; font-weight: 700; color: var(--kc); display: inline-flex; align-items: center; }
+  .kk.when { --kc: var(--k-when); } .kk.before { --kc: var(--k-before); } .kk.verify { --kc: var(--k-verify); } .kk.match { --kc: var(--k-match); } .kk.within { --kc: var(--k-within); }
+  .field { display: inline-flex; height: 20px; padding: 0 7px; margin: 0 4px 3px 0; border-radius: 6px; background: #f0fdfa; color: var(--k-match); font: 600 11.5px var(--mono); align-items: center; box-shadow: inset 0 0 0 1px #ccfbf1; }
+  .perm { padding: 12px 14px; border-radius: 12px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+  .perm + .perm { margin-top: 8px; }
+  .perm-h { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 650; }
+  .perm-h .mk { width: 24px; height: 24px; border-radius: 7px; color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+  .perm-h .mk.bot { background: var(--accent-soft); color: var(--accent); }
+  .perm-h > span:last-child { margin-left: auto; font-size: 12px; font-weight: 650; color: var(--good); display: inline-flex; align-items: center; gap: 5px; }
+  .pl { display: flex; gap: 8px; align-items: baseline; margin-top: 7px; font-size: 12.5px; color: var(--ink2); }
+  .pl svg { flex: none; position: relative; top: 2px; }
+  .pl .y { color: var(--good); } .pl .n { color: var(--red); }
+  .pl code { font: 11.5px var(--mono); color: var(--ink2); }
+  .ev { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: start; padding: 9px 0; font-size: 13px; border-top: 1px solid var(--line); }
+  .ev:first-of-type { border-top: 0; padding-top: 0; }
+  .ev svg { margin-top: 2px; }
+  .ev.ok svg { color: var(--good); } .ev.stop svg { color: var(--accent); } .ev.would svg { color: var(--amber); }
+  .ev b { font-weight: 650; }
+  .ev small { display: block; color: var(--ink3); font: 11.5px var(--mono); margin-top: 2px; }
+  .ev .t { font-size: 12px; color: var(--ink3); white-space: nowrap; }
+  .foot { display: flex; align-items: center; gap: 10px; margin: 0 12px; padding: 4px 8px 14px; }
+  .foot .seg { margin-right: 6px; }
+  .btn2 { height: 34px; padding: 0 14px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line2); background: var(--paper); font-size: 13.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px; transition: box-shadow .15s; }
+  .btn2:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+  .btn2.danger { color: var(--red); box-shadow: inset 0 0 0 1px #fecaca; margin-left: auto; }
+  .btn2.danger:hover { box-shadow: inset 0 0 0 1px var(--red); }
+  .btn2.solid { background: var(--red); color: #fff; box-shadow: none; }
+  .confirm { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink2); animation: blurin .3s var(--ease) both; }
+  .hint { font-size: 12.5px; color: var(--ink3); }
+
+  /* Empty. */
+  .empty { margin-top: 18px; padding: 54px 30px; border-radius: 22px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); text-align: center; animation: blurin .5s var(--ease) both; }
+  .empty .ic { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .empty h2 { margin-top: 16px; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; }
+  .empty p { margin-top: 6px; color: var(--ink2); font-size: 15px; }
+  .empty .acts2 { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+  .none { padding: 30px; text-align: center; color: var(--ink2); font-size: 14px; }
+
+  /* The permission card. */
+  .m-back { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(244,244,247,.62); backdrop-filter: blur(6px); }
+  .modal { width: 520px; max-height: calc(100vh - 60px); overflow: auto; padding: 24px 24px 16px; border-radius: 24px; background: var(--paper); box-shadow: 0 0 0 1px var(--line), 0 40px 90px -30px rgba(40,30,120,.45); animation: blurin .45s var(--ease) both; }
+  .m-logos { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .ml { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff; font-size: 19px; font-weight: 800; }
+  .ml.lumni { background: var(--ink); }
+  .m-link { display: flex; gap: 5px; } .m-link i { width: 5px; height: 5px; border-radius: 50%; background: var(--good); }
+  .modal h3 { margin-top: 16px; text-align: center; font-size: 19px; font-weight: 750; letter-spacing: -0.02em; }
+  .modal .m-sub { margin-top: 4px; text-align: center; font-size: 13.5px; color: var(--ink2); }
+  .m-h { margin-top: 16px; font-size: 12.5px; font-weight: 700; color: var(--ink2); }
+  .m-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .m-row b { display: block; font-size: 14px; font-weight: 650; }
+  .m-row small { display: block; font: 11.5px var(--mono); color: var(--ink2); margin-top: 2px; }
+  .m-ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+  .m-ic.ok { background: var(--good-bg); color: var(--good); } .m-ic.no { background: #fef2f2; color: var(--red); }
+  .m-pill { height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; }
+  .m-pill.had { background: var(--good-bg); color: var(--good); } .m-pill.none { background: var(--wash); color: var(--ink3); }
+  .m-foot { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+  .m-foot span { margin-right: auto; font-size: 12.5px; color: var(--ink3); }
+
+  /* After the first paint, changes update in place, without entrances. */
+  .settled .k:not(.gone), .settled .tile, .settled .spark i, .settled .empty, .settled .open .detail > div { animation: none; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script src="/lib/contracts.js"></script>
+<script src="/lib/contracts-real.js"></script>
+<script>
+// Your contracts: every contract you've turned on, with what it reads, the
+// apps and agents it touches, how often it ran, and what it stopped. Pause,
+// switch between watch and protect, change or delete any of them. With real
+// data, all of it comes from and goes to the Go API (lib/contracts-real.js).
+
+const C = window.Contracts;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const safe = (s) => Shell.esc(s);
+const fmtN = (n) => Math.round(n).toLocaleString('en-US');
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches && !new URLSearchParams(location.search).has('motion');
+const R = window.ContractsReal;
+const STATE = { watch: 'Watching', protect: 'Protecting', paused: 'Paused' };
+const KEYS = { when: 'When', before: 'Before', verify: 'Verify', match: 'Match', within: 'Within' };
+const SAMPLES = [
+  ['No more than one refund is permitted per order. Every successful cancellation must leave the subscription inactive in Stripe.', 'protect'],
+  ['Ask a person before any refund over $500.', 'watch'],
+  ['Don’t close a ticket before its refund lands.', 'paused'],
+];
+
+const I = {
+  plus: '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2.5v9M2.5 7h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  tick: '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M3 7.4 5.8 10 11 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x: '<svg width="11" height="11" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  eye: '<svg width="13" height="13" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
+  shield: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 1.5 13.5 3.5V8c0 3.2-2.4 5.6-5.5 6.5C4.9 13.6 2.5 11.2 2.5 8V3.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.6 8.1 7.3 9.7 10.6 6.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ticks: '<svg width="15" height="15" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.4 10.3 8.8 12.6 13.6 7.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bot: '<svg width="14" height="14" viewBox="0 0 20 20"><rect x="3.5" y="6" width="13" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  chev: '<svg width="13" height="13" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  search: '<svg width="15" height="15" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.6 10.6 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  pen: '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M9.5 2.5 11.5 4.5 5 11 2.5 11.5 3 9z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  spark: '<svg width="22" height="22" viewBox="0 0 16 16"><path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6z" fill="currentColor"/></svg>',
+  wait: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+};
+
+let W = null;
+let S = null;
+const storeKey = () => `lumni.contracts.v4.${Shell.key}`;
+const API = R.client(Shell.api);
+const load = () => { try { const v = JSON.parse(localStorage.getItem(storeKey()) ?? 'null'); return Array.isArray(v) ? v : []; } catch { return []; } };
+const save = () => { if (Shell.isReal) return; try { localStorage.setItem(storeKey(), JSON.stringify(S.list)); } catch {} };
+const appColor = (id) => W.apps?.find((a) => a.id === id)?.color ?? { shopify: '#5e8e3e', hubspot: '#ff7a59' }[id] ?? '#0d0e14';
+const live = (c) => c.mode === 'watch' || c.mode === 'protect';
+
+/** A contract's week: from the API with real data, else the demo world. */
+function week(c) {
+  if (Shell.isReal) return S.weeks?.get(c.id) ?? null;
+  const rs = c.rules.filter((r) => r.type);
+  const rp = C.replay(rs, W);
+  if (!rp) return null;
+  const h = C.hash(c.id);
+  return { ...rp, ago: 1 + (h % 38), proven: Math.round((rp.verified / Math.max(1, rp.seen)) * 1000) / 10 };
+}
+
+function agentOf(c) {
+  const r = c.rules.find((x) => x.type);
+  const op = C.operation(r);
+  return W.fleet?.find((f) => f.op === op || f.op === r.binding?.operation)?.name ?? `${r.slots.action[0].toUpperCase()}${r.slots.action.slice(1)} agent`;
+}
+
+// ─── the screen ─────────────────────────────────────
+
+function render(w, first) {
+  W = w;
+  S = { list: Shell.isReal ? [] : load(), filter: S?.filter ?? 'all', q: S?.q ?? '', open: S?.open ?? null, confirm: null, weeks: new Map(), runs: new Map(), needs: new Map(), busy: new Set() };
+  $('#main').innerHTML = `
+    <section class="head ${first ? 'in' : ''}">
+      <div><div class="eyebrow">${safe(w.scale?.org ?? 'Your workspace')}, ${safe(w.dayLabel ?? '')}</div>
+      <h1>Your contracts</h1>
+      <p>Everything Lumni keeps true for you: what each one reads, how often it ran, and what it stopped.</p></div>
+      <a class="new" href="/contracts">${I.plus}New contract</a>
+    </section>
+    <div id="body">${Shell.isReal ? '<div class="hint" style="margin-top:26px">Loading your contracts…</div>' : ''}</div>`;
+  if (Shell.isReal) return loadReal(first);
+  paint(first);
+}
+
+/** Real data: the contracts, then each running one's week. */
+async function loadReal(first) {
+  const s = S;
+  try {
+    s.list = (await API.list()).sort((a, b) => String(a.created).localeCompare(String(b.created)));
+  } catch (e) {
+    if (S !== s) return;
+    $('#body').innerHTML = `<div class="empty"><span class="ic">${I.spark}</span><h2>Your contracts couldn’t load</h2><p>${safe(e.message)}</p></div>`;
+    return;
+  }
+  if (S !== s) return;
+  const weeks = await Promise.all(s.list.map((c) => (c.mode === 'draft' ? null : API.week(c).catch(() => null))));
+  if (S !== s) return;
+  s.list.forEach((c, i) => { if (weeks[i]) s.weeks.set(c.id, weeks[i]); });
+  paint(first);
+  if (s.open && byId(s.open)) more(byId(s.open));
+}
+
+/** Opening a card with real data: its recent runs and what it reads, once. */
+async function more(c) {
+  if (!Shell.isReal || S.runs.has(c.id)) return;
+  const s = S;
+  const [runs, needs] = await Promise.all([c.mode === 'draft' ? [] : API.runs(c).catch(() => []), API.needs(c).catch(() => null)]);
+  if (S !== s) return;
+  S.runs.set(c.id, runs);
+  if (needs) S.needs.set(c.id, needs);
+  paintList();
+}
+
+function paint(first) {
+  const body = $('#body');
+  $('#main').classList.toggle('settled', first === false);
+  if (!S.list.length) {
+    body.innerHTML = `<div class="empty"><span class="ic">${I.spark}</span><h2>No contracts yet</h2><p>Write one in plain words, or start from a few samples to see how they run.</p>
+      <div class="acts2"><a class="new" style="margin:0" href="/contracts">${I.plus}Write a contract</a>${Shell.isReal ? '' : '<button class="btn2" data-samples style="height:42px">Load sample contracts</button>'}</div></div>`;
+    return;
+  }
+  const weeks = new Map(S.list.map((c) => [c.id, week(c)]));
+  const on = S.list.filter(live);
+  const sum = (f) => on.reduce((t, c) => t + (weeks.get(c.id)?.[f] ?? 0), 0);
+  // The demo's week has one count; the API's says what was stopped and what only would have been.
+  const stopped = Shell.isReal
+    ? S.list.reduce((t, c) => t + (weeks.get(c.id)?.stopped ?? 0), 0)
+    : S.list.filter((c) => c.mode === 'protect').reduce((t, c) => t + (weeks.get(c.id)?.wouldStop ?? 0), 0);
+  const would = S.list.filter((c) => Shell.isReal || c.mode === 'watch').reduce((t, c) => t + (weeks.get(c.id)?.wouldStop ?? 0), 0);
+  const kept = S.list.filter((c) => c.mode === 'protect').reduce((t, c) => t + (weeks.get(c.id)?.saved ?? 0), 0);
+  const unmeasured = Shell.isReal && !S.list.some((c) => c.mode === 'protect' && weeks.get(c.id)?.saved != null);
+  const apps = new Set(on.flatMap((c) => C.reads(c.rules).map((x) => x.app)));
+  const counts = { all: S.list.length, protect: 0, watch: 0, paused: 0 };
+  for (const c of S.list) counts[c.mode] = (counts[c.mode] ?? 0) + 1;
+  const tiles = `<section class="tiles">
+      <div class="tile" style="animation-delay:.04s"><div class="l">Running</div><div class="v">${on.length}<small>of ${S.list.length}</small></div><div class="s">${counts.protect} protecting, ${counts.watch} watching</div></div>
+      <div class="tile" style="animation-delay:.08s"><div class="l">Checked this week</div><div class="v"><b class="n">${fmtN(sum('seen'))}</b></div><div class="s">${fmtN(sum('verified'))} proven in the app</div></div>
+      <div class="tile hl" style="animation-delay:.12s"><div class="l">Stopped this week</div><div class="v"><b class="n">${fmtN(stopped)}</b></div><div class="s">${would ? `and ${fmtN(would)} more it would have, watching` : 'before they ran'}</div></div>
+      <div class="tile" style="animation-delay:.16s"><div class="l">Kept</div><div class="v"><b class="n">${unmeasured ? '—' : kept ? C.money(kept) : '$0'}</b></div><div class="s">${unmeasured ? 'not measured yet' : `read-only, in ${apps.size} ${apps.size === 1 ? 'app' : 'apps'}`}</div></div>
+    </section>`;
+  const q = S.q.trim().toLowerCase();
+  const shown = [...S.list].reverse().filter((c) => (S.filter === 'all' || c.mode === S.filter) && (!q || `${c.title} ${c.text}`.toLowerCase().includes(q)));
+  body.innerHTML = `${tiles}
+    <div class="bar">
+      <div class="seg" role="tablist">${[['all', 'All'], ['protect', 'Protecting'], ['watch', 'Watching'], ['paused', 'Paused']].map(([k, l]) => `<button role="tab" data-filter="${k}" aria-selected="${S.filter === k}">${l} <i>${counts[k] ?? 0}</i></button>`).join('')}</div>
+      <label class="search">${I.search}<input id="q" placeholder="Search contracts" value="${safe(S.q)}" /></label>
+    </div>
+    <div class="list" id="list">${shown.length ? shown.map((c, i) => card(c, weeks.get(c.id), i)).join('') : '<div class="none">Nothing matches. Try another filter.</div>'}</div>`;
+  if (first !== false) for (const b of $$('.tile .n')) countUp(b);
+  $('#q').addEventListener('input', (e) => { S.q = e.target.value; paintList(); });
+}
+
+function paintList() {
+  const weeks = new Map(S.list.map((c) => [c.id, week(c)]));
+  const q = S.q.trim().toLowerCase();
+  const shown = [...S.list].reverse().filter((c) => (S.filter === 'all' || c.mode === S.filter) && (!q || `${c.title} ${c.text}`.toLowerCase().includes(q)));
+  $('#list').innerHTML = shown.length ? shown.map((c, i) => card(c, weeks.get(c.id), i)).join('') : '<div class="none">Nothing matches. Try another filter.</div>';
+}
+
+function card(c, wk, i) {
+  const rs = c.rules.filter((r) => r.type);
+  const real = Shell.isReal;
+  const reads = real ? opsOf(c) : C.reads(c.rules);
+  const agent = agentOf(c);
+  const max = wk ? Math.max(1, ...wk.days) : 1;
+  const open = S.open === c.id;
+  const ints = reads.map((x) => `<span class="int ${real ? '' : 'ro'}"><span class="mk" style="background:${appColor(x.app)}">${safe(x.app ? x.name[0].toUpperCase() : '?')}</span>${safe(x.name)}</span>`).join('') + `<span class="int"><span class="mk bot">${I.bot}</span>${safe(agent)}</span>`;
+  const stat = wk
+    ? `<div class="runs"><div class="spark">${wk.days.map((d, j) => `<i style="height:${Math.max(4, (d / max) * 30)}px;animation-delay:${0.1 + i * 0.04 + j * 0.03}s"></i>`).join('')}</div><div><b>${R.dash(wk.seen)}</b><small>checks, 7 days</small></div></div>`
+    : '<div class="runs"><div><b>—</b><small>not running yet</small></div></div>';
+  const stopped = real && c.mode === 'protect' ? wk?.stopped : wk?.wouldStop;
+  const stop = wk ? `<div class="runs stop"><div><b>${R.dash(stopped)}</b><small>${c.mode === 'protect' ? 'stopped' : c.mode === 'paused' ? 'stopped before pause' : 'would have stopped'}</small></div></div>` : '<div></div>';
+  return `<article class="k ${open ? 'open' : ''} ${c.mode === 'paused' ? 'paused' : ''}" data-id="${safe(c.id)}" style="animation-delay:${0.08 + i * 0.05}s">
+    <div class="row" data-toggle>
+      <div class="who"><span class="dot ${c.mode}"></span><div style="min-width:0"><b>${safe(c.title)}<span class="state ${c.mode}">${STATE[c.mode] ?? 'Draft'}</span></b><small>${safe(rs.map((r) => C.short(r)).join(', '))}${wk?.ago && live(c) ? `, last ran ${wk.ago} min ago` : ''}</small></div></div>
+      <div class="ints">${ints}</div>
+      ${stat}
+      ${stop}
+      <div class="acts"><button class="sw" role="switch" aria-checked="${live(c)}" data-pause title="${live(c) ? 'Pause' : c.mode === 'draft' ? 'Set it up and turn it on' : 'Resume'}" ${S.busy.has(c.id) ? 'disabled' : ''}></button><button class="chev" aria-label="Details">${I.chev}</button></div>
+    </div>
+    <div class="more"><div>
+      <div class="detail">
+        <div><h4>What it keeps true</h4>${rs.map((r) => `<div class="sp">${C.spec(r).map((row) => `<span class="kk ${row.k}">${KEYS[row.k]}</span><span>${row.fields ? row.fields.map((f) => `<span class="field">${safe(f)}</span>`).join('') : safe(row.runs.map((x) => (typeof x === 'string' ? x : C.say(x.slot, x.value))).join(''))}</span>`).join('')}</div>`).join('')}</div>
+        <div><h4>Permissions${real ? '' : '<button data-perms>Review</button>'}</h4>
+          ${real ? permsReal(c) : reads.map((x) => `<div class="perm"><div class="perm-h"><span class="mk" style="background:${appColor(x.app)}">${safe(x.name[0])}</span>${safe(x.name)}<span>${I.tick}Read-only</span></div>
+            ${[...x.objects].map(([o, f]) => `<div class="pl"><span class="y">${I.eye}</span><div>Reads ${safe(o)} <code>${safe([...f].join(', '))}</code></div></div>`).join('')}
+            <div class="pl"><span class="n">${I.x}</span><div>Never writes</div></div></div>`).join('')}
+          ${real ? '' : `<div class="perm"><div class="perm-h"><span class="mk bot">${I.bot}</span>${safe(agent)}<span>${I.tick}Connected</span></div><div class="pl"><span class="y">${I.tick}</span><div>Asks Lumni before it acts, and reports the result</div></div></div>`}
+        </div>
+        <div><h4>Recent runs</h4>${real ? runsReal(c) : wk ? runs(c, wk) : '<div class="hint">Runs appear here once it’s on.</div>'}</div>
+      </div>
+      <div class="foot">
+        <div class="seg sm" role="tablist" title="How it runs">${['watch', 'protect'].map((m) => `<button role="tab" data-runmode="${m}" aria-selected="${c.mode === m || (c.mode === 'paused' && c.was === m)}" ${S.busy.has(c.id) ? 'disabled' : ''}>${m === 'watch' ? 'Watch' : 'Protect'}</button>`).join('')}</div>
+        <a class="btn2" href="/contracts?open=${encodeURIComponent(c.id)}&edit=1">${I.pen}Change the rule</a>
+        ${real ? (c.mode === 'draft' ? `<a class="btn2" href="/contracts?open=${encodeURIComponent(c.id)}">Set it up</a>` : '') : '<a class="btn2" href="/journey?story=omar">See receipts</a>'}
+        ${S.confirm === c.id
+          ? `<div class="confirm">Delete this contract? Lumni stops checking it.<button class="btn2" data-cancel>Keep it</button><button class="btn2 solid" data-delete>Delete</button></div>`
+          : '<button class="btn2 danger" data-ask-delete>Delete</button>'}
+      </div>
+    </div></div>
+  </article>`;
+}
+
+function runs(c, wk) {
+  const r = c.rules.find((x) => x.type);
+  const s = r.slots;
+  const app = C.appName(s.app);
+  const stopWord = c.mode === 'protect' ? 'Stopped' : 'Would stop';
+  const what = {
+    'once-per-key': `a second ${s.action} for the same ${s.key}`,
+    'end-state': `a ${s.action} that left the ${s.object} not ${s.state}`,
+    'approval-over': `a ${s.action} over ${C.money(s.amount)} with no approval`,
+    'amount-cap': `a ${s.action} over the ${s.limit}`,
+    'order-before': `a ${s.action} before the ${s.first} landed`,
+    'rate-limit': `a ${s.action} over ${s.n} a ${s.window}`,
+    'human-wins': `an edit to a ${s.key} a person just changed`,
+  }[r.type] ?? `a ${s.action} that broke the rule`;
+  const items = wk.examples.map((ex, j) => {
+    const bad = j === 0;
+    return `<div class="ev ${bad ? (c.mode === 'protect' ? 'stop' : 'would') : 'ok'}">${bad ? (c.mode === 'protect' ? I.shield : I.wait) : I.ticks}
+      <div><b>${bad ? `${stopWord} ${safe(what)}` : `${safe(s.action[0].toUpperCase() + s.action.slice(1))} proven in ${safe(app)}`}</b><small>${safe(ex.agent)}, ${safe(ex.key)}${['refund', 'charge'].includes(s.action) ? `, ${C.money(ex.amount)}` : ''}</small></div>
+      <span class="t">${safe(ex.day)} ${safe(ex.at)}</span></div>`;
+  });
+  return items.join('');
+}
+
+// ─── real data ──────────────────────────────────────
+
+/** The operations a contract is bound to, as chips: the app before the dot. */
+function opsOf(c) {
+  const ops = [...new Set(c.rules.map((r) => r.binding?.operation).filter(Boolean))];
+  if (!ops.length) return [{ app: '', name: 'Not bound yet', objects: new Map() }];
+  return ops.map((op) => ({ app: op.split('.')[0], name: op, objects: new Map() }));
+}
+
+/** What it reads, from GET /needs: the read bindings and whether each is granted. */
+function permsReal(c) {
+  const n = S.needs.get(c.id);
+  if (!n) return '<div class="hint">Loading…</div>';
+  const apps = n.apps.map((a) => `<div class="perm"><div class="perm-h"><span class="mk" style="background:${appColor(a.app)}">${safe((a.app || a.binding_id)[0]?.toUpperCase() ?? '?')}</span>${safe(a.binding_id)}<span>${a.granted ? `${I.tick}Read-only` : 'Needs a grant'}</span></div>
+      ${Object.entries(a.objects ?? {}).map(([o, f]) => `<div class="pl"><span class="y">${I.eye}</span><div>Reads ${safe(o)} <code>${safe(f.join(', '))}</code></div></div>`).join('')}
+      <div class="pl"><span class="n">${I.x}</span><div>Never writes</div></div></div>`).join('');
+  const why = n.ready ? '' : `<div class="hint" style="margin-top:8px">${[...n.general, ...n.reads.values(), ...[...n.verifiers].map((v) => `verifier: ${v}`)].map((m) => safe(R.says(m))).join('. ')}.</div>`;
+  return `${apps || '<div class="hint">Reads nothing in your apps: it checks what your agents send.</div>'}${why}`;
+}
+
+/** Recent runs, from GET /runs. */
+function runsReal(c) {
+  const xs = S.runs.get(c.id);
+  if (!xs) return '<div class="hint">Loading…</div>';
+  if (!xs.length) return `<div class="hint">${c.mode === 'draft' ? 'Runs appear here once it’s on.' : 'No checks recorded yet.'}</div>`;
+  const time = (t) => (t ? new Date(t).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
+  return xs.map((x) => {
+    const stopped = x.broke && x.mode === 'protect';
+    const cls = x.broke ? (stopped ? 'stop' : 'would') : 'ok';
+    const head = x.broke ? `${stopped ? 'Stopped' : 'Would stop'} ${safe(x.operation ?? 'an action')}` : `${safe(x.operation ?? 'Action')} ${x.verified ? 'proven in the app' : 'checked'}`;
+    return `<div class="ev ${cls}">${x.broke ? (stopped ? I.shield : I.wait) : I.ticks}
+      <div><b>${head}</b><small>${safe([x.agent, x.id, x.reason, x.receipt].filter(Boolean).join(', '))}</small></div>
+      <span class="t">${safe(time(x.at))}</span></div>`;
+  }).join('');
+}
+
+// ─── actions ────────────────────────────────────────
+
+const byId = (id) => S.list.find((c) => c.id === id);
+
+/** Real data: change the mode through the API, keeping the card's week and runs. */
+async function modeReal(c, m, said) {
+  if (S.busy.has(c.id)) return;
+  S.busy.add(c.id);
+  paintList();
+  try {
+    const x = await API.mode(c, m);
+    Object.assign(c, { mode: x.mode, was: x.was, revision: x.revision, effective: x.effective });
+    if (live(c) && !S.weeks.has(c.id)) { const wk = await API.week(c).catch(() => null); if (wk) S.weeks.set(c.id, wk); }
+    Shell.toast(said(c));
+  } catch (e) {
+    Shell.toast(e.status === 409 && /bindings|ready/.test(e.message) ? `${c.title} isn’t ready to run: open it to finish its bindings.` : e.message, 'bad');
+  } finally {
+    S.busy.delete(c.id);
+    paint(false);
+  }
+}
+
+function setMode(c, m) {
+  if (Shell.isReal) {
+    if (c.mode === m) return;
+    if (c.mode === 'draft') { location.href = `/contracts?open=${encodeURIComponent(c.id)}`; return; }
+    return modeReal(c, m, (x) => (x.mode === 'protect' ? `${x.title} is protecting.` : `${x.title} is only watching.`));
+  }
+  if (c.mode === 'paused') c.was = m;
+  else c.mode = m;
+  save();
+  paint(false);
+  Shell.toast(c.mode === 'paused' ? `${c.title} will ${m} when you resume it.` : m === 'protect' ? `${c.title} is protecting.` : `${c.title} is only watching.`);
+}
+
+function togglePause(c) {
+  if (Shell.isReal) {
+    if (c.mode === 'draft') { location.href = `/contracts?open=${encodeURIComponent(c.id)}`; return; }
+    if (live(c)) return modeReal(c, 'paused', (x) => `${x.title} is paused. Lumni stops checking it.`);
+    return modeReal(c, c.was || 'watch', (x) => `${x.title} is ${x.mode === 'protect' ? 'protecting' : 'watching'} again.`);
+  }
+  if (live(c)) { c.was = c.mode; c.mode = 'paused'; Shell.toast(`${c.title} is paused. Lumni stops checking it.`); }
+  else { c.mode = c.was ?? 'watch'; Shell.toast(`${c.title} is ${c.mode === 'protect' ? 'protecting' : 'watching'} again.`); }
+  save();
+  // Let the switch slide before the numbers move.
+  setTimeout(() => paint(false), calm ? 0 : 260);
+}
+
+async function remove(c) {
+  if (Shell.isReal) {
+    try { await API.remove(c); } catch (e) { return Shell.toast(e.message, 'bad'); }
+  }
+  const el = $(`.k[data-id="${CSS.escape(c.id)}"]`);
+  const done = () => { S.list = S.list.filter((x) => x !== c); S.confirm = null; save(); paint(false); Shell.toast(`${c.title} is deleted.`); };
+  if (calm || !el) return done();
+  el.classList.add('gone');
+  setTimeout(done, 340);
+}
+
+function loadSamples() {
+  S.list = SAMPLES.map(([text, mode], i) => {
+    const rules = C.classify(text).map((r) => (r.type ? r : C.choose(r, r.ranked[0].type)));
+    return { id: `sample${i}`, text, rules, title: C.title(rules), mode, was: mode === 'paused' ? 'watch' : undefined, forced: {}, over: {}, hook: { tool: 'claude', state: 'ok' }, done: { describe: true, preview: true, connect: true } };
+  });
+  save();
+  paint(true);
+}
+
+function perms(c) {
+  const reads = C.reads(c.rules);
+  const back = document.createElement('div');
+  back.className = 'm-back';
+  back.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+    ${reads.map((x) => `<div class="m-logos"><span class="ml lumni">${I.spark}</span><span class="m-link"><i></i><i></i><i></i><i></i></span><span class="ml" style="background:${appColor(x.app)}">${safe(x.name[0])}</span></div>
+      <h3>${safe(x.name)}, read-only</h3><p class="m-sub">For <b>${safe(c.title)}</b>. Nothing else.</p>
+      <div class="m-h">Lumni reads</div>${[...x.objects].map(([o, f]) => `<div class="m-row"><span class="m-ic ok">${I.eye}</span><div><b>${safe(o[0].toUpperCase() + o.slice(1))}</b><small>${safe([...f].join(', '))}</small></div><span class="m-pill had">Allowed</span></div>`).join('')}
+      <div class="m-h">Lumni will never</div>${(C.NEVER[x.app] ?? ['Create, change or delete anything']).map((t) => `<div class="m-row"><span class="m-ic no">${I.x}</span><div><b style="font-weight:550;color:var(--ink2)">${safe(t)}</b></div><span class="m-pill none">No access</span></div>`).join('')}`).join('<div style="height:18px"></div>')}
+    <div class="m-foot"><span>Encrypted. Revoking stops every contract that reads it.</span><button class="btn2" data-mclose>Close</button></div></div>`;
+  document.body.append(back);
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const q = (s) => t.closest(s);
+  let x;
+  if (q('[data-samples]')) return loadSamples();
+  if (q('[data-mclose]') || t.classList.contains('m-back')) return $('.m-back')?.remove();
+  if ((x = q('[data-filter]'))) { S.filter = x.dataset.filter; for (const b of $$('[data-filter]')) b.setAttribute('aria-selected', String(b === x)); return paintList(); }
+  const k = q('.k');
+  if (!k) return;
+  const c = byId(k.dataset.id);
+  if (!c) return;
+  if (q('[data-pause]')) { e.stopPropagation(); const sw = q('[data-pause]'); if (!sw.disabled) { sw.setAttribute('aria-checked', String(!live(c))); togglePause(c); } return; }
+  if ((x = q("[data-runmode]"))) return x.disabled ? null : setMode(c, x.dataset.runmode);
+  if (q('[data-perms]')) return perms(c);
+  if (q('[data-ask-delete]')) { S.confirm = c.id; return paintList(); }
+  if (q('[data-cancel]')) { S.confirm = null; return paintList(); }
+  if (q('[data-delete]')) return remove(c);
+  if (q('[data-toggle]') && !q('a, button:not(.chev)')) {
+    S.open = S.open === c.id ? null : c.id;
+    for (const el of $$('.k')) el.classList.toggle('open', el.dataset.id === S.open);
+    if (S.open) more(c);
+  }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('.m-back')?.remove(); });
+
+function countUp(b) {
+  const m = b.textContent.match(/^(\$?)([\d,]+)$/);
+  if (!m || calm) return;
+  const to = Number(m[2].replace(/,/g, ''));
+  const t0 = performance.now();
+  const f = (now) => { const k = Math.min(1, (now - t0) / 900); b.textContent = `${m[1]}${fmtN(to * (1 - (1 - k) ** 3))}`; if (k < 1 && b.isConnected) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
+
+// ?shot=samples | open | delete | paused
+Shell.boot({ nav: 'Contracts', onWorld: (w, first) => {
+  render(w, first);
+  const s = new URLSearchParams(location.search).get('shot');
+  if (!first || !s) return;
+  if (!S.list.length || s === 'samples') loadSamples();
+  if (s === 'open' || s === 'delete') setTimeout(() => { $('.k [data-toggle]')?.click(); if (s === 'delete') setTimeout(() => $('.k.open [data-ask-delete]')?.click(), 400); }, 900);
+} });
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/lumnihq/lumni/internal/contracts"
 	"github.com/lumnihq/lumni/internal/resource"
 	"github.com/lumnihq/lumni/internal/secrets"
 	"github.com/lumnihq/lumni/pkg/protocol"
@@ -118,6 +119,11 @@ func (k *Kernel) Check(ctx context.Context, tenantID string, in protocol.ActionC
 		in.Risk = protocol.RiskMedium
 	}
 
+	contractService := contracts.New(k.pool, k.cipher)
+	preparedContracts, err := contractService.Prepare(ctx, tenantID, in)
+	if err != nil {
+		return protocol.Decision{}, err
+	}
 	tx, err := k.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return protocol.Decision{}, err
@@ -217,6 +223,9 @@ func (k *Kernel) Check(ctx context.Context, tenantID string, in protocol.ActionC
 		if err := insertAction(ctx, tx, tenantID, in, argumentsHash); err != nil {
 			return protocol.Decision{}, err
 		}
+		if err := contractService.BindTx(ctx, tx, tenantID, &in, preparedContracts); err != nil {
+			return protocol.Decision{}, err
+		}
 		if err := k.captureIntent(ctx, tx, tenantID, in); err != nil {
 			return protocol.Decision{}, err
 		}
@@ -231,6 +240,10 @@ func (k *Kernel) Check(ctx context.Context, tenantID string, in protocol.ActionC
 		if err := insertActionResources(ctx, tx, tenantID, in); err != nil {
 			return protocol.Decision{}, err
 		}
+	}
+	contractFindings, err := contractService.EvaluateTx(ctx, tx, tenantID, in, preparedContracts)
+	if err != nil {
+		return protocol.Decision{}, err
 	}
 	pause, paused, err := checkPaused(ctx, tx, tenantID, in.ActorID)
 	if err != nil {
@@ -289,6 +302,17 @@ func (k *Kernel) Check(ctx context.Context, tenantID string, in protocol.ActionC
 	if matched {
 		candidates = append(candidates, policyDraft)
 	}
+	for _, f := range contractFindings {
+		if f.Decision == protocol.DecisionAllow || f.Mode == "watch" {
+			continue
+		}
+		d := draft{decision: f.Decision, reason: f.Reason, evidence: []protocol.Evidence{{Type: "CONTRACT", Data: map[string]any{"contract_id": f.ContractID, "revision": f.Revision, "rule_id": f.RuleID}}}}
+		if f.Mode == "watch" {
+			m := protocol.ModeShadow
+			d.controlMode = &m
+		}
+		candidates = append(candidates, d)
+	}
 	var shadow *draft
 	for _, candidate := range candidates {
 		candidateMode := mode
@@ -325,6 +349,12 @@ func (k *Kernel) Check(ctx context.Context, tenantID string, in protocol.ActionC
 				return protocol.Decision{}, e
 			}
 			if e := tx.QueryRow(ctx, `SELECT id::text FROM approvals WHERE tenant_id=$1 AND action_id=$2 AND status='PENDING'`, tenantID, in.ActionID).Scan(&approvalID); e != nil {
+				return protocol.Decision{}, e
+			}
+			if _, e := tx.Exec(ctx, `UPDATE action_contract_rules SET approval_id=$3 WHERE tenant_id=$1 AND action_id=$2 AND decision='REQUIRE_APPROVAL' AND mode='protect' AND approval_id IS NULL`, tenantID, in.ActionID, approvalID); e != nil {
+				return protocol.Decision{}, e
+			}
+			if _, e := tx.Exec(ctx, `UPDATE approvals SET contract_requirements=(SELECT COALESCE(jsonb_agg(jsonb_build_object('contract_id',contract_id,'revision',revision,'rule_id',rule_id)ORDER BY contract_id,rule_id),'[]') FROM action_contract_rules WHERE tenant_id=$1 AND action_id=$2 AND approval_id=$3) WHERE tenant_id=$1 AND id=$3`, tenantID, in.ActionID, approvalID); e != nil {
 				return protocol.Decision{}, e
 			}
 			candidate.approvalID = &approvalID
@@ -776,6 +806,11 @@ func (k *Kernel) finish(ctx context.Context, tx pgx.Tx, tenantID string, mode pr
 	if _, err := tx.Exec(ctx, `UPDATE actions SET status=$3 WHERE tenant_id=$1 AND id=$2 AND status<>'SUCCEEDED'`, tenantID, in.ActionID, status); err != nil {
 		return protocol.Decision{}, err
 	}
+	if !enforced || d.decision == protocol.DecisionAllow {
+		if err := contracts.AdmitTx(ctx, tx, tenantID, in); err != nil {
+			return protocol.Decision{}, err
+		}
+	}
 	receiptID := uuid.NewString()
 	now := k.now().UTC()
 	evaluations := buildEvaluations(in, d, grants)
@@ -789,6 +824,20 @@ func (k *Kernel) finish(ctx context.Context, tx pgx.Tx, tenantID string, mode pr
 		}
 		if evaluations[i].Stage == "policy" && d.autopilot {
 			evaluations[i].Details = map[string]any{"autopilot": true}
+		}
+	}
+	var contractDetails []byte
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(jsonb_build_object('contract_id',contract_id,'revision',revision,'rule_id',rule_id,'mode',mode,'decision',decision,'reason',reason) ORDER BY contract_id,rule_id),'[]') FROM action_contract_rules WHERE tenant_id=$1 AND action_id=$2`, tenantID, in.ActionID).Scan(&contractDetails); err != nil {
+		return protocol.Decision{}, err
+	}
+	if string(contractDetails) != "[]" {
+		for i := range evaluations {
+			if evaluations[i].Stage == "policy" {
+				if evaluations[i].Details == nil {
+					evaluations[i].Details = map[string]any{}
+				}
+				evaluations[i].Details["contracts"] = json.RawMessage(contractDetails)
+			}
 		}
 	}
 	safeIntent := in

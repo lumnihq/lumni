@@ -95,6 +95,7 @@ All of these live in `.env`; apply changes with `docker compose up -d`.
 - **Sign in with Google or GitHub:** create an OAuth app with the callback `<LUMNI_APP_URL>/console/auth/oauth/google/callback` (or `.../github/callback`), then set the client ID and secret.
 - **Email alerts:** `LUMNI_SMTP_ADDR` (host:port, STARTTLS), `LUMNI_SMTP_FROM`, and a user and password.
 - **Slack:** through Composio, with `LUMNI_COMPOSIO_API_KEY` and `LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID`.
+- **Compiled paths:** set `LUMNI_OPENROUTER_API_KEY` and `LUMNI_COMPILER_MODEL` (and optionally `LUMNI_COMPILER_URL`), then turn compiling on per workspace in the console. Without them, compiling answers 503 and everything else works. See [contracts-compiled-paths.md](contracts-compiled-paths.md).
 - **Analytics at large volume:** add `analytics` to `COMPOSE_PROFILES` (`https,analytics`), and set `LUMNI_ANALYTICS_BACKEND=clickhouse` and `CLICKHOUSE_PASSWORD`. Postgres stays the system of record.
 
 ## Troubleshooting

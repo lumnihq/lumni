@@ -26,7 +26,7 @@ declare module 'bun:test' {
     toBeTruthy(): void;
     toMatch(re: RegExp | string): void;
     toThrow(msg?: string | RegExp): void;
-    rejects: { toThrow(msg?: string | RegExp): Promise<void> };
+    rejects: { toThrow(msg?: string | RegExp): Promise<void>; toMatchObject(o: object): Promise<void> };
   }
   export function expect(actual: unknown): Matchers;
 }
@@ -114,6 +114,7 @@ declare module 'node:fs' {
   export function mkdirSync(path: string, opts?: { recursive?: boolean }): void;
   export function mkdtempSync(prefix: string): string;
   export function readFileSync(path: string, enc: 'utf8'): string;
+  export function readdirSync(path: string): string[];
   export function rmSync(path: string, opts?: { recursive?: boolean; force?: boolean }): void;
   export function writeFileSync(path: string, data: string): void;
 }

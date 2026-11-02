@@ -1,0 +1,1917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Contracts</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<style>
+  :root {
+    --k-when: #6a6f7d; --k-before: var(--accent); --k-verify: #2563eb; --k-match: #0f766e; --k-within: #b45309;
+    --good: #059669; --good-bg: #ecfdf5; --good-line: #a7f3d0; --amber: #b45309; --amber-bg: #fffbeb; --amber-line: #fde68a;
+    --shell: #f6f6f9;
+  }
+  .stage { overflow: clip; }
+  .wrap { padding: 30px 40px 90px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 48px; align-items: start; }
+  .main { max-width: 780px; width: 100%; justify-self: center; min-height: calc(100vh - 170px); }
+  .banner { margin-bottom: 18px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--accent-line); font-size: 14px; color: var(--ink2); }
+  .banner b { color: var(--ink); }
+  .banner a { margin-left: auto; color: var(--accent); font-weight: 650; white-space: nowrap; }
+
+  /* Motion: things arrive soft, one at a time. */
+  @keyframes blurin { from { opacity: 0; filter: blur(5px); transform: translateY(4px); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
+  @keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+  @keyframes chipin { from { opacity: 0; transform: translateY(4px) scale(.92); filter: blur(2px); } }
+  @keyframes swap { 35% { transform: scale(1.05); } }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .shake { animation: shake .4s; }
+  .ttl.rv { background: linear-gradient(90deg, var(--ink) 0 50%, var(--ink3) 50% 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sweep .7s var(--ease) both; }
+
+  /* ── Describe: the box ── */
+  .hero { overflow: hidden; }
+  .tag { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 650; }
+  h1.big { font-size: 38px; font-weight: 750; letter-spacing: -0.035em; line-height: 1.1; margin-top: 14px; text-wrap: balance; }
+  .lede { margin-top: 10px; color: var(--ink2); font-size: 16px; line-height: 1.5; }
+  .composer { margin-top: 24px; border-radius: 20px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), 0 18px 46px -26px rgba(40,30,120,.3); transition: box-shadow .25s; }
+  .composer:focus-within { box-shadow: inset 0 0 0 1.5px var(--accent-line), 0 22px 56px -24px rgba(91,75,245,.32); }
+  .composer textarea { display: block; width: 100%; min-height: 84px; max-height: 200px; resize: none; border: 0; outline: 0; background: none; padding: 20px 22px 6px; font: 17px/1.5 var(--sans); color: var(--ink); }
+  .composer textarea::placeholder { color: var(--ink3); }
+  .sees { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 22px; }
+  .sees:not(:empty) { padding: 2px 22px 4px; }
+  .sees .lbl { font-size: 12px; color: var(--ink3); font-weight: 650; margin-right: 2px; animation: fade .3s both; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 13px; font-weight: 650; background: var(--wash); color: var(--ink2); white-space: nowrap; animation: chipin .42s var(--spring) both; transition: opacity .18s, transform .18s, background .3s, color .3s, border-color .15s; border: 1px solid transparent; }
+  .chip.intent { background: var(--accent-soft); color: var(--accent); }
+  .chip.ask { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
+  .chip.muted { background: none; color: var(--ink3); font-weight: 600; }
+  .chip.mono { font: 600 12px var(--mono); }
+  .chip.add { background: none; color: var(--ink2); border: 1px dashed var(--line2); font-weight: 600; }
+  .chip.add:hover { border-color: var(--accent); color: var(--accent); }
+  .chip .mk { width: 17px; height: 17px; border-radius: 5px; color: #fff; font-size: 9.5px; font-weight: 800; display: grid; place-items: center; }
+  .chip .ok { color: var(--good); display: grid; }
+  .chip .off { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+  .chip.out { opacity: 0; transform: scale(.85); }
+  .chip.swap { animation: swap .5s var(--ease); }
+  .c-row { display: flex; align-items: center; gap: 10px; padding: 6px 16px 12px 22px; font-size: 12.5px; color: var(--ink3); }
+  .c-row .enter { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .send { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; flex: none; box-shadow: 0 8px 20px -8px rgba(91,75,245,.7); transition: transform .15s, opacity .2s, box-shadow .2s; }
+  .send:hover:not(:disabled) { transform: translateY(-1px) scale(1.04); }
+  .send:disabled { opacity: .3; cursor: default; box-shadow: none; }
+  .c-row kbd { font: 600 11.5px var(--mono); padding: 2px 7px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink2); }
+  .starters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+  .starters[hidden] { display: none; }
+  .starters .lbl { font-size: 12.5px; color: var(--ink3); font-weight: 650; margin-right: 4px; }
+  .starter { height: 32px; padding: 0 13px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px; animation: blurin .5s var(--ease) both; transition: box-shadow .15s, color .15s; }
+  .starter svg { color: var(--accent-2); }
+  .starter:hover { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
+  .safe { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--ink3); }
+  .safe svg { color: var(--good); }
+
+  /* The rule, folded, once it's a contract. */
+  .rulepill { display: flex; align-items: center; gap: 12px; padding: 7px 7px 7px 16px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); width: fit-content; max-width: 100%; animation: blurin .45s var(--ease) both; }
+  .rulepill svg { color: var(--accent); flex: none; }
+  .rulepill span { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rulepill button { height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 650; color: var(--ink2); display: inline-flex; align-items: center; gap: 6px; flex: none; }
+  .rulepill button:hover { background: var(--wash); color: var(--ink); }
+
+  /* ── The contract card: one surface that evolves ── */
+  .card-c { margin-top: 22px; border-radius: 24px; background: var(--shell); box-shadow: inset 0 0 0 1px var(--line), 0 30px 70px -40px rgba(40,30,120,.35); padding: 8px; animation: blurin .5s var(--ease) both; }
+  .card-c[hidden] { display: none; }
+  .c-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px 12px; }
+  .back-b { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--ink2); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); position: relative; transition: color .15s, box-shadow .15s, transform .15s var(--ease); }
+  .back-b:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); transform: translateX(-2px); }
+  .back-b .tip { position: absolute; top: calc(100% + 8px); left: 0; padding: 6px 10px; border-radius: 8px; background: rgba(13,14,20,.82); color: #fff; font-size: 12.5px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateY(-4px); transition: opacity .15s, transform .2s var(--ease); z-index: 5; }
+  .back-b:hover .tip { opacity: 1; transform: none; }
+  .c-icon { width: 40px; height: 40px; border-radius: 11px; background: var(--ink); color: #fff; display: grid; place-items: center; flex: none; }
+  .c-head .tt { min-width: 0; }
+  .c-head b { display: block; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .c-head small { display: block; font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 520px; }
+  .badge { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); flex: none; animation: fade .3s both; }
+  .badge.step::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.good { background: var(--good-bg); color: var(--good); box-shadow: inset 0 0 0 1px var(--good-line); }
+  .badge.quiet { background: var(--paper); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); }
+
+  .sheet { border-radius: 16px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+  .sheet + .sheet { margin-top: 8px; }
+  /* The stepper. */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); padding: 18px 10px 14px; }
+  .st { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .st:not(:last-child)::before, .st:not(:last-child)::after { content: ''; position: absolute; top: 15px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 2px; border-radius: 1px; background: var(--line); }
+  .st:not(:last-child)::after { background: var(--good); transform-origin: left; transform: scaleX(var(--fill, 0)); transition: transform .7s var(--ease); }
+  .st button { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--line2); color: var(--ink3); position: relative; transition: box-shadow .3s, background .3s; }
+  .st button:disabled { cursor: default; }
+  .st.done button { background: var(--good-bg); box-shadow: inset 0 0 0 1.5px var(--good-line); color: var(--good); }
+  .st.done button svg { animation: pop .45s var(--spring) both; }
+  .st.done button:not(:disabled):hover { box-shadow: inset 0 0 0 1.5px var(--good), 0 0 0 4px var(--good-bg); }
+  .st.cur button { box-shadow: inset 0 0 0 1.5px var(--accent-line), 0 0 0 4px var(--accent-soft); color: var(--accent); }
+  .st.cur button .arc { position: absolute; inset: -1px; width: 34px; height: 34px; animation: spin 1s linear infinite; }
+  .st.stop button { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
+  .st .n { font-size: 13.5px; font-weight: 650; color: var(--ink2); }
+  .st.cur .n, .st.done .n { color: var(--ink); }
+  .st .s { font: 12px var(--mono); color: var(--ink3); min-height: 15px; animation: fade .3s both; }
+
+  /* The step's panel. */
+  .panel { padding: 16px 20px 18px; }
+  .p-head { display: flex; align-items: baseline; gap: 10px; }
+  .p-head .ttl { font-size: 15px; font-weight: 650; }
+  .p-head .rt { margin-left: auto; font: 12.5px var(--mono); color: var(--ink3); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+  .lines { margin-top: 12px; display: flex; flex-direction: column; gap: 9px; position: relative; }
+  .ln { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 12px; align-items: start; font-size: 14.5px; line-height: 1.45; animation: blurin .45s var(--ease) both; position: relative; }
+  .ln .li { width: 22px; height: 21px; display: grid; place-items: center; color: var(--ink2); }
+  .ln .li .mk { width: 18px; height: 18px; border-radius: 5px; color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .ln .lt { min-width: 0; color: var(--ink); }
+  .ln .lt small { display: block; font-size: 12.5px; color: var(--ink2); margin-top: 1px; }
+  .ln .lr { font-size: 13px; font-weight: 650; color: var(--good); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .ln.k { grid-template-columns: 64px minmax(0, 1fr) auto; }
+  .ln.k .li { width: auto; justify-content: start; display: flex; }
+  .kk { height: 21px; padding: 0 8px; border-radius: 6px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); font-size: 11.5px; font-weight: 700; color: var(--kc); display: inline-flex; align-items: center; }
+  .kk.when { --kc: var(--k-when); } .kk.before { --kc: var(--k-before); } .kk.verify { --kc: var(--k-verify); } .kk.match { --kc: var(--k-match); } .kk.within { --kc: var(--k-within); }
+  .field { height: 22px; padding: 0 8px; border-radius: 6px; background: #f0fdfa; color: var(--k-match); font: 600 12px var(--mono); display: inline-flex; align-items: center; box-shadow: inset 0 0 0 1px #ccfbf1; margin-right: 4px; }
+  .ln.good .lt, .ln.good .li { color: var(--good); font-weight: 600; }
+  .ln.stop .lt, .ln.stop .li { color: var(--accent); font-weight: 600; }
+  .ln.muted .lt { color: var(--ink2); }
+  .ln.muted .li { color: var(--ink3); }
+  .ln.sep { margin-top: 4px; padding-top: 12px; border-top: 1px dashed var(--line2); }
+  .ln.skel .lt { padding-top: 6px; }
+  .ln.skel .lt i { display: block; height: 9px; width: 180px; border-radius: 5px; background: linear-gradient(90deg, var(--wash) 0%, #e7e6f2 50%, var(--wash) 100%); background-size: 200% 100%; animation: sk 1.1s linear infinite; }
+  .spin { width: 13px; height: 13px; border-radius: 50%; border: 1.6px solid var(--line2); border-top-color: var(--accent); animation: spin .8s linear infinite; display: inline-block; flex: none; }
+  .tok { border-bottom: 1.5px dotted var(--accent-line); font-weight: 650; cursor: pointer; border-radius: 3px; transition: color .15s, background .15s; }
+  .tok:hover { color: var(--accent); background: var(--accent-soft); }
+  .q { padding: 12px 14px; border-radius: 12px; background: var(--amber-bg); box-shadow: inset 0 0 0 1px var(--amber-line); animation: blurin .4s var(--ease) both; }
+  .q b { display: block; font-size: 14px; color: #92400e; }
+  .q .said { font-size: 13px; color: #a16207; margin-top: 2px; }
+  .answers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .ans { height: 34px; padding: 0 13px; border-radius: 10px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--amber-line); font-size: 13.5px; font-weight: 650; }
+  .ans:hover { box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
+  .ans.quiet { background: none; box-shadow: none; color: #a16207; }
+  .kinds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .kinds button { display: grid; grid-template-columns: 26px 1fr; gap: 1px 10px; text-align: left; padding: 8px 11px; border-radius: 11px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); animation: blurin .4s var(--ease) both; }
+  .kinds button:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+  .kinds .ic { grid-row: span 2; width: 26px; height: 26px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 750; font-size: 12px; }
+  .kinds b { font-size: 13px; } .kinds span:last-child { font-size: 12px; color: var(--ink2); }
+  .hook { margin-top: 4px; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--wash); gap: 2px; box-shadow: inset 0 0 0 1px var(--line); }
+  .seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13.5px; font-weight: 650; color: var(--ink3); transition: background .2s, color .2s, box-shadow .2s; }
+  .seg button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(13,14,20,.08), 0 0 0 1px var(--line); }
+  .seg button:disabled { cursor: default; }
+  .seg.sm button { height: 28px; padding: 0 11px; font-size: 12.5px; }
+  .diff { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fafafc; box-shadow: inset 0 0 0 1px var(--line); font: 12px/1.7 var(--mono); color: var(--ink3); overflow-x: auto; white-space: pre; }
+  .diff .add { color: var(--good); display: block; }
+  .diff .keep { display: block; }
+  details.more { margin-top: 8px; font-size: 13px; color: var(--ink2); }
+  details.more summary { cursor: pointer; font-weight: 650; list-style: none; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more pre { margin-top: 6px; white-space: pre-wrap; font: 12px/1.6 var(--mono); color: var(--ink); background: #fafafc; padding: 10px 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+  .link { font-size: 13.5px; font-weight: 650; color: var(--accent); }
+
+  /* The footer: a choice, a hint, one primary action. */
+  .c-foot { display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; }
+  .icon-b { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--ink2); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); position: relative; transition: color .2s, background .2s, box-shadow .2s; animation: blurin .35s var(--ease) both; }
+  .icon-b:hover { color: var(--ink); }
+  .icon-b[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .icon-b[hidden] { display: none; }
+  .icon-b .tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 4px); padding: 6px 10px; border-radius: 8px; background: rgba(13,14,20,.82); color: #fff; font-size: 12.5px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s, transform .2s var(--ease); }
+  .icon-b:hover .tip { opacity: 1; transform: translate(-50%, 0); }
+  .primary { margin-left: auto; height: 42px; min-width: 150px; padding: 0 20px; border-radius: 13px; background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 650; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .15s, opacity .2s, background .3s; }
+  .primary:hover:not(:disabled) { transform: translateY(-1px); }
+  .primary:disabled { opacity: .35; cursor: default; }
+  .primary.violet { background: var(--accent); box-shadow: 0 12px 28px -12px rgba(91,75,245,.7); }
+  .primary span { animation: blurin .35s var(--ease) both; display: inline-flex; align-items: center; gap: 8px; }
+  .quiet-b { height: 42px; padding: 0 14px; border-radius: 13px; font-size: 14px; font-weight: 650; color: var(--ink2); }
+  .quiet-b:hover { color: var(--ink); background: var(--paper); }
+  .primary + .quiet-b, .quiet-b + .primary { margin-left: 0; }
+  .c-foot .quiet-b { margin-left: auto; }
+  .c-foot .quiet-b + .primary { margin-left: 0; }
+
+  .codecard { margin-top: 16px; border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); padding: 14px 16px; animation: blurin .45s var(--ease) both; }
+  .codecard .hd { display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 650; }
+  .codecard .hd .x { margin-left: auto; font-size: 13px; color: var(--ink3); }
+  pre.code { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: #0f1017; color: #e6e6ef; font: 12.5px/1.6 var(--mono); overflow: auto; max-height: 320px; white-space: pre; }
+  pre.code .c { color: #7d8196; } pre.code .s { color: #b9e28c; } pre.code .k { color: #b8afff; } pre.code .f { color: #7cc4ff; }
+  .codecard .ft { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+  .ghost { height: 34px; padding: 0 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line2); font-size: 13px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px; background: var(--paper); }
+  .ghost:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+
+  /* ── Rail: your contracts ── */
+  .rail { position: sticky; top: 24px; }
+  .panel-r { border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); padding: 14px 14px 8px; animation: blurin .45s var(--ease) both; }
+  .panel-r[hidden] { display: none; }
+  .panel-r h3 { display: flex; align-items: center; font-size: 14px; font-weight: 700; padding: 0 4px 8px; }
+  .panel-r h3 button { margin-left: auto; font-size: 12.5px; color: var(--ink3); font-weight: 650; }
+  .panel-r h3 button:hover { color: var(--accent); }
+  .mine { display: flex; flex-direction: column; gap: 2px; }
+  .mc { display: grid; grid-template-columns: 10px 1fr; gap: 1px 10px; text-align: left; padding: 9px 8px; border-radius: 10px; transition: background .15s; animation: chipin .45s var(--spring) both; }
+  .mc:hover { background: #fafafc; }
+  .mc.cur { background: var(--accent-soft); }
+  .mc i { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--ink3); }
+  .mc i.protect { background: var(--accent); }
+  .mc i.paused { background: var(--ink3); }
+  .mc i.watch { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+  .mc b { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc span { grid-column: 2; font-size: 12px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc.arriving { visibility: hidden; animation: none; }
+  .mc.landed { animation: landed .7s var(--spring) both; }
+  @keyframes landed { 0% { background: var(--accent-soft); transform: scale(.96); } 60% { background: var(--accent-soft); } 100% { transform: none; } }
+  .more-btn { width: 100%; margin: 2px 0 4px; padding: 8px; border-radius: 10px; font-size: 13px; font-weight: 650; color: var(--ink2); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .more-btn:hover { background: #fafafc; color: var(--accent); }
+  .more-btn svg { transition: transform .2s; }
+  .more-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+  /* Turned on: a burst, a stamp, and the contract carried to Your contracts. */
+  .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+  .confetti i { position: absolute; width: 8px; height: 12px; border-radius: 2px; will-change: transform, opacity; }
+  .stamp { position: fixed; z-index: 62; pointer-events: none; transform: translate(-50%, -50%) rotate(-9deg); font: 400 46px/1 'Marker Felt', 'Permanent Marker', 'Chalkboard SE', 'Comic Sans MS', cursive; white-space: nowrap;
+    background: linear-gradient(100deg, #5b4bf5 0%, #a855f7 45%, #10b981 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(255,255,255,.9)) drop-shadow(0 10px 24px rgba(91,75,245,.35)); }
+  .stamp small { display: block; margin-top: 4px; font-size: 18px; text-align: center; }
+  .spray { position: fixed; z-index: 61; pointer-events: none; width: 260px; height: 120px; transform: translate(-50%, -50%) rotate(-9deg); border-radius: 50%; background: radial-gradient(closest-side, rgba(168,85,247,.22), rgba(16,185,129,.12) 60%, transparent); filter: blur(6px); }
+  .ghost-card { position: fixed; z-index: 61; pointer-events: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--accent-line), 0 24px 50px -16px rgba(91,75,245,.45); font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .ghost-card i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+  .ghost-card i.watch { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+
+  /* The permission card. */
+  .m-back { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(244,244,247,.62); backdrop-filter: blur(6px); }
+  .modal { width: 540px; max-height: calc(100vh - 60px); overflow: auto; padding: 26px 26px 18px; border-radius: 24px; background: var(--paper); box-shadow: 0 0 0 1px var(--line), 0 40px 90px -30px rgba(40,30,120,.45); }
+  .m-logos { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .ml { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; color: #fff; font-size: 20px; font-weight: 800; box-shadow: 0 10px 24px -12px rgba(13,14,20,.5); }
+  .ml.lumni { background: var(--ink); }
+  .ml.lumni svg { width: 20px; height: 20px; }
+  .m-link { display: flex; gap: 5px; }
+  .m-link i { width: 5px; height: 5px; border-radius: 50%; background: var(--line2); animation: dot 1.2s ease-in-out infinite; }
+  .m-link i:nth-child(2) { animation-delay: .12s; } .m-link i:nth-child(3) { animation-delay: .24s; } .m-link i:nth-child(4) { animation-delay: .36s; } .m-link i:nth-child(5) { animation-delay: .48s; }
+  .m-link.on i { background: var(--good); animation: none; }
+  @keyframes dot { 40% { background: var(--accent-2); transform: scale(1.3); } }
+  .modal h3 { margin-top: 18px; text-align: center; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; text-wrap: balance; }
+  .m-sub { margin-top: 6px; text-align: center; font-size: 14px; color: var(--ink2); }
+  .m-sec { margin-top: 18px; }
+  .m-h { font-size: 12.5px; font-weight: 700; color: var(--ink2); margin-bottom: 6px; }
+  .m-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); animation: blurin .45s var(--ease) both; }
+  .m-row b { display: block; font-size: 14.5px; font-weight: 650; }
+  .m-row small { display: block; font: 12px var(--mono); color: var(--ink2); margin-top: 2px; }
+  .m-row.never b { font-weight: 550; color: var(--ink2); }
+  .m-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
+  .m-ic.ok { background: var(--good-bg); color: var(--good); }
+  .m-ic.no { background: #fef2f2; color: var(--red); }
+  .m-pill { height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; transition: background .3s, color .3s; }
+  .m-pill.new { background: var(--accent-soft); color: var(--accent); }
+  .m-pill.had { background: var(--good-bg); color: var(--good); }
+  .m-pill.none { background: var(--wash); color: var(--ink3); }
+  .m-why { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #fafafc; box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; line-height: 1.5; color: var(--ink2); animation: blurin .45s var(--ease) .3s both; }
+  .m-why span { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .m-key { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+  .m-key code { font: 600 12px var(--mono); padding: 3px 8px; border-radius: 7px; background: var(--good-bg); color: var(--good); }
+  .m-key code.none { background: var(--wash); color: var(--ink3); }
+  .m-foot { display: flex; align-items: center; gap: 8px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .m-lock { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink3); margin-right: auto; }
+  .m-lock svg { color: var(--good); }
+  .m-foot .primary { margin-left: 0; min-width: 0; white-space: nowrap; }
+  .m-foot button:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+  .m-foot .quiet-b { margin-left: 0; }
+  .primary.ok { background: var(--good); box-shadow: 0 12px 28px -12px rgba(5,150,105,.6); }
+
+  .tokmenu { position: absolute; z-index: 40; min-width: 180px; padding: 6px; border-radius: 12px; background: var(--paper); box-shadow: var(--shadow-lg), 0 0 0 1px rgba(13,14,20,.06); animation: blurin .2s var(--ease) both; }
+  .tokmenu button { display: flex; width: 100%; padding: 7px 10px; border-radius: 8px; font-size: 14px; text-align: left; }
+  .tokmenu button:hover { background: var(--wash); }
+  .tokmenu button.cur { color: var(--accent); font-weight: 650; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .ttl.rv { color: var(--ink); background: none; }
+  }
+
+  /* Bindings (real data): each rule, then the fields it maps to your agents' calls. */
+  .bind { padding: 12px 14px; border-radius: 14px; background: #fafafc; box-shadow: inset 0 0 0 1px var(--line); animation: blurin .45s var(--ease) both; }
+  .bind + .bind { margin-top: 2px; }
+  .bind-h { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .bind-h b { font-weight: 700; }
+  .bind-h .kind { font: 600 11.5px var(--mono); color: var(--ink3); }
+  .bind-h .st2 { margin-left: auto; font-size: 12.5px; font-weight: 650; color: var(--amber); display: inline-flex; align-items: center; gap: 5px; }
+  .bind-h .st2.ok { color: var(--good); }
+  .bf { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 2px 12px; align-items: center; margin-top: 10px; }
+  .bf label { font-size: 13px; font-weight: 650; color: var(--ink2); }
+  .bf label small { display: block; font-size: 11.5px; font-weight: 500; color: var(--ink3); }
+  .bf input, .bf select, .bf textarea { width: 100%; height: 34px; padding: 0 10px; border-radius: 9px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); font: 13px var(--mono); color: var(--ink); border: 0; }
+  .bf textarea { height: 54px; padding: 8px 10px; resize: vertical; }
+  .bf input:focus, .bf select:focus, .bf textarea:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .bf .err { grid-column: 2; font-size: 12px; color: var(--amber); min-height: 0; }
+  .bf.bad input, .bf.bad select, .bf.bad textarea { box-shadow: inset 0 0 0 1px var(--amber-line); background: var(--amber-bg); }
+  .bind .seen { margin-top: 10px; font-size: 12.5px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
+  .bind .seen i { width: 7px; height: 7px; border-radius: 50%; background: var(--line2); flex: none; }
+  .bind .seen i.on { background: var(--good); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script src="/lib/contracts.js"></script>
+<script src="/lib/contracts-real.js"></script>
+<script src="/lib/story.js"></script>
+<script>
+// Contracts: say what must be true when your agent says it's done. One card
+// follows the contract from there: what Lumni understood, a preview on last
+// week's data, a read-only connection to only what it reads, and turning it
+// on. Lines arrive one at a time; one primary action at a time. With real
+// data the Go API reads, keeps, binds, replays and runs it
+// (lib/contracts-real.js), and Connect is where each rule is bound.
+
+const C = window.Contracts;
+const R = window.ContractsReal;
+const API = R.client(Shell.api);
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const safe = (s) => Shell.esc(s);
+const fmtN = (n) => Math.round(n).toLocaleString('en-US');
+// ?motion=1 plays the motion even where reduced motion is set (screenshots, demos).
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches && !new URLSearchParams(location.search).has('motion');
+const NO_API = 'Lumni’s API can’t do this yet';
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+const usd = (n) => `$${Number(n).toFixed(2)}`;
+const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+
+const I = {
+  spark: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6z" fill="currentColor"/></svg>',
+  arrow: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  tick: '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 7.4 5.8 10 11 4.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ticks: '<svg width="17" height="17" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.4 10.3 8.8 12.6 13.6 7.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  eye: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
+  shield: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 1.5 13.5 3.5V8c0 3.2-2.4 5.6-5.5 6.5C4.9 13.6 2.5 11.2 2.5 8V3.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.6 8.1 7.3 9.7 10.6 6.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bot: '<svg width="17" height="17" viewBox="0 0 20 20"><rect x="3.5" y="6" width="13" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3v3M7.5 11h.01M12.5 11h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  rule: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 6h5M5.5 9h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  pen: '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M9.5 2.5 11.5 4.5 5 11 2.5 11.5 3 9z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  copy: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 3H4a1.5 1.5 0 0 0-1.5 1.5V11" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  warn: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 2 14.5 13.5h-13z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.6h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  receipt: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M3.5 2h9v12l-2-1.2L8.5 14l-2-1.2L4.5 14l-1-.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 5.5h4M6 8h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  arc: '<svg class="arc" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15.5" fill="none" stroke="#5b4bf5" stroke-width="2" stroke-linecap="round" stroke-dasharray="24 74"/></svg>',
+  enter: '<svg width="13" height="13" viewBox="0 0 14 14"><path d="M11.5 3v4.5a1.5 1.5 0 0 1-1.5 1.5H3M5.5 6.5 3 9l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M13 8H3M7 4 3 8l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  more: '<svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+const EXAMPLES = [
+  { t: 'No more than one refund is permitted per order. Every successful cancellation must leave the subscription inactive in Stripe.', short: 'Refund once per order' },
+  { t: 'Every successful cancellation must leave the subscription inactive in Stripe within 5 minutes.', short: 'Cancellations really cancel' },
+  { t: 'Ask a person before any refund over $500.', short: 'A person approves big refunds' },
+];
+const KEYS = { when: 'When', before: 'Before', verify: 'Verify', match: 'Match', within: 'Within' };
+// With real data a preview replays the rules on recorded actions, so the API
+// needs them bound first: Connect comes before Preview.
+const STEPS_DEMO = [['describe', 'Describe'], ['preview', 'Preview'], ['connect', 'Connect'], ['on', 'Turn on']];
+const STEPS_REAL = [['describe', 'Describe'], ['connect', 'Connect'], ['preview', 'Preview'], ['on', 'Turn on']];
+let STEPS = STEPS_DEMO;
+const STATE = { draft: 'Not on yet', watch: 'Watching', protect: 'Protecting', paused: 'Paused' };
+const CLAIM = { refund: 'Refunded', cancellation: 'Canceled', charge: 'Charged', invoice: 'Sent invoice', renewal: 'Renewed', email: 'Sent', 'ticket close': 'Closed ticket', deploy: 'Deployed', delete: 'Deleted', 'record update': 'Updated' };
+const TOOLS = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor' };
+
+let W = null;
+let S = null;
+let TIMERS = [];
+const later = (fn, ms) => { const t = setTimeout(fn, calm ? Math.min(ms, 20) : ms); TIMERS.push(t); return t; };
+/** A wait that's part of the story (connecting, a first call), not motion: reduced motion keeps it. */
+const wait = (fn, ms) => { const t = setTimeout(fn, ms); TIMERS.push(t); return t; };
+const sleep = (ms) => new Promise((r) => later(r, ms));
+
+// ─── saved contracts (this browser, per demo volume) ─────
+
+const storeKey = () => `lumni.contracts.v4.${Shell.key}`;
+function load() {
+  if (Shell.isReal) return [];
+  try { const v = JSON.parse(localStorage.getItem(storeKey()) ?? 'null'); if (Array.isArray(v)) return v; } catch {}
+  return [];
+}
+function save() {
+  if (Shell.isReal) return;
+  try { localStorage.setItem(storeKey(), JSON.stringify(S.list.map(({ rp, ...c }) => c))); } catch {}
+}
+
+/** Read a message into rules, with the kinds you picked and the parts you changed. */
+function derive(text, forced, over) {
+  return readRules(text).map((r) => {
+    let x = forced[r.text] ? C.choose(r, forced[r.text]) : r;
+    if (over[r.text] && x.type) x = { ...x, slots: { ...x.slots, ...over[r.text] }, guessed: x.guessed.filter((g) => !(g in over[r.text])) };
+    return x;
+  });
+}
+const ruleOf = (c) => c.rules.find((r) => r.type);
+
+// With real data, the API reads the words (POST /v1/contracts/classify), once
+// per text; the page repaints when its answer lands.
+const READS = new Map();
+const ASKED = new Map();
+function readRules(text) {
+  if (!Shell.isReal) return C.classify(text);
+  const t = String(text ?? '').trim();
+  if (!t) return [];
+  if (READS.has(t)) return READS.get(t);
+  readNow(t).catch(() => {});
+  return [];
+}
+function readNow(t) {
+  if (READS.has(t)) return Promise.resolve(READS.get(t));
+  if (ASKED.has(t)) return ASKED.get(t);
+  const p = API.classify(t).then((rs) => {
+    READS.set(t, R.fromReadings(rs));
+    ASKED.delete(t);
+    if (S?.draft.text.trim() === t) { paintSees(); if (S.entered && S.stage === 'describe' && !S.c?.busy) paintCard(); }
+    return READS.get(t);
+  }, (e) => {
+    ASKED.delete(t);
+    if (S?.draft.text.trim() === t) Shell.toast(e.message, 'bad');
+    throw e;
+  });
+  ASKED.set(t, p);
+  return p;
+}
+const appColor = (id) => W.apps?.find((a) => a.id === id)?.color ?? { shopify: '#5e8e3e', hubspot: '#ff7a59' }[id] ?? '#0d0e14';
+
+// ─── the screen ─────────────────────────────────────
+
+function render(w, first) {
+  for (const t of TIMERS) clearTimeout(t);
+  TIMERS = [];
+  W = w;
+  const connected = new Set((w.apps ?? []).filter((a) => !a.blind && a.id !== 'more').map((a) => a.id));
+  // What each connected app already lets Lumni read. The demo's checkers read
+  // refunds, charges and invoices in Stripe; anything else is asked for.
+  const GRANTED = { stripe: ['refunds', 'charges', 'invoices'], zendesk: ['tickets'], salesforce: ['records'], quickbooks: ['invoices'], vercel: ['deployments'] };
+  const grants = new Map([...connected].map((id) => [id, new Set(GRANTED[id] ?? [])]));
+  STEPS = Shell.isReal ? STEPS_REAL : STEPS_DEMO;
+  S = { list: load(), c: null, stage: 'describe', miss: false, draft: { text: '', forced: {}, over: {} }, connected, grants, hooked: new Set(), run: 0, ctx: null, raw: {}, needs: null, hooks: null, pv: null, dirty: false, saving: false };
+  $('#main').innerHTML = `
+    <section class="grid">
+      <div class="main">
+        <div id="top-slot"></div>
+        <article class="card-c" id="card" hidden></article>
+        <div id="extra"></div>
+      </div>
+      <aside class="rail"><div class="panel-r" id="minepanel" hidden><h3>Your contracts <a href="/contract-list" style="margin-left:auto;font-size:12.5px;color:var(--accent);font-weight:650">See all</a><button data-new style="margin-left:12px">New</button></h3><div class="mine" id="mine"></div></div></aside>
+    </section>`;
+  paintTop(true);
+  paintMine();
+  if (Shell.isReal) return loadReal(first);
+  const want = new URLSearchParams(location.search);
+  const c = want.get('open') && S.list.find((x) => x.id === want.get('open'));
+  if (first && c) {
+    openContract(c);
+    if (want.get('edit')) reopen();
+    return;
+  }
+  if (first) shot();
+}
+
+/** The top: the box while you describe, the rule folded once you press Enter. */
+function paintTop(open) {
+  const slot = $('#top-slot');
+  if (!open) {
+    slot.innerHTML = `<div class="rulepill">${I.rule}<span title="${safe(S.draft.text)}">${safe(S.draft.text)}</span><button data-edit>${I.pen}Edit</button></div>`;
+    return;
+  }
+  slot.innerHTML = `<section class="hero">
+      <span class="tag">${I.spark}${S.c ? `Editing ${safe(S.c.title)}` : 'Outcome contracts'}</span>
+      <h1 class="big">What should always be true when your agent says it’s done?</h1>
+      <p class="lede">Say it the way you’d tell a new teammate. Lumni works out the rule, the apps it has to read, and what must match.</p>
+      <div class="composer" id="composer">
+        <textarea id="say" rows="2" placeholder="e.g. Never refund the same order twice, and check Stripe shows it" aria-label="Describe the outcome">${safe(S.draft.text)}</textarea>
+        <div class="sees" id="sees" aria-live="polite"></div>
+        <div class="c-row"><span id="hint">Lumni reads it as you type</span><span class="enter">${I.enter}<kbd>Enter</kbd></span><button class="send" id="send" type="button" aria-label="Continue" title="Continue" disabled>${I.arrow}</button></div>
+      </div>
+      <div class="starters" id="starters">${S.c ? '' : `<span class="lbl">Try</span>${EXAMPLES.map((e, i) => `<button class="starter" data-try="${i}" style="animation-delay:${0.15 + i * 0.06}s">${I.spark}${safe(e.short)}</button>`).join('')}`}</div>
+      <p class="safe">${I.shield}Nothing runs until you turn it on. Lumni only ever reads your apps.</p>
+    </section>`;
+  const ta = $('#say');
+  let soon = 0;
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = `${Math.min(200, Math.max(84, ta.scrollHeight))}px`; };
+  const send = $('#send');
+  const update = () => { S.draft.text = ta.value; send.disabled = !ta.value.trim(); paintSees(); };
+  ta.addEventListener('input', () => { grow(); clearTimeout(soon); soon = setTimeout(update, 140); });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); clearTimeout(soon); update(); enter(); } });
+  send.addEventListener('click', () => { clearTimeout(soon); update(); enter(); });
+  grow();
+  if (S.draft.text) update();
+  if (!calm) ta.focus({ preventScroll: true });
+}
+
+/** Swap the top between the box and the folded rule, its height gliding. */
+function swapTop(open) {
+  const slot = $('#top-slot');
+  const h0 = slot.offsetHeight;
+  paintTop(open);
+  if (calm) return;
+  slot.animate([{ height: `${h0}px`, opacity: 0.4 }, { height: `${slot.offsetHeight}px`, opacity: 1 }], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
+}
+
+/** Enter: the box folds into the rule, and the card arrives with what Lumni understood. */
+function enter() {
+  const said = S.draft.text.trim();
+  // Real data: wait for the API's reading of these words, then go on.
+  if (Shell.isReal && said && !READS.has(said)) return readNow(said).then(() => { if (S.draft.text.trim() === said) enter(); }, () => {});
+  if (!S.draft.text.trim() || !draftRules().length) { const k = $('#composer'); k?.classList.remove('shake'); void k?.offsetWidth; k?.classList.add('shake'); return; }
+  S.entered = true;
+  S.stage = 'describe';
+  S.run++;
+  $('#extra').innerHTML = '';
+  swapTop(false);
+  const card = $('#card');
+  card.hidden = true;
+  card.innerHTML = '';
+  paintCard();
+  window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+}
+
+/** Edit: the card steps aside and the box opens again with your words. */
+function reopen() {
+  S.entered = false;
+  S.stage = 'describe';
+  S.run++;
+  $('#extra').innerHTML = '';
+  if (S.c) S.draft = { text: S.c.text, forced: { ...S.c.forced }, over: { ...S.c.over } };
+  const card = $('#card');
+  const done = () => { card.hidden = true; card.innerHTML = ''; };
+  if (calm) done();
+  else card.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(8px)', filter: 'blur(4px)' }], { duration: 220, fill: 'forwards' }).onfinish = () => { done(); card.getAnimations().forEach((a) => a.cancel()); };
+  swapTop(true);
+}
+
+// ─── what Lumni sees, while you type ────────────────
+
+const draftRules = () => derive(S.draft.text, S.draft.forced, S.draft.over);
+
+function seesChips() {
+  const t = S.draft.text.trim();
+  if (!t) return [];
+  const rules = draftRules();
+  const words = t.split(/\s+/).length;
+  const out = [];
+  for (const r of rules) {
+    if (r.type) out.push({ k: `i:${r.text}`, cls: 'intent', html: safe(C.short(r)) });
+    else if (r.state === 'ask') out.push({ k: `i:${r.text}`, cls: 'ask', html: `${safe(C.typeOf(r.ranked[0].type).label)} or ${safe(C.typeOf(r.ranked[1].type).label.toLowerCase())}?` });
+    else if (words >= 3) out.push({ k: `i:${r.text}`, cls: 'muted', html: 'Still reading…' });
+  }
+  const typed = rules.map((r) => (r.type ? r : r.state === 'ask' ? { ...r, type: r.ranked[0].type } : null)).filter(Boolean);
+  for (const n of C.needs(typed, S.connected)) {
+    if (n.kind === 'app') out.push({ k: `a:${n.id}`, cls: '', html: `<span class="mk" style="background:${appColor(n.id)}">${safe(n.name[0])}</span>${safe(n.name)}${n.ok ? `<span class="ok" title="Connected">${I.tick}</span>` : '<span class="off" title="Not connected yet"></span>'}` });
+    else out.push({ k: `f:${n.name}`, cls: 'mono', html: safe(n.name) });
+  }
+  for (const h of C.hints(t, rules)) out.push({ k: `h:${h.slot}`, cls: 'add', html: `+ ${safe(h.label)}`, add: h.add });
+  return out;
+}
+
+function paintSees() {
+  const el = $('#sees');
+  if (!el) return;
+  const want = seesChips();
+  $('#hint').textContent = want.length ? '' : 'Lumni reads it as you type';
+  $('#starters')?.toggleAttribute('hidden', !!S.draft.text.trim());
+  const have = new Map($$('.chip:not(.out)', el).map((x) => [x.dataset.k, x]));
+  for (const [k, x] of have) if (!want.some((w) => w.k === k)) { x.classList.add('out'); setTimeout(() => x.remove(), 200); }
+  let lbl = $('.lbl', el);
+  if (want.length && !lbl) { lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = 'Lumni sees'; el.prepend(lbl); }
+  if (!want.length) lbl?.remove();
+  let i = 0;
+  for (const w of want) {
+    let x = have.get(w.k);
+    const cls = `chip ${w.cls}`;
+    if (x) {
+      if (x.innerHTML !== w.html || x.className !== cls) { x.className = cls; x.innerHTML = w.html; x.classList.remove('swap'); void x.offsetWidth; x.classList.add('swap'); }
+    } else {
+      x = document.createElement(w.add ? 'button' : 'span');
+      x.className = cls;
+      x.dataset.k = w.k;
+      x.innerHTML = w.html;
+      x.style.animationDelay = `${i++ * 0.05}s`;
+      el.append(x);
+    }
+    if (w.add) { x.dataset.add = w.add; x.title = 'Add this to your rule'; }
+  }
+  for (const w of want) { const x = $$('.chip:not(.out)', el).find((y) => y.dataset.k === w.k); if (x) el.append(x); }
+}
+
+// ─── the card ───────────────────────────────────────
+
+/** Change a box's content, letting its height glide to the new one. */
+function morph(box, fn) {
+  const h0 = box.offsetHeight;
+  fn();
+  const h1 = box.offsetHeight;
+  if (calm || !h0 || Math.abs(h1 - h0) < 2) return;
+  box.style.overflow = 'hidden';
+  const a = box.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  a.onfinish = () => { box.style.overflow = ''; };
+}
+
+/** One line in a panel: an icon, the words, and something on the right. */
+function line(o) {
+  return `<div class="ln ${o.cls ?? ''}" data-key="${safe(o.key ?? '')}"><span class="li">${o.icon ?? ''}</span><div class="lt">${o.html}</div>${o.right ? `<span class="lr">${o.right}</span>` : ''}</div>`;
+}
+const skel = (text) => line({ cls: 'skel', key: 'skel', icon: '<span class="spin"></span>', html: text ? `<span style="color:var(--ink2);font-size:13.5px">${text}</span>` : '<i></i>' });
+
+/** Paint the whole card for the stage it's in. */
+function paintCard() {
+  const card = $('#card');
+  const c = S.c;
+  const rules = c ? c.rules : draftRules();
+  const t = S.draft.text.trim();
+  const show = S.entered && (!!c || !!t);
+  if (!show) { card.hidden = true; card.innerHTML = ''; return; }
+  const fresh = card.hidden || !card.innerHTML;
+  card.hidden = false;
+  if (fresh) {
+    card.innerHTML = `<div class="c-head" id="c-head"></div><div class="sheet"><div class="steps" id="c-steps"></div></div><div class="sheet" id="c-sheet"><div class="panel" id="c-panel"></div></div><div class="c-foot" id="c-foot"></div>`;
+  }
+  paintHead();
+  paintSteps();
+  if (S.stage === 'describe') describePanel(fresh);
+  paintFoot();
+}
+
+function paintHead() {
+  const c = S.c;
+  const rules = c ? c.rules : draftRules();
+  const ready = rules.length && rules.every((r) => r.type);
+  const title = c?.title ?? (ready ? C.title(rules) : 'Taking shape');
+  const sub = rules.filter((r) => r.type).map((r) => C.short(r)).join(', ') || 'Lumni is reading your rule';
+  const n = STEPS.findIndex(([id]) => id === S.stage) + 1;
+  const badge = c && c.mode !== 'draft'
+    ? `<span class="badge good">${I.tick}${STATE[c.mode]}</span>`
+    : !ready ? '<span class="badge quiet"><span class="spin"></span>Reading</span>' : `<span class="badge step">Step ${n}/4</span>`;
+  const head = $('#c-head');
+  const was = head.dataset.t;
+  const i = STEPS.findIndex(([id]) => id === S.stage);
+  const back = i > 0 ? `Back to ${STEPS[i - 1][1].toLowerCase()}` : 'Back to your words';
+  const html = `<button class="back-b" data-back aria-label="${back}">${I.back}<span class="tip">${back}</span></button><span class="c-icon">${I.spark}</span><div class="tt"><b class="ttl">${safe(title)}</b><small>${safe(sub)}</small></div>${badge}`;
+  if (head.dataset.h === html) return;
+  head.innerHTML = html;
+  head.dataset.h = html;
+  if (was && was !== title) $('.ttl', head).classList.add('rv');
+  head.dataset.t = title;
+}
+
+function stepDone(id) {
+  const c = S.c;
+  // Before it's saved, Describe is done as soon as every sentence reads cleanly.
+  if (!c) { const rs = draftRules(); return id === 'describe' && rs.length > 0 && rs.every((r) => r.type); }
+  if (id === 'on') return c.mode !== 'draft';
+  return !!c.done[id];
+}
+function stepSub(id) {
+  const c = S.c;
+  const rules = c ? c.rules : draftRules();
+  if (id === 'describe') { const n = rules.filter((r) => r.type).length; return n ? `${n} ${n === 1 ? 'rule' : 'rules'}` : ''; }
+  if (!c) return '';
+  if (Shell.isReal) {
+    if (id === 'preview') return c.done.preview && S.pv ? `${R.dash(S.pv.seen)} replayed` : '';
+    if (id === 'connect') return c.done.connect ? [...new Set(c.rules.map((r) => r.binding?.operation).filter(Boolean))].join(', ') : '';
+  }
+  if (id === 'preview') return c.done.preview ? (S.miss && S.stage === 'preview' ? 'stopped' : '1.8s') : '';
+  if (id === 'connect') return c.done.connect ? appsOf(c).map((a) => a.name).join(', ') : '';
+  return c.mode !== 'draft' ? STATE[c.mode].toLowerCase() : '';
+}
+
+function paintSteps() {
+  const el = $('#c-steps');
+  const cur = S.stage;
+  const html = STEPS.map(([id, name], i) => {
+    const done = stepDone(id);
+    const isCur = id === cur && !done;
+    const stop = id === 'preview' && cur === 'preview' && S.miss && S.c?.done.preview;
+    const next = STEPS[i + 1]?.[0];
+    const fill = !next ? 0 : done && (stepDone(next) || next === cur) ? 1 : done ? 0.5 : 0;
+    const can = !!S.c && (done || isCur);
+    return `<div class="st ${done ? 'done' : ''} ${isCur ? 'cur' : ''} ${stop ? 'stop' : ''}" style="--fill:${fill}">
+      <button data-step="${id}" ${can ? '' : 'disabled'} aria-label="${name}">${stop ? I.shield : done ? I.tick : isCur ? I.arc : ''}</button>
+      <span class="n">${name}</span><span class="s">${safe(stepSub(id))}</span></div>`;
+  }).join('');
+  if (el.dataset.h === html) return;
+  // Keep the nodes, so the line fills and the ticks pop rather than redraw.
+  if (el.children.length === 4) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    [...tmp.children].forEach((n, i) => {
+      const o = el.children[i];
+      if (o.className !== n.className) o.className = n.className;
+      o.style.cssText = n.getAttribute('style');
+      const ob = $('button', o), nb = $('button', n);
+      if (ob.innerHTML !== nb.innerHTML) ob.innerHTML = nb.innerHTML;
+      ob.disabled = nb.disabled;
+      const os = $('.s', o), ns = $('.s', n);
+      if (os.textContent !== ns.textContent) { os.textContent = ns.textContent; os.style.animation = 'none'; void os.offsetWidth; os.style.animation = ''; }
+    });
+  } else el.innerHTML = html;
+  el.dataset.h = html;
+}
+
+function paintFoot() {
+  const c = S.c;
+  const foot = $('#c-foot');
+  const real = Shell.isReal;
+  const mode = c && c.mode !== 'draft' ? c.mode : S.pick ?? 'watch';
+  const seg = `<div class="seg" role="tablist" title="How it starts">
+      <button role="tab" data-pick="watch" aria-selected="${mode === 'watch'}" ${c?.busy ? 'disabled' : ''}>Watch</button>
+      <button role="tab" data-pick="protect" aria-selected="${mode === 'protect'}" ${c?.busy ? 'disabled' : ''}>Protect</button></div>`;
+  const showWarn = S.stage === 'preview' && c?.done.preview && !real;
+  const warn = showWarn ? `<button class="icon-b" data-miss aria-pressed="${S.miss}">${I.warn}<span class="tip">${S.miss ? 'Back to one that held' : 'Show one it would stop'}</span></button>` : '';
+  const p = primary();
+  const html = `${seg}${warn}${p.second ?? ''}<button class="primary ${p.violet ? 'violet' : ''}" data-primary="${p.act}" ${p.off ? 'disabled' : ''} ${p.title ? `title="${p.title}"` : ''}><span>${p.label}</span></button>`;
+  if (foot.dataset.h === html) return;
+  foot.innerHTML = html;
+  foot.dataset.h = html;
+}
+
+const whiteSpin = '<span class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff"></span>';
+
+/** One primary action at a time. */
+function primary() {
+  const c = S.c;
+  const real = Shell.isReal;
+  if (S.stage === 'describe') {
+    const rules = draftRules();
+    const ready = rules.length && rules.every((r) => r.type);
+    if (real) return S.saving ? { act: '', label: `${whiteSpin}Saving`, off: true } : { act: 'preview', label: `${c ? 'Save changes' : 'Save draft'}${I.arrow}`, off: !ready };
+    return { act: 'preview', label: `${c ? 'Preview again' : 'Preview it'}${I.arrow}`, off: !ready };
+  }
+  if (real) return primaryReal(c);
+  if (S.stage === 'preview') return c.done.preview ? { act: 'connect', label: `Connect read-only${I.arrow}` } : { act: '', label: `${whiteSpin}Previewing`, off: true };
+  if (S.stage === 'connect') {
+    const skip = real ? '<button class="quiet-b" data-skip>Skip for now</button>' : '';
+    const missing = appsOf(c).find((a) => !a.ok);
+    if (missing) return { act: `app:${missing.id}`, label: `${I.shield}${missing.connected ? `Allow ${safe(missing.name)} access` : `Connect ${safe(missing.name)} read-only`}`, second: skip };
+    if (!agentOk(c)) {
+      if (c.hook.state === 'waiting') return { act: '', label: `${whiteSpin}Waiting for a call`, off: true, second: skip };
+      return { act: 'copy', label: `${I.copy}Copy task for ${TOOLS[c.hook.tool]}`, second: skip };
+    }
+    return { act: 'on', label: `Turn it on${I.arrow}` };
+  }
+  if (c.mode === 'draft') return { act: 'go-on', label: (S.pick ?? 'watch') === 'protect' ? 'Protect now' : 'Start watching', violet: true, off: real, title: real ? NO_API : '' };
+  return { act: 'test', label: `${I.spark}Write the regression test`, second: '<button class="quiet-b" data-new>New contract</button>' };
+}
+
+// ─── panels ─────────────────────────────────────────
+
+function setPanel(stage, title, right, html, { reveal = true, stagger = 0.07 } = {}) {
+  const panel = $('#c-panel');
+  morph($('#c-sheet'), () => {
+    panel.innerHTML = `<div class="p-head"><span class="ttl ${reveal ? 'rv' : ''}">${title}</span><span class="rt" id="p-rt">${right ?? ''}</span></div><div class="lines" id="p-lines">${html}</div>`;
+  });
+  panel.dataset.stage = stage;
+  $$('#p-lines > *').forEach((x, i) => { x.style.animationDelay = `${0.12 + i * stagger}s`; });
+}
+function addLines(html) {
+  const box = $('#p-lines');
+  if (!box) return;
+  morph($('#c-sheet'), () => { $('.ln.skel', box)?.remove(); box.insertAdjacentHTML('beforeend', html); });
+}
+
+/** What Lumni understood: the rule as When, Before, Verify, Match, Within. */
+function describePanel(fresh) {
+  const rules = draftRules();
+  const ready = rules.length && rules.every((r) => r.type);
+  const lines = [];
+  rules.forEach((r, i) => {
+    if (!r.type && r.state === 'ask' && !S.draft.picking?.[r.text]) {
+      const [a, b] = r.ranked;
+      lines.push(`<div class="q" data-key="q${i}"><b>Lumni read this two ways</b><div class="said">“${safe(r.text)}”</div><div class="answers"><button class="ans" data-choose="${i}|${a.type}">${safe(C.typeOf(a.type).ask)}</button><button class="ans" data-choose="${i}|${b.type}">${safe(C.typeOf(b.type).ask)}</button><button class="ans quiet" data-manual="${i}">Something else</button></div></div>`);
+      return;
+    }
+    if (!r.type) {
+      lines.push(`<div class="q" data-key="k${i}"><b>What kind of rule is this?</b><div class="said">“${safe(r.text)}”</div><div class="kinds">${C.TYPES.map((t, j) => `<button data-choose="${i}|${t.id}" style="animation-delay:${j * 0.03}s"><span class="ic">${safe(t.icon)}</span><b>${safe(t.label)}</b><span>${safe(t.blurb)}</span></button>`).join('')}</div></div>`);
+      return;
+    }
+    C.spec(r).forEach((row, j) => {
+      const html = row.fields ? row.fields.map((f) => `<span class="field">${safe(f)}</span>`).join('') : runsHtml(row.runs, i);
+      lines.push(line({ cls: `k ${i && !j ? 'sep' : ''}`, key: `${i}:${row.k}`, icon: `<span class="kk ${row.k}">${KEYS[row.k]}</span>`, html }));
+    });
+  });
+  if (ready) lines.push(line({ cls: 'good sep', key: 'ok', icon: I.ticks, html: rules.map((r) => safe(C.sentence(r))).join(' ') }));
+  else if (!rules.some((r) => !r.type && (r.state === 'ask' || r.state === 'pick'))) lines.push(skel());
+  const right = ready ? `${rules.length} ${rules.length === 1 ? 'sentence' : 'sentences'}` : '<span class="spin"></span>reading';
+  const box = $('#p-lines');
+  if (fresh || !box || $('#c-panel').dataset.stage !== 'describe') {
+    setPanel('describe', 'What Lumni understood', right, lines.join(''), { reveal: !fresh, stagger: 0.05 });
+    return;
+  }
+  // Keep what's unchanged still; new lines arrive, changed ones settle.
+  const prev = new Map($$('[data-key]', box).map((x) => [x.dataset.key, x.textContent]));
+  morph($('#c-sheet'), () => {
+    box.innerHTML = lines.join('');
+    $('#p-rt').innerHTML = right;
+  });
+  for (const x of $$('[data-key]', box)) {
+    const was = prev.get(x.dataset.key);
+    if (was === undefined) continue;
+    x.style.animation = 'none';
+    if (was !== x.textContent) settle($('.lt', x) ?? x);
+  }
+}
+
+function runsHtml(rs, i) {
+  return rs.map((x) => (typeof x === 'string' ? safe(x) : `<span class="tok" data-tok="${i}|${x.slot}">${safe(C.say(x.slot, x.value))}</span>`)).join('');
+}
+
+/** Lock the rule in and go straight to the preview. */
+function commit() {
+  const rules = draftRules();
+  if (!rules.length || !rules.every((r) => r.type)) {
+    const q = $('#c-panel .q') ?? $('#composer');
+    q?.classList.remove('shake'); void q?.offsetWidth; q?.classList.add('shake');
+    return;
+  }
+  if (Shell.isReal) return commitReal(rules);
+  const d = S.draft;
+  const editing = S.c;
+  const c = editing ?? { id: `c${Date.now().toString(36)}`, mode: 'draft', hook: { tool: 'claude', state: 'none' }, done: {} };
+  const before = editing ? JSON.stringify(needKey(editing)) : null;
+  Object.assign(c, { text: d.text.trim(), rules, title: C.title(rules), forced: { ...d.forced }, over: { ...d.over } });
+  c.done.describe = true;
+  if (editing && before !== JSON.stringify(needKey(c))) c.done.connect = false;
+  c.done.preview = false;
+  S.c = c;
+  S.miss = false;
+  S.draft.text = c.text;
+  paintTop(false);
+  goStage('preview');
+}
+const needKey = (c) => ({ apps: [...new Set(c.rules.filter((r) => r.type).map((r) => r.slots.app))].sort(), hook: C.hookNeeds(c.rules), op: C.operation(ruleOf(c)) });
+
+function goStage(stage) {
+  S.stage = stage;
+  S.run++;
+  closeMenus();
+  $('#extra').innerHTML = '';
+  if (stage === 'describe') {
+    S.draft = { text: S.c.text, forced: { ...S.c.forced }, over: { ...S.c.over } };
+    $('#c-panel').dataset.stage = '';
+  }
+  paintCard();
+  if (stage === 'preview') (Shell.isReal ? previewReal : runPreview)();
+  if (stage === 'connect') (Shell.isReal ? bindPanel : connectPanel)();
+  if (stage === 'on') onPanel();
+  save();
+  paintMine();
+}
+
+// ─── 2. Preview, on last week's data ────────────────
+
+function sample(c) {
+  const rp = Shell.isReal ? null : C.replay(c.rules.filter((r) => r.type), W);
+  c.rp = rp;
+  const ex = rp?.examples?.[0] ?? { action: 'act_7f3k2q', agent: agentOf(c).name, key: `${ruleOf(c).slots.key.slice(0, 3)}_8812`, amount: 49, day: 'Thu', at: '10:42 AM', first: 're_8Dx72nL6', second: 're_8Dx72nL7', evidence: 'sha256:9f1c2e0b7a44d1e3', story: 'omar' };
+  return { rp, ex };
+}
+
+function proofRows(c, ex, miss) {
+  const r = ruleOf(c);
+  const s = r.slots;
+  const id = String(ex.key).split('_').pop();
+  const val = { amount: usd(ex.amount), currency: 'USD', customer: `cus_${id}Q`, approver: 'Priya, Finance', 'last editor': 'Refund agent' };
+  const out = [];
+  for (const f of C.spec(r).find((x) => x.k === 'match')?.fields ?? []) {
+    const v = f === `${s.key}_id` ? ex.key : f.endsWith('_id') ? `${f.slice(0, 3)}_${id}` : val[f] ?? '…';
+    let o = v;
+    let bad = false;
+    if (miss && r.type === 'amount-cap' && f === 'amount') { o = `${usd(ex.amount * 0.7)} eligible`; bad = true; }
+    if (miss && r.type === 'approval-over' && f === 'approver') { o = 'nobody yet'; bad = true; }
+    out.push({ k: f.replace(/_/g, ' '), p: v, o, bad });
+  }
+  return out;
+}
+
+/** The preview: lines arrive one at a time, as the check runs. */
+async function runPreview() {
+  const c = S.c;
+  const run = S.run;
+  const alive = () => S.run === run && S.stage === 'preview' && S.c === c;
+  const miss = S.miss;
+  const r = ruleOf(c);
+  const s = r.slots;
+  const { rp, ex } = sample(c);
+  const app = C.appName(s.app);
+  const before = C.spec(r).some((x) => x.k === 'before');
+  const rows = proofRows(c, ex, miss);
+  const mark = `<span class="mk" style="background:${appColor(s.app)}">${safe(app[0])}</span>`;
+  const title = miss ? `The one it would stop, from ${safe(ex.day)} ${safe(ex.at)}` : Shell.isReal ? 'Preview on sample values' : 'Preview on last week’s data';
+  setPanel('preview', title, '0.0s', skel());
+  // A clock on the right, like a run.
+  const t0 = performance.now();
+  const tick = () => { const el = $('#p-rt'); if (!el || !alive() || el.dataset.stop) return; el.textContent = `${((performance.now() - t0) / 1000).toFixed(1)}s`; requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  const step = async (ms, html) => { await sleep(ms); if (!alive()) return false; addLines(html + skel()); return true; };
+  const claim = miss
+    ? (r.type === 'once-per-key' ? `${safe(ex.agent)} tries a second ${safe(s.action)} for <b>${safe(ex.key)}</b>` : `${safe(ex.agent)} tries a ${safe(s.action)} for <b>${safe(ex.key)}</b>`)
+    : `${safe(ex.agent)} says “${safe(CLAIM[s.action] ?? 'Done')}${['refund', 'charge'].includes(s.action) ? ` ${usd(ex.amount)}` : ''}” for <b>${safe(ex.key)}</b>`;
+  if (!await step(420, line({ icon: I.bot, html: claim }))) return;
+  if (!await step(640, line({ icon: mark, html: before && miss ? `Lumni checks ${safe(app)} before it runs` : `Lumni reads it back from ${safe(app)}, not from the agent` }))) return;
+  const ok = rows.filter((x) => !x.bad).map((x) => x.k);
+  const bad = rows.find((x) => x.bad);
+  if (ok.length && !await step(620, line({ icon: `<span style="color:var(--good)">${I.tick}</span>`, html: `${safe(cap(list(ok)))} ${ok.length === 1 ? 'matches' : 'match'}` }))) return;
+  const last = miss
+    ? bad ? `${safe(cap(bad.k))}: ${safe(bad.o)}` : r.type === 'once-per-key' ? `${safe(app)} already shows a ${safe(s.action)} for this ${safe(s.key)}` : r.type === 'end-state' ? `The ${safe(s.object)} is still active` : 'It would break the rule'
+    : r.type === 'once-per-key' ? `Exactly one ${safe(s.action)} for this ${safe(s.key)}` : r.type === 'end-state' ? `The ${safe(s.object)} is ${safe(s.state)}` : r.type === 'approval-over' ? 'Approved by Priya, Finance, before it ran' : 'It kept the rule';
+  if (!await step(580, line({ icon: miss ? `<span style="color:var(--accent)">${I.x}</span>` : `<span style="color:var(--good)">${I.tick}</span>`, html: last }))) return;
+  await sleep(460);
+  if (!alive()) return;
+  const rt = $('#p-rt');
+  rt.dataset.stop = '1';
+  rt.textContent = '1.8s';
+  addLines(miss
+    ? line({ cls: 'stop', icon: I.shield, html: before ? `Stopped before it ran. Nothing reached ${safe(app)}.` : 'Flagged, with its receipt, in 1.8 seconds.' })
+    : line({ cls: 'good', icon: I.ticks, html: `Proven in ${safe(app)} in 1.8 seconds`, right: `<span style="font:600 12px var(--mono);color:var(--ink2)">rcp_${(Number(String(ex.key).split('_').pop()) || 2048) % 9000 + 1000}</span>` }));
+  c.done.preview = true;
+  paintHead();
+  paintSteps();
+  paintFoot();
+  save();
+  if (rp && !miss) {
+    await sleep(420);
+    if (!alive()) return;
+    const money = ['stripe', 'shopify', 'quickbooks'].includes(s.app) && r.type !== 'approval-over';
+    addLines(line({ cls: 'muted sep', icon: I.receipt, html: `Last week, on <b>${fmtN(rp.seen)}</b> ${safe(rp.plural)}: it would have stopped <b>${fmtN(rp.wouldStop)}</b>${money ? ` and kept <b>${safe(C.money(rp.saved))}</b>` : ''}.` }));
+    countUp($$('#p-lines .ln:last-child b'));
+  }
+}
+
+// ─── 3. Connect, read-only ──────────────────────────
+
+function agentOf(c) {
+  const r = ruleOf(c);
+  const op = C.operation(r);
+  const f = W.fleet?.find((x) => x.op === op);
+  const need = C.hookNeeds(c.rules);
+  const hooked = S.hooked.has(op) || c.hook.state === 'ok';
+  // Reporting a result needs the check it answers, so a report implies a check.
+  return { name: f?.name ?? `Your ${r.slots.action} agent`, op, checks: need.check || need.report ? (!!f || hooked) : null, reports: need.report ? hooked : null };
+}
+const agentOk = (c) => { const a = agentOf(c); return a.checks !== false && a.reports !== false; };
+const appsOf = (c) => readsOf(c).map((x) => {
+  const have = S.grants.get(x.app) ?? new Set();
+  const missing = [...x.objects.keys()].filter((o) => !have.has(o));
+  return { id: x.app, name: x.name, connected: S.connected.has(x.app), missing, ok: S.connected.has(x.app) && !missing.length };
+});
+const allOk = (c) => appsOf(c).every((n) => n.ok) && agentOk(c);
+
+/** Exactly what the contract reads, per app: each record, and the fields on it. */
+function readsOf(c) {
+  const out = new Map();
+  for (const r of c.rules.filter((x) => x.type)) {
+    const s = r.slots;
+    const object = r.type === 'end-state' ? s.object : r.type === 'order-before' ? C.ACTIONS.find((a) => a.id === s.first)?.object ?? s.first : C.ACTIONS.find((a) => a.id === s.action)?.object ?? s.action;
+    const x = out.get(s.app) ?? { app: s.app, name: C.appName(s.app), objects: new Map(), why: [] };
+    const fields = x.objects.get(`${object}s`) ?? new Set();
+    for (const f of C.spec(r).find((y) => y.k === 'match')?.fields ?? []) if (f !== 'approver') fields.add(f);
+    fields.add('status');
+    x.objects.set(`${object}s`, fields);
+    x.why.push(C.sentence(r));
+    out.set(s.app, x);
+  }
+  return [...out.values()];
+}
+const readsText = (x) => [...x.objects].map(([o, f]) => `${o} (${[...f].join(', ')})`).join('; ');
+
+function connectPanel(again) {
+  const c = S.c;
+  const reads = new Map(readsOf(c).map((x) => [x.app, x]));
+  const lines = [];
+  for (const n of appsOf(c)) {
+    const x = reads.get(n.id);
+    lines.push(line({ key: `app:${n.id}:${n.ok}`, icon: `<span class="mk" style="background:${appColor(n.id)}">${safe(n.name[0])}</span>`, html: `<b>${safe(n.name)}</b>, read-only<small>Reads ${safe(readsText(x))}</small>`,
+      right: n.ok ? `${I.tick}Connected <button class="link" data-perms="${safe(n.id)}" style="font-size:12.5px">Permissions</button>` : `<span style="color:var(--amber)">${n.connected ? `Needs ${safe(list(n.missing))}` : 'Not connected'}</span>` }));
+  }
+  lines.push(line({ cls: 'muted', key: 'never', icon: `<span style="color:var(--red)">${I.x}</span>`, html: 'Never creates, changes or cancels anything' }));
+  const a = agentOf(c);
+  const act = ruleOf(c).slots.action;
+  const yes = `<span style="color:var(--good)">${I.tick}</span>`;
+  const no = '<span style="width:7px;height:7px;border-radius:50%;background:var(--line2)"></span>';
+  if (a.checks !== null) lines.push(line({ cls: `sep ${a.checks ? '' : 'muted'}`, key: `chk:${a.checks}`, icon: a.checks ? yes : no, html: `<b>${safe(a.name)}</b> asks Lumni before each ${safe(act)}` }));
+  if (a.reports !== null) lines.push(line({ cls: a.reports ? '' : 'muted', key: `rep:${a.reports}`, icon: a.reports ? yes : no, html: `${a.checks !== null ? 'and tells' : `<b>${safe(a.name)}</b> tells`} Lumni when it’s done, with the result` }));
+  if (!agentOk(c)) {
+    if (c.hook.state === 'waiting') {
+      lines.push(line({ cls: 'skel', key: 'wait', icon: '<span class="spin"></span>', html: `<span style="color:var(--ink2);font-size:13.5px">Waiting for the first call from ${safe(a.name.replace(/^Your /, 'your '))}</span>`, right: Shell.isReal ? '' : '<button class="link" data-testcall>Send a test call</button>' }));
+    } else {
+      lines.push(`<div class="ln" data-key="hook:${c.hook.tool}"><span class="li"></span><div class="lt hook">
+        <div style="font-size:13px;color:var(--ink2);margin-bottom:8px">Your coding agent adds a small hook, without changing how the ${safe(act)} runs.</div>
+        <div class="seg sm" role="tablist">${Object.entries(TOOLS).map(([k, v]) => `<button role="tab" data-tool="${k}" aria-selected="${c.hook.tool === k}">${v}</button>`).join('')}</div>
+        <div class="diff">${C.hookLines(c, a.checks === true).map(([keep, l]) => `<span class="${keep ? 'keep' : 'add'}">${keep ? '  ' : '+ '}${safe(l)}</span>`).join('')}</div>
+        <details class="more"><summary>See the whole task</summary><pre>${safe(C.agentTask(c, a.name, c.hook.tool))}</pre></details></div></div>`);
+    }
+  }
+  if (allOk(c)) lines.push(line({ cls: 'good sep', key: 'ok', icon: I.ticks, html: 'Everything’s connected, read-only' }));
+  const box = $('#p-lines');
+  if (!again || !box || $('#c-panel').dataset.stage !== 'connect') {
+    setPanel('connect', 'Connect, read-only', 'only what the preview used', lines.join(''));
+  } else {
+    const prev = new Set($$('[data-key]', box).map((x) => x.dataset.key));
+    morph($('#c-sheet'), () => { box.innerHTML = lines.join(''); });
+    for (const x of $$('[data-key]', box)) if (prev.has(x.dataset.key)) x.style.animation = 'none';
+  }
+  if (allOk(c) && !c.done.connect) { c.done.connect = true; save(); }
+  paintHead();
+  paintSteps();
+  paintFoot();
+}
+
+// ─── the permission card ────────────────────────────
+
+const NEVER = {
+  stripe: ['Create charges, refunds or payouts', 'Change or cancel subscriptions', 'See card or bank numbers'],
+  shopify: ['Create orders or refunds', 'Change products, prices or stock'],
+  zendesk: ['Reply to, assign or close tickets'],
+  salesforce: ['Create, edit or delete records'],
+  gmail: ['Send, delete or label email'],
+  quickbooks: ['Create or edit invoices and payments'],
+};
+
+/** Ask for exactly what the contract reads, and say what Lumni will never do. */
+function openPerms(id) {
+  const c = S.c;
+  const x = readsOf(c).find((r) => r.app === id);
+  if (!x) return;
+  closePerms();
+  const have = S.grants.get(id) ?? new Set();
+  const connected = S.connected.has(id);
+  const all = [...x.objects.keys()].every((o) => have.has(o)) && connected;
+  const res = (o) => cap(o);
+  const back = document.createElement('div');
+  back.className = 'm-back';
+  back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <div class="m-logos"><span class="ml lumni">${I.spark}</span><span class="m-link"><i></i><i></i><i></i><i></i><i></i></span><span class="ml" style="background:${appColor(id)}">${safe(x.name[0])}</span></div>
+      <h3 id="m-title">${all ? `${safe(x.name)} is connected, read-only` : connected ? `Allow Lumni to read ${safe(list([...x.objects.keys()].filter((o) => !have.has(o))))} in ${safe(x.name)}` : `Connect ${safe(x.name)}, read-only`}</h3>
+      <p class="m-sub">Only what <b>${safe(c.title)}</b> checks. Nothing else.</p>
+      <div class="m-sec"><div class="m-h">Lumni will read</div>
+        ${[...x.objects].map(([o, f], i) => `<div class="m-row" style="animation-delay:${0.18 + i * 0.07}s"><span class="m-ic ok">${I.eye}</span><div><b>${safe(res(o))}</b><small>${safe([...f].join(', '))}</small></div>
+          <span class="m-pill ${have.has(o) && connected ? 'had' : 'new'}">${have.has(o) && connected ? 'Already allowed' : 'Read'}</span></div>`).join('')}
+      </div>
+      <div class="m-why"><span>Why</span>${x.why.map(safe).join(' ')}</div>
+      <div class="m-sec"><div class="m-h">Lumni will never</div>
+        ${(NEVER[id] ?? ['Create, change or delete anything']).map((t, i) => `<div class="m-row never" style="animation-delay:${0.32 + i * 0.06}s"><span class="m-ic no">${I.x}</span><div><b>${safe(t)}</b></div><span class="m-pill none">No access</span></div>`).join('')}
+      </div>
+      ${id === 'stripe' ? `<div class="m-key">Restricted key ${[...x.objects.keys()].map((o) => `<code>${safe(res(o))}: Read</code>`).join('')}<code class="none">Everything else: None</code></div>` : ''}
+      <div class="m-foot"><span class="m-lock">${I.shield}Encrypted. Revoke any time.</span>
+        <button class="quiet-b" data-mclose>${all ? 'Close' : 'Cancel'}</button>
+        ${all ? '' : `<button class="primary violet" data-allow="${safe(id)}" ${Shell.isReal ? `disabled title="${NO_API}"` : ''}><span>${I.shield}Allow read-only access</span></button>`}
+      </div>
+    </div>`;
+  document.body.append(back);
+  if (!calm) {
+    back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
+    $('.modal', back).animate([{ opacity: 0, transform: 'translateY(14px) scale(.97)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'none' }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+  later(() => ($('[data-allow]', back) ?? $('[data-mclose]', back))?.focus({ preventScroll: true }), 50);
+}
+
+function closePerms() {
+  const back = $('.m-back');
+  if (!back) return;
+  if (calm) return back.remove();
+  back.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = () => back.remove();
+}
+
+/** Allowed: the button turns into a tick, the card closes, the row updates. */
+function allowPerms(id) {
+  const back = $('.m-back');
+  const btn = $('[data-allow]', back);
+  btn.disabled = true;
+  btn.innerHTML = `<span>${whiteSpin}Connecting read-only</span>`;
+  wait(() => {
+    S.connected.add(id);
+    const g = S.grants.get(id) ?? new Set();
+    for (const o of readsOf(S.c).find((r) => r.app === id)?.objects.keys() ?? []) g.add(o);
+    S.grants.set(id, g);
+    btn.classList.add('ok');
+    btn.innerHTML = `<span>${I.tick}Allowed, read-only</span>`;
+    for (const p of $$('.m-pill.new', back)) { p.className = 'm-pill had'; p.textContent = 'Allowed'; }
+    $('.m-link', back)?.classList.add('on');
+    wait(() => { closePerms(); connectPanel(true); }, 900);
+  }, 1100);
+}
+
+// ─── 4. Turn it on ──────────────────────────────────
+
+function onPanel() {
+  if (Shell.isReal) return onPanelReal();
+  const c = S.c;
+  const r = ruleOf(c);
+  const act = r.slots.action;
+  if (c.mode === 'draft') {
+    const m = S.pick ?? 'watch';
+    setPanel('on', 'Turn it on', 'switch any time', [
+      line({ icon: m === 'watch' ? I.eye : I.shield, html: m === 'watch' ? `<b>Watch</b>: Lumni checks every ${safe(act)} and records what it would stop` : `<b>Protect</b>: Lumni steps in on every ${safe(act)}, from the next one`, key: `m:${m}` }),
+      line({ cls: 'muted', icon: I.receipt, html: m === 'watch' ? 'Nothing is blocked. Protect when the record looks right.' : 'Each one it stops gets a receipt you can share.', key: `m2:${m}` }),
+    ].join(''), { reveal: $('#c-panel').dataset.stage !== 'on' });
+  } else {
+    const rp = c.rp;
+    setPanel('on', STATE[c.mode], '<span style="display:inline-flex;align-items:center;gap:6px;color:var(--good)"><span style="width:7px;height:7px;border-radius:50%;background:var(--good)"></span>live</span>', [
+      line({ icon: `<span style="color:var(--good)">${I.tick}</span>`, html: c.mode === 'protect' ? `Lumni steps in on every ${safe(act)}` : `Lumni checks every ${safe(act)}; nothing is blocked`, key: 'a' }),
+      line({ icon: I.receipt, html: 'A receipt for each, in <a class="link" href="/journey?story=omar">the journey</a>', key: 'b' }),
+      ...(rp ? [line({ cls: 'muted', icon: I.spark, html: `Last week it would have stopped <b>${fmtN(rp.wouldStop)}</b>`, key: 'c' })] : []),
+    ].join(''));
+  }
+  paintHead();
+  paintSteps();
+  paintFoot();
+}
+
+async function turnOn(m) {
+  const c = S.c;
+  const was = c.mode;
+  let first = !S.list.includes(c);
+  if (Shell.isReal) {
+    if (c.busy) return;
+    c.busy = true;
+    paintFoot();
+    try {
+      const x = await API.mode(c, m);
+      Object.assign(c, { mode: x.mode, was: x.was, revision: x.revision, effective: x.effective });
+    } catch (e) {
+      Shell.toast(e.status === 409 && /bindings|ready/.test(e.message) ? 'It isn’t ready to run yet: finish its bindings in Connect.' : e.message, 'bad');
+      return;
+    } finally {
+      c.busy = false;
+      paintFoot();
+    }
+    S.pick = m;
+    first = was === 'draft';
+    if (S.c !== c) return;
+    onPanel();
+    paintMine(first ? c : undefined);
+    Shell.toast(m === 'protect' ? `${c.title} is protecting.` : was === 'draft' ? `${c.title} is watching. Nothing is blocked.` : `${c.title} is only watching again.`);
+    wait(() => {
+      const head = $('#c-head')?.getBoundingClientRect();
+      if (!head) return;
+      const x = head.left + head.width / 2;
+      celebrate(x, head.top + 30);
+      stamp(x + 90, head.top + 6, m === 'protect' ? 'Protected!' : 'It’s live!');
+      if (first) wait(() => carry(c, $('#c-head .ttl').getBoundingClientRect()), 450);
+    }, calm ? 60 : 260);
+    return;
+  }
+  c.mode = m;
+  S.pick = m;
+  if (first) S.list.push(c);
+  if (!c.rp) sample(c);
+  save();
+  onPanel();
+  paintMine(first ? c : undefined);
+  Shell.toast(m === 'protect' ? `${c.title} is protecting.` : was === 'draft' ? `${c.title} is watching. Nothing is blocked.` : `${c.title} is only watching again.`);
+  // Going on is worth a moment: a burst and a stamp on the card, and the
+  // first time, the contract carried over to Your contracts.
+  wait(() => {
+    const head = $('#c-head')?.getBoundingClientRect();
+    if (!head) return first && paintMine();
+    const x = head.left + head.width / 2;
+    celebrate(x, head.top + 30);
+    stamp(x + 90, head.top + 6, m === 'protect' ? 'Protected!' : 'It’s live!');
+    if (first) wait(() => carry(c, $('#c-head .ttl').getBoundingClientRect()), 450);
+  }, calm ? 60 : 260);
+}
+
+function stamp(x, y, word) {
+  const glow = document.createElement('div');
+  glow.className = 'spray';
+  const el = document.createElement('div');
+  el.className = 'stamp';
+  el.innerHTML = `${safe(word)}<small>Lumni’s got it from here</small>`;
+  for (const d of [glow, el]) { d.style.left = `${x}px`; d.style.top = `${y}px`; document.body.append(d); }
+  const t = 'translate(-50%, -50%) rotate(-9deg)';
+  el.animate(calm
+    ? [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }]
+    : [{ opacity: 0, transform: `${t} scale(1.6)` }, { opacity: 1, transform: `${t} scale(.94)`, offset: 0.14 }, { transform: `${t} scale(1)`, offset: 0.22 }, { opacity: 1, transform: `${t} scale(1)`, offset: 0.8 }, { opacity: 0, transform: `${t} translateY(-14px) scale(1.02)` }],
+    { duration: 2200, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
+  glow.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 2200, fill: 'forwards' });
+  setTimeout(() => { el.remove(); glow.remove(); }, 2400);
+}
+
+/** A small burst of confetti from a point on screen. */
+function celebrate(x, y) {
+  const n = calm ? 28 : 110;
+  const reach = calm ? 0.45 : 1;
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  document.body.append(box);
+  const COLORS = ['#5b4bf5', '#8578ff', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#d4f56a'];
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('i');
+    p.style.left = `${x}px`;
+    p.style.top = `${y}px`;
+    p.style.background = COLORS[i % COLORS.length];
+    if (i % 3 === 0) { p.style.width = '7px'; p.style.height = '7px'; p.style.borderRadius = '50%'; }
+    box.append(p);
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.15;
+    const v = (240 + Math.random() * 320) * reach;
+    const dx = Math.cos(a) * v;
+    const dy = Math.sin(a) * v;
+    const spin = (Math.random() - 0.5) * 1080;
+    p.animate([
+      { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+      { transform: `translate(${dx * 0.7}px, ${dy * 0.7}px) rotate(${spin * 0.5}deg)`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${dx}px, ${dy + 380 * reach}px) rotate(${spin}deg)`, opacity: 0 },
+    ], { duration: 1300 + Math.random() * 700, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
+  }
+  setTimeout(() => box.remove(), 2400);
+}
+
+/** The contract, lifted from the card and set down in Your contracts. */
+function carry(c, from) {
+  const row = $(`.mc[data-open="${CSS.escape(c.id)}"]`);
+  if (!row) return;
+  let done = false;
+  const land = () => { if (done) return; done = true; row.classList.remove('arriving'); row.classList.add('landed'); };
+  const to = row.getBoundingClientRect();
+  const g = document.createElement('div');
+  g.className = 'ghost-card';
+  g.innerHTML = `<i class="${c.mode}"></i>${safe(c.title)}`;
+  g.style.left = `${from.left}px`;
+  g.style.top = `${from.top - 8}px`;
+  document.body.append(g);
+  const dx = to.left - from.left;
+  const dy = to.top - from.top + 8;
+  g.animate([
+    { transform: 'translate(0,0) scale(1)', opacity: 0 },
+    { transform: 'translate(0,-14px) scale(1.04)', opacity: 1, offset: 0.12 },
+    { transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 90}px) scale(.96)`, opacity: 1, offset: 0.55 },
+    { transform: `translate(${dx}px, ${dy}px) scale(.9)`, opacity: 0.85 },
+  ], { duration: calm ? 600 : 950, easing: 'cubic-bezier(.45,0,.2,1)', fill: 'forwards' }).onfinish = () => { g.remove(); land(); };
+  // A background tab pauses the flight; the contract still lands.
+  setTimeout(() => { g.remove(); land(); }, 1500);
+}
+
+function hl(code, lang) {
+  const kw = lang === 'py' ? /\b(def|from|import|assert|return|await|async|None|True|False)\b/g : /\b(import|from|const|await|async|return|expect|describe|it)\b/g;
+  return safe(code).split('\n').map((ln) => {
+    if (/^\s*(\/\/|#)/.test(ln)) return `<span class="c">${ln}</span>`;
+    return ln.replace(/(&#39;[^&]*?&#39;|&quot;[^&]*?&quot;|“[^”]*”)/g, '<span class="s">$1</span>').replace(kw, '<span class="k">$1</span>').replace(/\b(replay|run|toHaveLength|toBe|toEqual|toBeLessThanOrEqual)\b(?=\()/g, '<span class="f">$1</span>');
+  }).join('\n');
+}
+
+function writeTest(lang = 'ts') {
+  if (Shell.isReal) return writeTestReal(lang);
+  const c = S.c;
+  const { ex } = sample(c);
+  const box = $('#extra');
+  const code = C.testFor(c, lang, ex);
+  box.innerHTML = `<div class="codecard"><div class="hd">Regression test, from the one it would stop<div class="seg sm" style="margin-left:8px"><button data-lang="ts" aria-selected="${lang === 'ts'}">vitest</button><button data-lang="py" aria-selected="${lang === 'py'}">pytest</button></div><button class="x" data-closetest>Close</button></div>
+    <pre class="code"></pre>
+    <div class="ft"><button class="ghost" data-copy="code" data-lang2="${lang}">${I.copy}Copy</button><button class="ghost" data-copy="prompt" data-lang2="${lang}">${I.copy}Copy prompt for your coding agent</button></div></div>`;
+  const pre = $('pre', box);
+  const lines = code.split('\n');
+  let i = 0;
+  const step = () => {
+    if (!pre.isConnected) return;
+    i = Math.min(lines.length, i + 1);
+    pre.innerHTML = hl(lines.slice(0, i).join('\n'), lang);
+    if (i < lines.length) later(step, 26);
+  };
+  step();
+  later(() => box.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }), 60);
+}
+
+// ─── your contracts ─────────────────────────────────
+
+function paintMine(arriving) {
+  const el = $('#mine');
+  if (!el) return;
+  $('#minepanel').hidden = !S.list.length;
+  const all = [...S.list].reverse();
+  const shown = S.showAll ? all : all.slice(0, 4);
+  const row = (c, i) => `<button class="mc ${c === S.c ? 'cur' : ''} ${c === arriving ? 'arriving' : ''}" data-open="${safe(c.id)}" style="animation-delay:${i * 0.04}s"><i class="${c.mode}"></i><b>${safe(c.title)}</b><span>${safe(STATE[c.mode])}, ${safe(c.rules.filter((r) => r.type).map((r) => C.short(r)).join(', '))}</span></button>`;
+  el.innerHTML = shown.map(row).join('') + (all.length > 4 ? `<button class="more-btn" data-more aria-expanded="${!!S.showAll}">${S.showAll ? 'Show fewer' : `Show all ${all.length}`}${I.more}</button>` : '');
+}
+
+function startNew() {
+  S.c = null;
+  S.miss = false;
+  S.pick = undefined;
+  S.stage = 'describe';
+  S.run++;
+  S.entered = false;
+  S.draft = { text: '', forced: {}, over: {} };
+  $('#extra').innerHTML = '';
+  const card = $('#card');
+  card.hidden = true;
+  card.innerHTML = '';
+  paintTop(true);
+  paintMine();
+  window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+}
+
+/** Open a saved contract on its card, as it is now. */
+function openContract(c) {
+  S.c = c;
+  S.miss = false;
+  S.pick = c.mode === 'paused' ? c.was ?? 'watch' : c.mode;
+  S.draft = { text: c.text, forced: { ...c.forced }, over: { ...c.over } };
+  S.entered = true;
+  paintTop(false);
+  const card = $('#card');
+  card.hidden = true;
+  card.innerHTML = '';
+  if (Shell.isReal) { S.pv = null; S.needs = null; S.dirty = false; return goStage(c.mode === 'draft' ? 'connect' : 'on'); }
+  goStage('on');
+}
+
+// ─── real data ──────────────────────────────────────
+//
+// Drafts live in the API. Connect binds each rule to the calls your agents
+// make, with GET /needs saying what's still missing; Preview replays the bound
+// rules on recorded actions; Turn on changes the mode. Unknown numbers are dashes.
+
+const dash = R.dash;
+const when = (t) => (t ? new Date(t).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
+const opsOf = (c) => [...new Set(c.rules.map((r) => String(r.binding?.operation ?? '').trim()).filter(Boolean))];
+const amber = (html) => `<span style="color:var(--amber)">${html}</span>`;
+
+/** Your contracts from the API, then the one the address asks for. */
+async function loadReal(first) {
+  const s = S;
+  try {
+    s.list = (await API.list()).sort((a, b) => String(a.created).localeCompare(String(b.created)));
+  } catch (e) {
+    Shell.toast(`Your contracts couldn’t load: ${e.message}`, 'bad');
+  }
+  if (S !== s) return;
+  paintMine();
+  const want = new URLSearchParams(location.search);
+  const c = want.get('open') && s.list.find((x) => x.id === want.get('open'));
+  if (first && c) {
+    openContract(c);
+    if (want.get('edit')) reopen();
+    return;
+  }
+  if (first) shot();
+}
+
+/** Keep the rule as a draft in the API (create, or edit at its revision), then bind it. */
+async function commitReal(rules) {
+  const editing = S.c;
+  if (S.saving) return;
+  const next = { title: C.title(rules), text: S.draft.text.trim(), rules: R.carryBindings(rules, editing?.rules) };
+  S.saving = true;
+  paintFoot();
+  let c;
+  try {
+    c = editing ? await API.save({ ...next, id: editing.id, revision: editing.revision }) : await API.create(next);
+  } catch (e) {
+    Shell.toast(e.status === 409 && /not ready/.test(e.message) ? 'It’s running, so every rule has to stay bound. Pause it first, or keep its bindings.' : e.message, 'bad');
+    return;
+  } finally {
+    S.saving = false;
+    paintFoot();
+  }
+  if (editing) { Object.assign(editing, c, { hook: editing.hook }); c = editing; } else S.list.push(c);
+  S.c = c;
+  S.miss = false;
+  Object.assign(S, { pv: null, needs: null, hooks: null, dirty: false, raw: {} });
+  S.draft.text = c.text;
+  paintTop(false);
+  paintMine();
+  Shell.toast(editing ? 'Saved.' : 'Draft saved. Nothing runs until you turn it on.');
+  goStage('connect');
+}
+
+/** What the workspace has set up (read bindings, verifiers), and what the API says this contract still needs. */
+async function readNeeds(c, fresh) {
+  if (!S.ctx) {
+    const [bindings, verifiers] = await Promise.all([API.bindings().catch(() => []), API.verifiers().catch(() => [])]);
+    S.ctx = { bindings, verifiers };
+  }
+  if (fresh || !S.needs) {
+    const [needs, hooks] = await Promise.all([API.needs(c).catch(() => null), API.hooks(c).catch(() => [])]);
+    if (S.c !== c) return;
+    S.needs = needs;
+    S.hooks = hooks;
+  }
+  if (!S.dirty) c.done.connect = !!S.needs?.ready;
+}
+
+/** Connect: each rule's bindings, then Lumni's check. */
+async function bindPanel(fresh) {
+  const c = S.c;
+  const run = S.run;
+  if (!S.ctx || !S.needs || fresh === true) {
+    if (!$('#c-panel .bind')) setPanel('connect', 'Connect it to your agents’ calls', '<span class="spin"></span>checking', skel('Reading what’s set up in your workspace'));
+    await readNeeds(c, fresh === true);
+    if (S.run !== run || S.stage !== 'connect' || S.c !== c) return;
+  }
+  const known = [...S.ctx.bindings.map((b) => b.operation), ...(W.fleet ?? []).map((f) => f.op), ...c.rules.map((r) => C.operation(r))];
+  const ops = [...new Set(known.filter(Boolean))].sort();
+  const html = `<datalist id="ops">${ops.map((o) => `<option value="${safe(o)}"></option>`).join('')}</datalist>${c.rules.map(bindBlock).join('')}<div id="bind-check" class="lines" style="margin-top:4px">${checkHtml(c)}</div>`;
+  const box = $('#p-lines');
+  if (box && $('#c-panel').dataset.stage === 'connect' && $('.bind', box)) morph($('#c-sheet'), () => { box.innerHTML = html; $('#p-rt').textContent = 'what each rule reads'; });
+  else setPanel('connect', 'Connect it to your agents’ calls', 'what each rule reads', html, { stagger: 0.05 });
+  paintHead();
+  paintSteps();
+  paintFoot();
+}
+
+function bindBlock(r, i) {
+  const miss = R.missing(r);
+  const guess = R.suggest(r, S.ctx);
+  const op = String(r.binding?.operation ?? '').trim().toLowerCase();
+  const h = S.hooks?.find((x) => x.operation === op);
+  const slots = miss.filter((m) => m.field.startsWith('slot:')).map((m) => `<div class="seen">${amber(I.warn)}${safe(m.why)}, in <button class="link" data-back style="font-size:12.5px">your words</button></div>`).join('');
+  const seen = !h || !op || S.dirty ? '' : `<div class="seen"><i class="${h.status === 'observed' ? 'on' : ''}"></i>${h.status === 'observed'
+    ? `${dash(h.checks_observed)} ${h.checks_observed === 1 ? 'check' : 'checks'} on ${safe(op)} since it was made${h.results_observed ? `, ${dash(h.results_observed)} with results` : ''}`
+    : `No checks on ${safe(op)} seen yet. That’s not an error: they show up once an agent asks Lumni before this operation.`}</div>`;
+  return `<div class="bind" data-rule="${i}"><div class="bind-h"><b>${safe(C.short(r))}</b><span class="kind">${safe(r.type)}</span>${status(miss)}</div>
+    ${R.fields(r.type).map((f) => fieldRow(r, i, f, guess, miss)).join('')}${slots}${seen}</div>`;
+}
+const status = (miss) => `<span class="st2 ${miss.length ? '' : 'ok'}">${miss.length ? `${miss.length} to fill` : `${I.tick}Bound`}</span>`;
+
+function fieldRow(r, i, f, guess, miss) {
+  const L = R.LABELS[f];
+  const v = r.binding?.[f];
+  const id = `bf-${i}-${f}`;
+  const err = fieldErr(r, i, f, miss);
+  const shown = (x) => (x == null ? '' : typeof x === 'object' ? JSON.stringify(x) : String(x));
+  const ph = shown(guess[f]) || L.eg;
+  let input;
+  if (f === 'read_binding_id' || f === 'verifier_id') {
+    const opts = f === 'read_binding_id'
+      ? S.ctx.bindings.filter((b) => b.read_only).map((b) => ({ id: b.id, text: `${b.id} (${b.app})`, off: b.enabled === false }))
+      : S.ctx.verifiers.map((x) => ({ id: x.id, text: `${x.name ?? x.id} (${x.id})`, off: !x.enabled }));
+    if (v && !opts.some((o) => o.id === v)) opts.unshift({ id: v, text: `${v} (not found)`, off: false });
+    input = `<select id="${id}" data-bf="${i}|${f}"><option value="">${opts.length ? 'Pick one' : 'None set up yet'}</option>${opts.map((o) => `<option value="${safe(o.id)}" ${o.id === v ? 'selected' : ''} ${o.off ? 'disabled' : ''}>${safe(o.text)}${o.off ? ', off' : ''}</option>`).join('')}</select>`;
+  } else if (f === 'expected') {
+    input = `<textarea id="${id}" data-bf="${i}|${f}" placeholder="${safe(ph)}" spellcheck="false">${safe(S.raw?.[`${i}|${f}`] ?? shown(v))}</textarea>`;
+  } else {
+    input = `<input id="${id}" data-bf="${i}|${f}" value="${safe(shown(v))}" placeholder="${safe(ph)}" ${/operation$/.test(f) ? 'list="ops"' : ''} spellcheck="false" autocomplete="off" />`;
+  }
+  return `<div class="bf ${err ? 'bad' : ''}" data-f="${i}|${f}"><label for="${id}">${safe(L.label)}<small>${safe(L.why)}</small></label>${input}<div class="err">${safe(err)}</div></div>`;
+}
+
+/** What's wrong with one field: the rule's own check, then what the API said about it. */
+function fieldErr(r, i, f, miss) {
+  const raw = S.raw?.[`${i}|${f}`];
+  if (f === 'expected' && raw?.trim() && !(r.binding?.expected && typeof r.binding.expected === 'object')) return 'That isn’t a JSON object yet';
+  const m = miss.find((x) => x.field === f);
+  if (m) {
+    if (f === 'read_binding_id' && !S.ctx.bindings.some((b) => b.read_only)) return 'No read-only bindings here yet: register one with PUT /v1/tool-bindings/{id}';
+    if (f === 'verifier_id' && !S.ctx.verifiers.some((x) => x.enabled)) return 'No enabled verifiers here yet: add one with POST /v1/verifiers';
+    return m.why;
+  }
+  if (S.dirty || !S.needs) return '';
+  const v = r.binding?.[f];
+  if (f === 'read_binding_id' && v && S.needs.reads.has(v)) return R.says(S.needs.reads.get(v));
+  if (f === 'verifier_id' && v && S.needs.verifiers.has(v)) return R.says(`verifier: ${v}`);
+  return '';
+}
+
+/** Lumni's check, from GET /needs: what each read is granted, and whether it can run. */
+function checkHtml(c) {
+  if (S.dirty) return line({ cls: 'muted sep', key: 'dirty', icon: I.pen, html: 'Save the bindings and Lumni checks them' });
+  const n = S.needs;
+  if (!n) return line({ cls: 'muted sep', key: 'nocheck', icon: amber(I.warn), html: 'Lumni couldn’t check these bindings just now' });
+  const out = n.apps.map((a, j) => line({ cls: j ? '' : 'sep', key: `app:${a.binding_id}`, icon: `<span class="mk" style="background:${appColor(a.app)}">${safe((a.app || a.binding_id || '?')[0].toUpperCase())}</span>`,
+    html: `<b>${safe(a.binding_id)}</b>, read-only<small>${Object.entries(a.objects ?? {}).map(([o, f]) => `${safe(o)} (${safe(f.join(', '))})`).join('; ') || 'Nothing listed'}. Granted by your operator; ${safe(C.appName(a.app) || 'the app')}’s own permissions aren’t inspected.</small>`,
+    right: a.granted ? `${I.tick}Granted` : amber(a.configured ? 'Needs a read grant' : 'Not registered') }));
+  if (n.ready) out.push(line({ cls: `good ${out.length ? '' : 'sep'}`, key: 'ready', icon: I.ticks, html: 'Every rule is bound. Lumni can preview it and run it.' }));
+  else for (const [j, m] of [...n.general, ...[...n.verifiers].map((v) => `verifier: ${v}`), ...(n.apps.length ? [] : n.reads.values())].entries()) out.push(line({ cls: `muted ${out.length || j ? '' : 'sep'}`, key: `m${j}`, icon: amber(I.warn), html: safe(R.says(m)) }));
+  return out.join('');
+}
+
+/** After a keystroke: only the field hints, the counts and the foot change, so focus stays put. */
+function refreshBind() {
+  const c = S.c;
+  for (const el of $$('.bind[data-rule]')) {
+    const i = Number(el.dataset.rule);
+    const r = c.rules[i];
+    const miss = R.missing(r);
+    for (const row of $$('.bf', el)) {
+      const f = row.dataset.f.split('|')[1];
+      const err = fieldErr(r, i, f, miss);
+      row.classList.toggle('bad', !!err);
+      $('.err', row).textContent = err;
+    }
+    $('.st2', el).outerHTML = status(miss);
+    for (const x of $$('.seen', el)) if ($('i', x)) x.remove();
+  }
+  const chk = $('#bind-check');
+  if (chk) chk.innerHTML = checkHtml(c);
+  paintSteps();
+  paintFoot();
+}
+
+document.addEventListener('input', (e) => {
+  const el = e.target.closest?.('[data-bf]');
+  if (!el || !S?.c || !Shell.isReal) return;
+  const [i, f] = el.dataset.bf.split('|');
+  const r = S.c.rules[Number(i)];
+  const b = (r.binding ??= {});
+  if (f === 'expected') {
+    S.raw[`${i}|${f}`] = el.value;
+    try { const v = JSON.parse(el.value); b.expected = v && typeof v === 'object' && !Array.isArray(v) ? v : undefined; } catch { b.expected = undefined; }
+  } else b[f] = el.value;
+  S.dirty = true;
+  S.c.done.connect = false;
+  S.c.done.preview = false;
+  refreshBind();
+});
+
+/** Fill every empty field with Lumni's guess, for you to check before saving. */
+function guessAll() {
+  for (const r of S.c.rules) r.binding = R.fillGuesses(r, S.ctx);
+  S.raw = {};
+  S.dirty = true;
+  bindPanel();
+  Shell.toast('Filled in Lumni’s guesses. Check them, then save.');
+}
+
+async function saveBindings() {
+  const c = S.c;
+  if (c.busy) return;
+  c.busy = true;
+  paintFoot();
+  try {
+    const x = await API.save(c);
+    Object.assign(c, { revision: x.revision, rules: x.rules, title: x.title, mode: x.mode, was: x.was, effective: x.effective });
+    S.dirty = false;
+    S.raw = {};
+  } catch (e) {
+    Shell.toast(e.status === 409 && /not ready/.test(e.message) ? 'It’s running, so its bindings must be complete and granted before they save.' : e.message, 'bad');
+    return;
+  } finally {
+    c.busy = false;
+    paintFoot();
+  }
+  S.pv = null;
+  c.done.preview = false;
+  await bindPanel(true);
+  Shell.toast(S.needs?.ready ? 'Saved. Every rule is bound.' : 'Saved. Lumni says what’s still missing below.');
+}
+
+function primaryReal(c) {
+  if (S.stage === 'connect') {
+    const left = c.rules.reduce((n, r) => n + R.missing(r).length, 0);
+    const empty = S.ctx && c.rules.some((r) => Object.keys(R.suggest(r, S.ctx)).some((k) => r.binding?.[k] == null || r.binding[k] === ''));
+    const second = empty ? '<button class="quiet-b" data-guess>Fill in Lumni’s guesses</button>' : '';
+    if (c.busy) return { act: '', label: `${whiteSpin}Saving`, off: true };
+    if (S.dirty) return { act: 'bind-save', label: `Save bindings${left ? `, ${left} left` : ''}`, second };
+    if (left) return { act: '', label: `${left} ${left === 1 ? 'field' : 'fields'} to fill`, off: true, second };
+    return { act: 'to-preview', label: `Preview it${I.arrow}` };
+  }
+  if (S.stage === 'preview') {
+    if (S.pvFail) return { act: 'to-connect', label: 'Back to Connect' };
+    return c.done.preview ? { act: 'on', label: `Turn it on${I.arrow}` } : { act: '', label: `${whiteSpin}Replaying`, off: true };
+  }
+  if (c.mode === 'draft') {
+    const ready = !!S.needs?.ready;
+    return { act: 'go-on', label: c.busy ? `${whiteSpin}Turning on` : (S.pick ?? 'watch') === 'protect' ? 'Protect now' : 'Start watching', violet: true, off: !ready || c.busy, title: ready ? '' : 'Finish its bindings in Connect first' };
+  }
+  return { act: 'test', label: `${I.spark}Write the regression test`, second: '<button class="quiet-b" data-new>New contract</button>' };
+}
+
+/** Preview: the API replays the bound rules on the last 7 days of recorded actions. */
+async function previewReal() {
+  const c = S.c;
+  const run = S.run;
+  const alive = () => S.run === run && S.stage === 'preview' && S.c === c;
+  const title = 'Preview on last week’s actions';
+  Object.assign(S, { pv: null, pvFail: null });
+  c.done.preview = false;
+  const left = c.rules.flatMap(R.missing);
+  if (left.length || S.dirty) {
+    S.pvFail = 'bind';
+    setPanel('preview', title, '', line({ cls: 'muted', icon: amber(I.warn), html: `A replay needs every rule bound to the calls your agents make${S.dirty ? ', and saved' : ''}. ${left.length ? `${left.length} ${left.length === 1 ? 'field is' : 'fields are'} still empty.` : ''}` }));
+    return paintFoot();
+  }
+  setPanel('preview', title, '<span class="spin"></span>replaying', skel('Replaying your recorded actions from the last 7 days'));
+  paintFoot();
+  let p;
+  try {
+    p = await API.preview(c);
+  } catch (e) {
+    if (!alive()) return;
+    S.pvFail = e.message;
+    setPanel('preview', title, '', line({ cls: 'muted', icon: amber(I.warn), html: `The replay didn’t run: ${safe(R.says(e.message))}` }));
+    return paintFoot();
+  }
+  if (!alive()) return;
+  S.pv = p;
+  c.done.preview = true;
+  const ops = list(opsOf(c));
+  const L = [];
+  if (!p.seen) {
+    L.push(line({ cls: 'muted', icon: I.receipt, html: `No recorded <b>${safe(ops)}</b> actions in the last 7 days, so there’s nothing to replay yet. Check the operation’s name, or turn it on in Watch and let it record.` }));
+  } else {
+    L.push(line({ icon: I.receipt, html: `Replayed <b>${dash(p.seen)}</b> recorded ${safe(ops)} ${p.seen === 1 ? 'action' : 'actions'} from the last 7 days` }));
+    L.push(line({ cls: p.wouldStop ? 'stop' : 'good', icon: p.wouldStop ? I.shield : I.ticks, html: p.wouldStop ? `It would have stopped <b>${dash(p.wouldStop)}</b>` : 'It would have stopped none of them' }));
+    L.push(line({ cls: 'muted', icon: `<span style="color:var(--good)">${I.tick}</span>`, html: `<b>${dash(p.verified)}</b> proven in the app, <b>${dash(p.gaps)}</b> not proven` }));
+    for (const ex of p.examples.slice(0, 3)) L.push(line({ cls: 'muted', icon: `<span style="color:var(--accent)">${I.x}</span>`, html: `<span style="font:600 12.5px var(--mono)">${safe(ex.action_id)}</span> ${safe(ex.operation ?? '')}`, right: `<span style="color:var(--ink3);font-weight:500">${safe(when(ex.at))}</span>` }));
+  }
+  if (p.unavailable) L.push(line({ cls: 'muted', icon: amber(I.warn), html: `${dash(p.unavailable)} had no retained evidence to replay, so they count as unknown, not as kept` }));
+  else if (p.truncated) L.push(line({ cls: 'muted', icon: amber(I.warn), html: 'It stopped at 10,000 actions; the rest weren’t replayed' }));
+  L.push(line({ cls: 'muted sep', icon: I.spark, html: p.saved == null ? 'Kept: — <small>Lumni doesn’t measure money kept yet</small>' : `Kept <b>${safe(C.money(p.saved))}</b>` }));
+  setPanel('preview', title, `${dash(p.seen)} replayed`, L.join(''));
+  paintHead();
+  paintSteps();
+  paintFoot();
+}
+
+/** Turn it on, or how it's running: the week from GET /week. */
+async function onPanelReal() {
+  const c = S.c;
+  const run = S.run;
+  const ops = list(opsOf(c)) || 'its operation';
+  if (c.mode === 'draft') {
+    const m = S.pick ?? 'watch';
+    const base = [
+      line({ icon: m === 'watch' ? I.eye : I.shield, html: m === 'watch' ? `<b>Watch</b>: Lumni checks every ${safe(ops)} and records what it would stop` : `<b>Protect</b>: Lumni steps in on every ${safe(ops)}, from the next one`, key: `m:${m}` }),
+      line({ cls: 'muted', icon: I.receipt, html: m === 'watch' ? 'Nothing is blocked. Protect when the record looks right.' : 'Each one it stops gets a receipt you can share.', key: `m2:${m}` }),
+    ];
+    const paint = () => {
+      const n = S.needs;
+      const why = !n ? [skel()] : n.ready ? [] : [line({ cls: 'muted sep', key: 'nr', icon: amber(I.warn), html: `It can’t run yet: ${[...n.general, ...n.reads.values(), ...[...n.verifiers].map((v) => `verifier: ${v}`)].map((x) => safe(R.says(x))).join('. ')}. <button class="link" data-tobind>Finish in Connect</button>` })];
+      setPanel('on', 'Turn it on', 'switch any time', [...base, ...why].join(''), { reveal: $('#c-panel').dataset.stage !== 'on' });
+      paintHead();
+      paintSteps();
+      paintFoot();
+    };
+    paint();
+    if (!S.needs) { await readNeeds(c); if (S.run === run && S.stage === 'on' && S.c === c) paint(); }
+    return;
+  }
+  const paused = c.mode === 'paused';
+  const eff = c.effective;
+  const head = [
+    line({ icon: `<span style="color:${paused ? 'var(--ink3)' : 'var(--good)'}">${I.tick}</span>`, key: 'a', html: paused ? `Paused: Lumni isn’t checking ${safe(ops)}. Pick Watch or Protect to resume.` : c.mode === 'protect' ? `Lumni steps in on every ${safe(ops)}` : `Lumni checks every ${safe(ops)}; nothing is blocked` }),
+    ...(c.mode === 'protect' && eff && eff !== 'ENFORCE' ? [line({ cls: 'muted', key: 'eff', icon: amber(I.warn), html: eff === 'MIXED' ? 'Some of its operations are enforced in this workspace and some aren’t, so not every one it stops is blocked' : `Enforcement for ${safe(ops)} is ${safe(eff)} in this workspace, so what it stops is recorded, not blocked` })] : []),
+  ];
+  const right = paused ? '<span style="color:var(--ink3)">paused</span>' : '<span style="display:inline-flex;align-items:center;gap:6px;color:var(--good)"><span style="width:7px;height:7px;border-radius:50%;background:var(--good)"></span>live</span>';
+  setPanel('on', STATE[c.mode], right, [...head, skel()].join(''));
+  paintHead();
+  paintSteps();
+  paintFoot();
+  const wk = await API.week(c).catch(() => null);
+  if (S.run !== run || S.stage !== 'on' || S.c !== c) return;
+  const stop = c.mode === 'protect' ? wk?.stopped : wk?.wouldStop;
+  addLines([
+    line({ cls: 'sep', key: 'w1', icon: I.receipt, html: `This week: <b>${dash(wk?.seen)}</b> checks, <b>${dash(wk?.verified)}</b> proven in the app` }),
+    line({ key: 'w2', icon: c.mode === 'protect' ? I.shield : I.eye, html: `${c.mode === 'protect' ? 'Stopped' : 'Would have stopped'} <b>${dash(stop)}</b>` }),
+    line({ cls: 'muted', key: 'w3', icon: I.spark, html: wk?.saved == null ? 'Kept: — <small>Lumni doesn’t measure money kept yet</small>' : `Kept <b>${safe(C.money(wk.saved))}</b>` }),
+  ].join(''));
+}
+
+/** A regression test from a recorded run: GET /tests replays its retained fixture. */
+async function writeTestReal(lang) {
+  const c = S.c;
+  const box = $('#extra');
+  const head = (what) => `<div class="hd">Regression test, ${what}<div class="seg sm" style="margin-left:8px"><button data-lang="ts" aria-selected="${lang === 'ts'}">node:test</button><button data-lang="py" aria-selected="${lang === 'py'}">unittest</button></div><button class="x" data-closetest>Close</button></div>`;
+  box.innerHTML = `<div class="codecard">${head('from a recorded run')}<pre class="code">Loading…</pre></div>`;
+  const pre = $('pre', box);
+  try {
+    const runs = await API.runs(c, 20);
+    const pick = runs.find((x) => x.broke) ?? runs[0];
+    if (!pick) { pre.textContent = 'There’s no recorded run to make a test from yet. Once it has checked one, the test replays it.'; return; }
+    const t = await API.tests(c, lang, pick.id);
+    S.test = t;
+    box.innerHTML = `<div class="codecard">${head(`from ${safe(pick.id)}`)}<pre class="code">${hl(t.code, lang)}</pre>
+      <div class="ft"><button class="ghost" data-copyreal>${I.copy}Copy ${safe(t.filename ?? '')}</button></div></div>`;
+  } catch (e) {
+    pre.textContent = e.message;
+  }
+  later(() => box.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }), 60);
+}
+
+// ─── clicks ─────────────────────────────────────────
+
+let tokMenu = null;
+function closeMenus() { tokMenu?.remove(); tokMenu = null; }
+
+function openTok(tok) {
+  const [i, slot] = tok.dataset.tok.split('|');
+  const r = draftRules()[Number(i)];
+  if (!r || S.stage !== 'describe') return;
+  const opts = [...new Set([r.slots[slot], ...(C.OPTIONS[slot] ?? [])])];
+  closeMenus();
+  tokMenu = document.createElement('div');
+  tokMenu.className = 'tokmenu';
+  tokMenu.innerHTML = opts.map((o) => `<button class="${o === r.slots[slot] ? 'cur' : ''}" data-set="${safe(String(o))}">${safe(C.say(slot, o))}</button>`).join('');
+  const box = tok.getBoundingClientRect();
+  const st = $('.stage').getBoundingClientRect();
+  tokMenu.style.left = `${box.left - st.left}px`;
+  tokMenu.style.top = `${box.bottom - st.top + 6}px`;
+  $('.stage').append(tokMenu);
+  tokMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-set]');
+    if (!b) return;
+    const v = typeof r.slots[slot] === 'number' ? Number(b.dataset.set) : b.dataset.set;
+    closeMenus();
+    S.draft.over[r.text] = { ...(S.draft.over[r.text] ?? {}), [slot]: v };
+    paintSees();
+    paintCard();
+  });
+}
+
+/** Type a rule in, a few letters at a time, so you watch Lumni read it. */
+function typeInto(text) {
+  const ta = $('#say');
+  if (!ta) return;
+  S.draft = { text: '', forced: {}, over: {} };
+  ta.value = '';
+  let i = 0;
+  const step = () => {
+    if (!ta.isConnected) return;
+    i = Math.min(text.length, i + (calm ? text.length : 2));
+    ta.value = text.slice(0, i);
+    ta.dispatchEvent(new Event('input'));
+    if (i < text.length) later(step, 18);
+  };
+  step();
+  ta.focus({ preventScroll: true });
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  if (!t.closest('.tokmenu') && !t.closest('[data-tok]')) closeMenus();
+  const q = (sel) => t.closest(sel);
+  let x;
+  if ((x = q('[data-try]'))) return typeInto(EXAMPLES[Number(x.dataset.try)].t);
+  if ((x = q('[data-add]'))) {
+    const ta = $('#say');
+    ta.value = `${ta.value.replace(/[.\s]+$/, '')}${x.dataset.add}.`;
+    ta.dispatchEvent(new Event('input'));
+    ta.focus();
+    return;
+  }
+  if ((x = q('[data-tok]'))) return openTok(x);
+  if ((x = q('[data-choose]'))) {
+    const [i, type] = x.dataset.choose.split('|');
+    S.draft.forced[draftRules()[Number(i)].text] = type;
+    paintSees();
+    paintCard();
+    return;
+  }
+  if ((x = q('[data-manual]'))) {
+    S.draft.picking = { ...(S.draft.picking ?? {}), [draftRules()[Number(x.dataset.manual)].text]: true };
+    return paintCard();
+  }
+  if (q('[data-edit]')) return reopen();
+  if (q('[data-back]')) {
+    const i = STEPS.findIndex(([id]) => id === S.stage);
+    if (i <= 0) return reopen();
+    if (STEPS[i - 1][0] === 'preview') S.miss = false;
+    return goStage(STEPS[i - 1][0]);
+  }
+  if (q('[data-new]')) return startNew();
+  if (q('[data-more]')) { S.showAll = !S.showAll; return paintMine(); }
+  if ((x = q('[data-open]'))) {
+    const c = S.list.find((y) => y.id === x.dataset.open);
+    if (c) openContract(c);
+    return;
+  }
+  if ((x = q('[data-step]')) && !x.disabled) {
+    const id = x.dataset.step;
+    if (id === S.stage) return;
+    if (id === 'preview') S.miss = false;
+    return goStage(id);
+  }
+  if ((x = q('[data-pick]')) && !x.disabled) {
+    const m = x.dataset.pick;
+    if (S.c && S.c.mode !== 'draft') { if (m !== S.c.mode) turnOn(m); return; }
+    S.pick = m;
+    paintFoot();
+    if (S.stage === 'on') onPanel();
+    return;
+  }
+  if (q('[data-guess]')) return guessAll();
+  if (q('[data-tobind]')) return goStage('connect');
+  if (q('[data-miss]')) { S.miss = !S.miss; S.c.done.preview = false; S.run++; paintSteps(); paintFoot(); return runPreview(); }
+  if ((x = q('[data-primary]')) && !x.disabled) {
+    const act = x.dataset.primary;
+    if (act === 'preview') return commit();
+    if (act === 'connect') return goStage('connect');
+    if (act.startsWith('app:')) return openPerms(act.slice(4));
+    if (act === 'copy') {
+      const c = S.c;
+      navigator.clipboard?.writeText(C.agentTask(c, agentOf(c).name, c.hook.tool)).then(() => Shell.toast(`Task copied. Paste it into ${TOOLS[c.hook.tool]}.`), () => {});
+      c.hook.state = 'waiting';
+      save();
+      connectPanel(true);
+      // In the demo, the agent's first call arrives on its own after a moment.
+      if (!Shell.isReal) wait(() => { if (c.hook.state === 'waiting') { c.hook.state = 'ok'; S.hooked.add(agentOf(c).op); save(); if (S.stage === 'connect') connectPanel(true); } }, 3400);
+      return;
+    }
+    if (act === 'on') return goStage('on');
+    if (act === 'go-on') return turnOn(S.pick ?? 'watch');
+    if (act === 'test') return writeTest('ts');
+    if (act === 'bind-save') return saveBindings();
+    if (act === 'to-preview') return goStage('preview');
+    if (act === 'to-connect') return goStage('connect');
+    return;
+  }
+  if ((x = q('[data-perms]'))) return openPerms(x.dataset.perms);
+  if (q('[data-mclose]') || t.classList.contains('m-back')) return closePerms();
+  if ((x = q('[data-allow]')) && !x.disabled) return allowPerms(x.dataset.allow);
+  if ((x = q('[data-tool]'))) { S.c.hook.tool = x.dataset.tool; save(); connectPanel(true); return; }
+  if (q('[data-testcall]')) { const c = S.c; c.hook.state = 'ok'; S.hooked.add(agentOf(c).op); save(); return connectPanel(true); }
+  if (q('[data-skip]')) { S.c.done.connect = true; save(); return goStage('on'); }
+  if ((x = q('[data-lang]'))) return writeTest(x.dataset.lang);
+  if (q('[data-copyreal]')) { navigator.clipboard?.writeText(S.test?.code ?? '').then(() => Shell.toast('Test copied.'), () => Shell.toast('Couldn’t copy here.', 'bad')); return; }
+  if (q('[data-closetest]')) { $('#extra').innerHTML = ''; return; }
+  if ((x = q('[data-copy]'))) {
+    const c = S.c;
+    const { ex } = sample(c);
+    const l = x.dataset.lang2;
+    const text = x.dataset.copy === 'code' ? C.testFor(c, l, ex) : C.agentPrompt(c, l, ex);
+    navigator.clipboard?.writeText(text).then(() => Shell.toast(x.dataset.copy === 'code' ? 'Test copied.' : 'Prompt copied. Paste it into Claude Code, Codex or Cursor.'), () => Shell.toast('Couldn’t copy here.', 'bad'));
+  }
+});
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePerms(); });
+
+// ─── motion helpers ─────────────────────────────────
+
+/** Letters settle into place, left to right. */
+function settle(el, dur = 340) {
+  if (calm || !el) return;
+  const nodes = [];
+  const walk = (n) => { for (const k of n.childNodes) k.nodeType === 3 ? nodes.push([k, k.textContent]) : walk(k); };
+  walk(el);
+  const total = nodes.reduce((s, [, t]) => s + t.length, 0);
+  const AZ = 'abcdefghijklmnopqrstuvwxyz';
+  const t0 = performance.now();
+  const frame = (now) => {
+    const k = Math.min(1, (now - t0) / dur);
+    let left = Math.floor(total * k);
+    for (const [n, t] of nodes) {
+      const keep = Math.max(0, Math.min(t.length, left));
+      left -= t.length;
+      n.textContent = t.slice(0, keep) + [...t.slice(keep, keep + 4)].map((ch) => (ch === ' ' ? ' ' : AZ[(Math.random() * 26) | 0])).join('');
+    }
+    if (k < 1 && el.isConnected) requestAnimationFrame(frame);
+    else for (const [n, t] of nodes) n.textContent = t;
+  };
+  requestAnimationFrame(frame);
+}
+
+function countUp(els) {
+  for (const b of els) {
+    const m = b.textContent.match(/^(\$?)([\d,]+)$/);
+    if (!m || calm) continue;
+    const to = Number(m[2].replace(/,/g, ''));
+    const t0 = performance.now();
+    const f = (now) => {
+      const k = Math.min(1, (now - t0) / 800);
+      b.textContent = `${m[1]}${fmtN(to * (1 - (1 - k) ** 3))}`;
+      if (k < 1 && b.isConnected) requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  }
+}
+
+// ─── screenshot states ──────────────────────────────
+// ?shot=typing | typed | ready | ask | preview | proven | miss | connect | perms | waiting | on | live | test | party
+
+async function shot() {
+  // In the story, step 1 types the business's intent, and step 2 reads it
+  // into a contract and replays it on past runs.
+  const story = Shell.isReal ? null : new URLSearchParams(location.search).get('story');
+  const s = new URLSearchParams(location.search).get('shot') ?? { intent: 'typed', contract: 'proven' }[story];
+  if (!s) return;
+  await sleep(300);
+  if (s === 'party') { celebrate(520, 420); stamp(640, 380, 'It’s live!'); return; }
+  if (s === 'typing') return typeInto('Never refund the same order twice');
+  const text = story ? Story.INTENT : { ask: 'don’t refund twice and check stripe', waiting: 'Every successful cancellation must leave the subscription inactive in Stripe.' }[s] ?? EXAMPLES[0].t;
+  typeInto(text);
+  // Go on once it's all in the box and read, however long typing took
+  // (reduced motion shortens every wait, but not the box's own debounce).
+  while ($('#say')?.isConnected && S.draft.text !== text) await new Promise((r) => wait(r, 100));
+  await sleep(700);
+  if (s === 'typed') return;
+  enter();
+  if (s === 'ready' || s === 'ask') return;
+  await sleep(1400);
+  commit();
+  if (s === 'preview') return;
+  if (!S.c) return;
+  for (let i = 0; i < 40 && !S.c.done.preview; i++) await sleep(150);
+  if (s === 'proven') return;
+  if (s === 'miss') { await sleep(300); $('[data-miss]')?.click(); return; }
+  await sleep(700);
+  $('[data-primary="connect"]')?.click();
+  await sleep(600);
+  if (s === 'connect') return;
+  if (s === 'perms') { $('[data-primary^="app:"]')?.click(); return; }
+  if (s === 'waiting') { $('[data-primary="copy"]')?.click(); return; }
+  for (let i = 0; i < 20 && !allOk(S.c); i++) { if (!$('.m-back')) $('[data-primary^="app:"]')?.click(); await sleep(200); $('[data-allow]')?.click(); await sleep(2200); $('[data-testcall]')?.click(); $('[data-primary="copy"]')?.click(); await sleep(300); }
+  await sleep(700);
+  $('[data-primary="on"]')?.click();
+  await sleep(600);
+  if (s === 'on') return;
+  $('[data-primary="go-on"]')?.click();
+  if (s === 'live') return;
+  await sleep(1500);
+  if (s === 'test') $('[data-primary="test"]')?.click();
+}
+
+Story.mount();
+Shell.boot({ nav: 'Contracts', onWorld: render });
+</script>
+</body>
+</html>

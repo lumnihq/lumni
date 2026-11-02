@@ -4,7 +4,7 @@
 
 /** Every screen, by its path. */
 export const PAGES = [
-  'flow', 'today', 'day-map', 'journey', 'runtime', 'context', 'tower', 'needs-you', 'fixes', 'autonomy',
+  'flow', 'today', 'day-map', 'journey', 'live', 'runtime', 'context', 'tower', 'needs-you', 'fixes', 'contracts', 'contract-list', 'compiled', 'compile', 'autonomy',
   'money', 'incident', 'without', 'wrapped', 'share', 'sign-in', 'start', 'settings', 'device', 'privacy', 'terms',
 ];
 
@@ -16,8 +16,15 @@ const TYPES: Record<string, string> = {
 export const SECURITY: Record<string, string> = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'same-origin',
-  'x-frame-options': 'DENY',
+  // Only the website may frame the console, as its live demo; nobody else.
+  'content-security-policy': "frame-ancestors 'self' https://lumniverse.com https://www.lumniverse.com",
 };
+
+/** The security headers, with any extra sites allowed to frame the demo (LUMNI_CONSOLE_FRAME_ANCESTORS). */
+export function security(extra = ''): Record<string, string> {
+  const more = extra.split(/[\s,]+/).filter((x) => /^https?:\/\/[\w.*-]+(:(\d+|\*))?$/.test(x));
+  return more.length ? { ...SECURITY, 'content-security-policy': `${SECURITY['content-security-policy']} ${more.join(' ')}` } : SECURITY;
+}
 
 const INIT = `${import.meta.dir}/../scripts/lumni-init.mjs`;
 const GUIDE = `${import.meta.dir}/../scripts/agent-guide.md`;
@@ -26,7 +33,8 @@ const GUIDE = `${import.meta.dir}/../scripts/agent-guide.md`;
  * Answers page and asset paths from `root`, or null for anything else. `/init`
  * is the onboarding command's script, with the API URL agents should use.
  */
-export function appHandler(root: string, cache: 'no-cache' | 'long' = 'no-cache', opts: { publicApi?: string; publicConsole?: string } = {}) {
+export function appHandler(root: string, cache: 'no-cache' | 'long' = 'no-cache', opts: { publicApi?: string; publicConsole?: string; frameAncestors?: string } = {}) {
+  const SECURITY = security(opts.frameAncestors);
   return async (path: string, origin = ''): Promise<Response | null> => {
     if (path === '/init' || path === '/init.mjs') {
       const text = (await Bun.file(INIT).text()).replace("'__LUMNI_URL__'", JSON.stringify(opts.publicApi ?? 'http://localhost:8080')).replace("'__LUMNI_CONSOLE__'", JSON.stringify(opts.publicConsole || origin));

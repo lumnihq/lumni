@@ -24,6 +24,7 @@ import (
 
 	"github.com/lumnihq/lumni/internal/analytics"
 	"github.com/lumnihq/lumni/internal/auth"
+	"github.com/lumnihq/lumni/internal/compiled"
 	"github.com/lumnihq/lumni/internal/composio"
 	"github.com/lumnihq/lumni/internal/coordination"
 	"github.com/lumnihq/lumni/internal/core"
@@ -31,10 +32,13 @@ import (
 	githubingest "github.com/lumnihq/lumni/internal/github"
 	"github.com/lumnihq/lumni/internal/graph"
 	"github.com/lumnihq/lumni/internal/secrets"
+	"github.com/lumnihq/lumni/internal/semantic"
 	"github.com/lumnihq/lumni/pkg/protocol"
 )
 
 type Server struct {
+	compiled           *compiled.Service
+	contractClassifier semantic.SemanticEvaluator
 	composio           *composio.Service
 	durable            *durable.Service
 	pool               *pgxpool.Pool
@@ -70,6 +74,8 @@ func New(pool *pgxpool.Pool, authService *auth.Service, coreService *core.Servic
 	}
 	s := &Server{pool: pool, auth: authService, core: coreService, kernel: kernel, github: githubingest.New(pool), githubSecret: githubSecret, secrets: secretManager, logger: logger, bodyLimit: bodyLimit, graph: graph.New(pool), analytics: analytics.NewPostgres(pool), sessionIdleTTL: 8 * time.Hour, sessionAbsoluteTTL: 24 * time.Hour}
 	s.durable = durable.New(pool, kernel, secretManager)
+	s.compiled = compiled.New(pool, secretManager, kernel, s.durable)
+	s.contractClassifier = classifierFromEnvironment()
 
 	s.checks = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "lumni_decisions_total", Help: "Coordination decisions."}, []string{"decision", "reason", "enforced"})
 	s.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "lumni_decision_latency_seconds", Help: "Admission latency.", Buckets: prometheus.DefBuckets}, []string{"decision"})
@@ -85,11 +91,13 @@ func New(pool *pgxpool.Pool, authService *auth.Service, coreService *core.Servic
 func (s *Server) Handler() http.Handler { return s.router }
 
 type RuntimeOptions struct {
-	Composio           *composio.Client
-	ConsoleDir         string
-	Analytics          analytics.Store
-	SessionIdleTTL     time.Duration
-	SessionAbsoluteTTL time.Duration
+	CompilationGenerator compiled.Generator
+	ContractClassifier   semantic.SemanticEvaluator
+	Composio             *composio.Client
+	ConsoleDir           string
+	Analytics            analytics.Store
+	SessionIdleTTL       time.Duration
+	SessionAbsoluteTTL   time.Duration
 
 	// PlatformKeys may create tenants (POST /v1/tenants); TenantsPerHour caps
 	// that across them (0 means 60).
@@ -102,6 +110,12 @@ type RuntimeOptions struct {
 }
 
 func (s *Server) Configure(options RuntimeOptions) {
+	if options.CompilationGenerator != nil {
+		s.compiled.Generator = options.CompilationGenerator
+	}
+	if options.ContractClassifier != nil {
+		s.contractClassifier = options.ContractClassifier
+	}
 	if options.Composio != nil {
 		s.composio = composio.NewService(s.pool, options.Composio, s.kernel, s.durable, s.logger)
 		s.durable.SetGitHubConnectorReader(s.composio)
@@ -149,6 +163,7 @@ func (s *Server) routes() chi.Router {
 			s.durableRoutes(r)
 			s.composioRoutes(r)
 			s.consoleRoutes(r)
+			s.automationRoutes(r)
 			r.Post("/onboarding/codes", s.withScope("admin", s.createOnboardingCode))
 			r.Get("/onboarding/codes/{code}/status", s.withScope("admin", s.onboardingStatus))
 			r.Get("/auth/session", s.getBrowserSession)

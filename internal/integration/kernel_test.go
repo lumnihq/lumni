@@ -383,15 +383,24 @@ func TestApprovedActionRevalidatesStaleState(t *testing.T) {
 
 func TestLeaseLossDistinguishesUnstartedAndUnknownEffect(t *testing.T) {
 	f := setup(t, protocol.ModeEnforce)
-	shortKernel := coordination.New(f.pool, resource.NewResolver(f.pool), 100*time.Millisecond)
-	unstarted, err := shortKernel.Check(t.Context(), f.tenant, input(f, "subscription.reserve", "lease-loss", ""))
+	// A lease long enough that Check then Start never outruns it, even on a
+	// slow runner under -race; each lease is then lost on purpose.
+	kernel := coordination.New(f.pool, resource.NewResolver(f.pool), time.Minute)
+	lose := func(action string) {
+		t.Helper()
+		if _, err := f.pool.Exec(t.Context(), `UPDATE leases SET expires_at=clock_timestamp()-interval '1 second' WHERE tenant_id=$1 AND action_id=$2`, f.tenant, action); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := kernel.ExpireLeases(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	unstarted, err := kernel.Check(t.Context(), f.tenant, input(f, "subscription.reserve", "lease-loss", ""))
 	if err != nil || unstarted.Decision != protocol.DecisionAllow {
 		t.Fatalf("unstarted reservation: %+v err=%v", unstarted, err)
 	}
-	time.Sleep(150 * time.Millisecond)
-	if _, err := shortKernel.ExpireLeases(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	lose(unstarted.ActionID)
 	var status protocol.ActionStatus
 	if err := f.pool.QueryRow(t.Context(), `SELECT status FROM actions WHERE tenant_id=$1 AND id=$2`, f.tenant, unstarted.ActionID).Scan(&status); err != nil {
 		t.Fatal(err)
@@ -400,17 +409,14 @@ func TestLeaseLossDistinguishesUnstartedAndUnknownEffect(t *testing.T) {
 		t.Fatalf("unstarted action status=%s", status)
 	}
 
-	started, err := shortKernel.Check(t.Context(), f.tenant, input(f, "subscription.mutate", "lease-loss", ""))
+	started, err := kernel.Check(t.Context(), f.tenant, input(f, "subscription.mutate", "lease-loss", ""))
 	if err != nil || started.Decision != protocol.DecisionAllow {
 		t.Fatalf("started reservation: %+v err=%v", started, err)
 	}
-	if err := shortKernel.Start(t.Context(), f.tenant, started.ActionID, *started.LeaseToken); err != nil {
+	if err := kernel.Start(t.Context(), f.tenant, started.ActionID, *started.LeaseToken); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(150 * time.Millisecond)
-	if _, err := shortKernel.ExpireLeases(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	lose(started.ActionID)
 	if err := f.pool.QueryRow(t.Context(), `SELECT status FROM actions WHERE tenant_id=$1 AND id=$2`, f.tenant, started.ActionID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}

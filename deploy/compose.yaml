@@ -24,9 +24,15 @@ x-api-env: &api-env
   LUMNI_COMPOSIO_API_KEY: ${LUMNI_COMPOSIO_API_KEY:-}
   LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_SLACK_AUTH_CONFIG_ID:-}
   LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID: ${LUMNI_COMPOSIO_GITHUB_AUTH_CONFIG_ID:-}
+  # Compiled paths: both set, or compiling answers 503. No model is picked for you.
+  LUMNI_OPENROUTER_API_KEY: ${LUMNI_OPENROUTER_API_KEY:-}
+  LUMNI_COMPILER_MODEL: ${LUMNI_COMPILER_MODEL:-}
+  LUMNI_COMPILER_URL: ${LUMNI_COMPILER_URL:-}
 
 services:
   postgres:
+    sysctls:
+      net.mptcp.enabled: "0"
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
@@ -42,6 +48,8 @@ services:
       - postgres:/var/lib/postgresql/data
 
   lumnid:
+    sysctls:
+      net.mptcp.enabled: "0"
     image: ${LUMNI_IMAGE:-ghcr.io/lumnihq/lumni}:${LUMNI_VERSION:-latest}
     restart: unless-stopped
     environment:
@@ -70,6 +78,8 @@ services:
       start_period: 10s
 
   worker:
+    sysctls:
+      net.mptcp.enabled: "0"
     image: ${LUMNI_IMAGE:-ghcr.io/lumnihq/lumni}:${LUMNI_VERSION:-latest}
     restart: unless-stopped
     entrypoint: ["/usr/local/bin/worker"]
@@ -84,6 +94,8 @@ services:
         condition: service_healthy
 
   console:
+    sysctls:
+      net.mptcp.enabled: "0"
     image: ${LUMNI_CONSOLE_IMAGE:-ghcr.io/lumnihq/lumni-console}:${LUMNI_VERSION:-latest}
     restart: unless-stopped
     environment:

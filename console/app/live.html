@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Live execution</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<link rel="stylesheet" href="/lib/compiled.css" />
+<style>
+  /* One tone per kind of decision, the same everywhere on the page:
+     run = ink, wait = sky, hold = grey (outcome unknown), replan = orange,
+     done = violet (checked against the app), fault = red. */
+  :root {
+    --sky: #3b9eff; --sky-bg: #eaf4ff; --sky-ink: #1f6fc4;
+    --orange: #f08a24; --orange-bg: #fff2e5; --orange-ink: #b45f0c;
+    --grey: #8b8f9c; --grey-bg: #f0f0f4; --grey-ink: #4b4f5c;
+    --fault: #e5372b; --fault-bg: #fff0ef;
+    --hatch: repeating-linear-gradient(-45deg, #c9ccd5 0 4px, #e3e5eb 4px 8px);
+  }
+  .wrap { padding-top: 30px; }
+
+  /* Head: the order, and the controls for playing it. */
+  .head { align-items: flex-end; }
+  .head > div:first-child { flex: 1; min-width: 0; }
+  .head h1 { display: flex; align-items: center; gap: 14px; }
+  .state { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 13px; border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: 0; transition: background .4s, color .4s; }
+  .state i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .state.run { background: var(--sky-bg); color: var(--sky-ink); }
+  .state.run i { animation: breathe 1.6s ease-in-out infinite; }
+  .state.done { background: var(--accent); color: #fff; }
+  .state.ready { background: var(--wash); color: var(--ink2); }
+  @keyframes breathe { 50% { opacity: .3; } }
+  .demo-tag { margin-left: 8px; display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line2); font-size: 11.5px; font-weight: 650; color: var(--ink2); vertical-align: 1px; }
+  .meta { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .meta span { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 10px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; color: var(--ink2); }
+  .meta b { color: var(--ink); font-weight: 650; }
+  .meta .money b { font-size: 15px; letter-spacing: -0.01em; }
+  .ctl { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .ctl-row { display: flex; align-items: center; gap: 8px; }
+  .fault-sw { white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px 0 10px; border-radius: 11px; font-size: 13px; font-weight: 650; color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line2); background: var(--paper); transition: box-shadow .2s, color .2s, background .2s; }
+  .fault-sw[aria-pressed='true'] { color: var(--fault); background: var(--fault-bg); box-shadow: none; outline: 1.5px dashed var(--fault); outline-offset: -1.5px; }
+  .fault-sw .knob { position: relative; width: 30px; height: 18px; border-radius: 999px; background: var(--line2); transition: background .2s; }
+  .fault-sw .knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .25s var(--spring); }
+  .fault-sw[aria-pressed='true'] .knob { background: var(--fault); }
+  .fault-sw.k-change[aria-pressed='true'] { color: var(--orange-ink); background: var(--orange-bg); outline-color: var(--orange); }
+  .fault-sw.k-change[aria-pressed='true'] .knob { background: var(--orange); }
+  .scenes { display: flex; padding: 3px; border-radius: 11px; background: var(--ink); }
+  .scenes button { height: 30px; padding: 0 11px; border-radius: 8px; font-size: 13px; font-weight: 650; color: rgba(255,255,255,.6); white-space: nowrap; }
+  .scenes button:hover { color: #fff; }
+  .scenes button[aria-pressed='true'] { background: var(--paper); color: var(--ink); }
+  .fault-sw[aria-pressed='true'] .knob::after { transform: translateX(12px); }
+  .speed { display: flex; padding: 3px; border-radius: 11px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--line); }
+  .speed button { height: 32px; min-width: 42px; padding: 0 8px; border-radius: 8px; font-size: 13px; font-weight: 650; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .speed button[aria-pressed='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(10,15,28,.12); }
+  #play { width: 96px; justify-content: center; }
+
+  /* Main grid: agents and lanes on the left, the systems on the right. */
+  .grid { margin-top: 26px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .panel { padding: 20px 22px 22px; border-radius: 22px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); }
+  .panel-h { display: flex; align-items: baseline; gap: 12px; }
+  .panel-h h2 { font-size: 17px; font-weight: 750; letter-spacing: -0.02em; }
+  .panel-h p { font-size: 13px; color: var(--ink2); }
+  .panel-h .r { margin-left: auto; font-size: 12.5px; color: var(--ink3); }
+
+  /* Three agent cards. */
+  .agents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ag { position: relative; padding: 18px 18px 16px; border-radius: 20px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); overflow: hidden; transition: box-shadow .35s; }
+  .ag::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tone, var(--line)); transition: background .35s; }
+  .ag-h { display: flex; align-items: center; gap: 10px; }
+  .ag-h .ai { width: 34px; height: 34px; border-radius: 10px; font-size: 12px; }
+  .ag-h b { display: block; font-size: 15.5px; font-weight: 720; letter-spacing: -0.01em; }
+  .ag-h small { display: block; font-size: 12.5px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-h > div { min-width: 0; }
+  .ag .step { margin-top: 16px; min-height: 40px; font-size: 15px; font-weight: 650; line-height: 1.35; letter-spacing: -0.01em; }
+  .ag .says { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .ag .says small { font-size: 11.5px; font-weight: 650; color: var(--ink3); }
+  .ag.flash { animation: flash 1.4s var(--ease); }
+  @keyframes flash { 0%, 30% { box-shadow: inset 0 0 0 1.5px var(--tone), 0 0 0 6px color-mix(in srgb, var(--tone) 14%, transparent), var(--lift); } }
+  .ag.flash .step { animation: blurin .5s var(--ease) both; }
+
+  .word { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .word i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+  .code { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; max-width: 100%; height: 26px; padding: 0 9px; border-radius: 8px; background: var(--ink); color: #c9cbd4; font: 550 11.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .code b { font-weight: 700; color: #fff; }
+  .code.none { background: var(--wash); color: var(--ink3); }
+
+  .t-idle { --tone: var(--line2); } .t-idle .word { background: var(--wash); color: var(--ink3); }
+  .t-run { --tone: var(--ink); } .t-run .word { background: var(--wash); color: var(--ink); }
+  .t-wait { --tone: var(--sky); } .t-wait .word { background: var(--sky-bg); color: var(--sky-ink); }
+  .t-hold { --tone: var(--grey); } .t-hold .word { background: var(--grey-bg); color: var(--grey-ink); }
+  .t-hold .word i { background: var(--hatch); }
+  .t-replan { --tone: var(--orange); } .t-replan .word { background: var(--orange-bg); color: var(--orange-ink); }
+  .t-done { --tone: var(--accent); } .t-done .word { background: var(--accent-soft); color: var(--accent); }
+  .t-fault { --tone: var(--fault); } .t-fault .word { background: var(--fault-bg); color: var(--fault); }
+  .code.t-run b, .code.t-done b { color: #b9b1ff; }
+  .code.t-wait b { color: #8cc6ff; } .code.t-hold b { color: #d4d6de; } .code.t-replan b { color: #ffb470; }
+
+  /* The lanes: who ran, who waited, on one clock. */
+  .now { margin-top: 2px; display: flex; align-items: center; gap: 12px; min-height: 44px; }
+  .clock { flex: none; font: 650 26px var(--mono); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .clock small { font-size: 14px; color: var(--ink3); margin-left: 2px; }
+  .caption { min-width: 0; font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .caption.in { animation: blurin .45s var(--ease) both; }
+  .caption small { display: block; font-size: 12.5px; font-weight: 500; color: var(--ink2); }
+
+  .lease { white-space: nowrap; margin-top: 14px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; color: var(--ink2); min-height: 52px; }
+  .lease .res { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border-radius: 9px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line2); font: 650 12.5px var(--mono); color: var(--ink); }
+  .lease .res svg { color: var(--ink3); }
+  .lease .seg { display: inline-flex; align-items: center; gap: 7px; }
+  .lease .seg + .seg { padding-left: 12px; border-left: 1px solid var(--line2); }
+  .lease .lbl { font-size: 12px; font-weight: 650; color: var(--ink3); }
+  .lease .who { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px 0 3px; border-radius: 8px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-weight: 650; color: var(--ink); animation: blurin .35s var(--ease) both; }
+  .lease .who .ai { width: 20px; height: 20px; border-radius: 6px; font-size: 9px; }
+  .lease .who em { font-style: normal; font: 600 11px var(--mono); color: var(--ink3); }
+  .lease .free { color: var(--ink3); font-weight: 600; }
+  .lease .held { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--grey-bg); color: var(--grey-ink); font-size: 12.5px; font-weight: 700; animation: blurin .35s var(--ease) both; }
+  .lease .held i { width: 12px; height: 12px; border-radius: 3px; background: var(--hatch); }
+  .lease .held.stale { background: var(--orange-bg); color: var(--orange-ink); }
+  .lease .held.stale i { background: var(--orange); border-radius: 50%; width: 8px; height: 8px; }
+  .lease .held.fresh { background: var(--accent-soft); color: var(--accent); }
+  .lease .held.fresh i { background: var(--accent); border-radius: 50%; width: 8px; height: 8px; }
+  .dep { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border-radius: 9px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s, background .3s; }
+  .dep .dn { font-size: 12.5px; font-weight: 650; color: var(--ink); }
+  .dep code { font: 550 11px var(--mono); color: var(--ink3); }
+  .dep .dv { font: 700 12px var(--mono); color: var(--accent); }
+  .dep .dv em { font-style: normal; color: var(--orange-ink); }
+  .dep.stale { background: var(--orange-bg); box-shadow: inset 0 0 0 1.5px var(--orange); animation: blurin .35s var(--ease) both; }
+  .dep.stale .dv { color: var(--ink2); text-decoration: line-through; text-decoration-color: var(--orange); }
+  .dep.stale .dv em { text-decoration: none; display: inline-block; }
+
+  .lanes { position: relative; margin-top: 16px; display: grid; grid-template-columns: 148px minmax(0, 1fr); row-gap: 8px; user-select: none; }
+  .lanes .ln { display: flex; align-items: center; gap: 8px; height: 34px; font-size: 13px; font-weight: 650; }
+  .lanes .ln .ai { width: 22px; height: 22px; border-radius: 7px; font-size: 9.5px; }
+  .lanes .ln .lm { width: 22px; height: 22px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .track { position: relative; height: 34px; border-radius: 9px; background: repeating-linear-gradient(90deg, transparent 0 calc(var(--tick) - 1px), var(--line) calc(var(--tick) - 1px) var(--tick)), var(--canvas); cursor: ew-resize; }
+  .bar { position: absolute; top: 4px; bottom: 4px; border-radius: 7px; overflow: hidden; display: flex; align-items: center; padding: 0 8px; font-size: 11.5px; font-weight: 650; white-space: nowrap; color: #fff; }
+  .bar span { overflow: hidden; text-overflow: ellipsis; }
+  .bar.run { background: var(--ink); }
+  .bar.wait { background: var(--sky); }
+  .bar.hold { background: var(--hatch); color: var(--grey-ink); }
+  .bar.replan { background: var(--orange); }
+  .bar.done { background: var(--accent); }
+  .bar.fault { background: var(--fault); }
+  .bar.idle { display: none; }
+  .bar + .bar { margin-left: 2px; }
+  .chk { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 4px var(--paper); transform: scale(0); transition: transform .35s var(--spring); }
+  .chk.on { transform: scale(1); }
+  .chk.last { box-shadow: 0 0 0 4px var(--accent-soft); }
+  .ln small { display: block; font-size: 11.5px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .fline { position: absolute; top: -26px; bottom: 26px; width: 0; border-left: 1.5px dashed var(--fault); pointer-events: none; opacity: .25; transition: opacity .3s; }
+  .fline.on { opacity: 1; }
+  .fline.k-change { border-left-color: var(--orange); }
+  .fline.k-change span { background: var(--orange-bg); color: var(--orange-ink); }
+  .fline span { position: absolute; top: 0; left: 6px; display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--fault-bg); color: var(--fault); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .head-line { position: absolute; top: -26px; bottom: 26px; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; border-radius: 2px; }
+  .head-line::before { content: ''; position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .axis { position: relative; height: 18px; font: 600 11px var(--mono); color: var(--ink3); }
+  .axis span { position: absolute; transform: translateX(-50%); }
+  .tracks { position: relative; display: grid; row-gap: 8px; padding-top: 26px; }
+  .labels { display: grid; row-gap: 8px; padding-top: 26px; }
+  .legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 14px; height: 10px; border-radius: 3px; }
+
+  /* The systems: what actually changed. */
+  .sys { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .sy { padding: 14px 14px 12px; border-radius: 16px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--line); }
+  .sy-h { display: flex; align-items: center; gap: 9px; }
+  .sy-h .lg { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 800; }
+  .sy-h b { font-size: 14px; font-weight: 700; }
+  .sy-h small { margin-left: auto; font-size: 12px; color: var(--ink3); }
+  .rows { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .rw { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; transition: box-shadow .3s; }
+  .rw .id { font: 600 12px var(--mono); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rw .id small { display: block; margin-top: 2px; font: 500 12px var(--sans); color: var(--ink2); }
+  .rw .vals { display: flex; align-items: center; gap: 6px; }
+  .rw .kv { display: flex; flex-direction: column; align-items: flex-end; min-width: 58px; }
+  .rw .kv small { font-size: 10.5px; font-weight: 650; color: var(--ink3); }
+  .rw .kv b { font-size: 17px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .rw.fresh { animation: rowflash 1.6s var(--ease); }
+  .rw.fresh .kv b.ch, .rw.fresh .pill.ch { animation: pop .5s var(--spring); }
+  @keyframes rowflash { 0%, 35% { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-soft); } }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } }
+  .rw .unseen { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin-top: -2px; font-size: 12px; font-weight: 600; color: var(--grey-ink); }
+  .rw .unseen i { width: 10px; height: 10px; border-radius: 3px; background: var(--hatch); }
+  .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--wash); color: var(--ink2); }
+  .pill.good { background: var(--accent-soft); color: var(--accent); }
+  .pill.mid { background: var(--sky-bg); color: var(--sky-ink); }
+  .pill.end { background: var(--ink); color: #fff; }
+  .nothing { padding: 10px 11px; border-radius: 11px; box-shadow: inset 0 0 0 1px var(--line); border: 0; font-size: 12.5px; color: var(--ink3); background: repeating-linear-gradient(-45deg, transparent 0 6px, rgba(13,14,20,.025) 6px 12px); }
+
+  /* The timeline and the result. */
+  .low { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; }
+  .tl { margin-top: 14px; position: relative; display: flex; flex-direction: column; }
+  .tl::before { content: ''; position: absolute; left: 75px; top: 12px; bottom: 12px; width: 2px; background: var(--line); border-radius: 2px; }
+  .ev { position: relative; display: grid; grid-template-columns: 64px 24px minmax(0, 1fr); gap: 0 10px; padding: 7px 0; }
+  .ev.in { animation: blurin .45s var(--ease) both; }
+  .ev time { padding-top: 2px; font: 600 12px var(--mono); color: var(--ink3); text-align: right; font-variant-numeric: tabular-nums; }
+  .ev .dot { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--line2); color: var(--ink2); font-size: 9.5px; font-weight: 800; }
+  .ev .dot.ai { background: var(--ink); color: #fff; box-shadow: none; }
+  .ev.k-wait .dot.ai { background: var(--sky); } .ev.k-hold .dot.ai { background: var(--grey); } .ev.k-replan .dot.ai { background: var(--orange); }
+  .ev.k-verify .dot, .ev.k-resolved .dot { background: var(--accent); color: #fff; box-shadow: none; }
+  .ev.k-fault .dot { background: var(--fault-bg); color: var(--fault); box-shadow: inset 0 0 0 1.5px var(--fault); }
+  .ev .dot.person { border-radius: 50%; background: #e8e3da; color: var(--ink); box-shadow: none; }
+  .ev.k-change .tx b { color: var(--orange-ink); }
+  .ev .tx { min-width: 0; }
+  .ev .tx b { display: block; font-size: 14px; font-weight: 650; letter-spacing: -0.005em; line-height: 1.4; }
+  .ev.k-fault .tx b { color: var(--fault); }
+  .ev.k-resolved .tx b { color: var(--accent); }
+  .ev .tx > small { display: block; margin-top: 1px; font-size: 12.5px; color: var(--ink2); }
+  .ev.prevented .tx > small { color: var(--accent); font-weight: 650; }
+  .ev details { margin-top: 5px; }
+  .ev summary { display: inline-flex; align-items: center; gap: 8px; list-style: none; cursor: pointer; font: 600 11.5px var(--mono); color: var(--ink2); padding: 3px 8px 3px 6px; margin-left: -6px; border-radius: 7px; }
+  .ev summary::-webkit-details-marker { display: none; }
+  .ev summary:hover { background: var(--wash); color: var(--ink); }
+  .ev summary svg { color: var(--ink3); transition: transform .2s; }
+  .ev details[open] summary svg { transform: rotate(90deg); }
+  .ev summary .m { color: var(--accent); }
+  .ev summary .code { height: 20px; font-size: 10.5px; padding: 0 7px; border-radius: 6px; }
+  .ev pre { margin-top: 6px; padding: 12px 14px; border-radius: 12px; background: #0f1017; color: #c9cbd4; font: 500 11.5px/1.55 var(--mono); overflow: auto; max-height: 280px; }
+  .ev pre .k { color: #b9b1ff; } .ev pre .s { color: #9be2b8; } .ev pre .n { color: #ffb470; }
+  .tl-empty { padding: 18px 0 6px 86px; font-size: 13.5px; color: var(--ink3); }
+
+  .outcome { position: sticky; top: 20px; }
+  .outcome.settled { background: linear-gradient(160deg, #f6f4ff, var(--paper) 55%); box-shadow: inset 0 0 0 1px var(--accent-line), var(--lift); }
+  .verdict { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .verdict .big { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--wash); color: var(--ink3); transition: background .4s, color .4s; }
+  .outcome.settled .verdict .big { background: var(--accent); color: #fff; animation: pop .5s var(--spring); }
+  .verdict b { display: block; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+  .verdict small { display: block; font-size: 13px; color: var(--ink2); }
+  .nums { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .nm { padding: 12px 14px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+  .nm small { display: block; font-size: 12px; font-weight: 650; color: var(--ink2); }
+  .nm b { display: block; margin-top: 2px; font-size: 24px; font-weight: 760; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; transition: color .3s; }
+  .nm b em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--ink3); margin-left: 4px; letter-spacing: 0; }
+  .nm.ok b { color: var(--accent); }
+  .nm.pending b { color: var(--ink3); }
+  .extra { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink2); }
+  .extra div { display: flex; justify-content: space-between; }
+  .extra b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .extra .pv b { color: var(--accent); }
+  .without { margin-top: 14px; padding: 11px 13px; border-radius: 12px; outline: 1.5px dashed var(--line2); outline-offset: -1.5px; font-size: 12.5px; color: var(--ink2); line-height: 1.45; }
+  .without b { color: var(--ink); }
+
+  .links { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .links a { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .2s, transform .2s; }
+  .links a:hover { box-shadow: inset 0 0 0 1px var(--accent-line), var(--lift); transform: translateY(-1px); }
+  .links small { grid-column: 1; font-size: 11.5px; font-weight: 650; color: var(--ink3); }
+  .links b { grid-column: 1; font-size: 13.5px; font-weight: 650; color: var(--accent); }
+  .links svg { grid-column: 2; grid-row: 1 / 3; color: var(--ink3); }
+  /* Story step 4: the read-backs are the point. */
+  body[data-story='verify'] #sys-panel, body[data-story='verify'] #res { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 6px var(--accent-soft), var(--lift); }
+  .calm .ag.flash, .calm .ev.in, .calm .rw.fresh, .calm .caption.in, .calm .lease .who, .calm .lease .held { animation: none; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script src="/lib/live.js"></script>
+<script src="/lib/story.js"></script>
+<script>
+// Live execution: three AIs work one order at the same time, and Lumni decides
+// who runs, who waits and who looks again. Demo only: a scripted scenario
+// whose decisions, reason codes and routes are the Lumni API's own. A real
+// workspace shows an empty state until a three-agent run is connected.
+
+const L = window.Live;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const safe = (s) => Shell.esc(s);
+const q = new URLSearchParams(location.search);
+// Reduced motion and screenshots get the end state straight away.
+const calm = (matchMedia('(prefers-reduced-motion: reduce)').matches || q.has('shot')) && !q.has('motion');
+if (calm) document.documentElement.classList.add('calm');
+
+const I = {
+  play: '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.8v10.4a.8.8 0 0 0 1.2.7l8.3-5.2a.8.8 0 0 0 0-1.4L5.2 2.1a.8.8 0 0 0-1.2.7Z"/></svg>',
+  pause: '<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg>',
+  restart: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4"/><path d="M2.5 2.5v3h3"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8.5 3 3 7-7"/></svg>',
+  bigcheck: '<svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8.5 3 3 7-7"/></svg>',
+  bolt: '<svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M9.2 1 3 9.2h4.3L6.6 15 13 6.6H8.6L9.2 1Z"/></svg>',
+  lock: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
+  chev: '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m6 3 5 5-5 5"/></svg>',
+  up: '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg>',
+  lumni: '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3.2"/><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".5"/></svg>',
+};
+
+const TONE_WORDS = [['run', 'Runs'], ['wait', 'Waits its turn'], ['hold', 'Held, outcome unknown'], ['replan', 'Looks again'], ['done', 'Done and checked']];
+const TONE_FILL = { run: 'var(--ink)', wait: 'var(--sky)', hold: 'var(--hatch)', replan: 'var(--orange)', done: 'var(--accent)' };
+
+let S = null; // { s, t, playing, speed, step, raf, last, shown: Set }
+
+const fmt = (t) => {
+  const s = Math.max(0, t);
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+};
+const agent = (id) => S.s.agents.find((a) => a.id === id);
+const pct = (t) => `${(t / S.s.end) * 100}%`;
+const code = (d, tone) => d
+  ? `<span class="code t-${tone}"><b>${safe(d.type)}</b>${d.reason_code ? ` ${safe(d.reason_code)}` : ''}</span>`
+  : '<span class="code none">no decision yet</span>';
+
+// ─── boot ───────────────────────────────────────────
+
+function render(w, first) {
+  if (S?.raf) cancelAnimationFrame(S.raf);
+  if (Shell.isReal) {
+    S = null;
+    $('#main').innerHTML = `
+      ${head(true)}
+      <div class="empty"><span class="ic">${I.lumni}</span><h2>No live order in your workspace yet</h2>
+        <p>Run three agents against one shared order, through Lumni, and every decision they get shows here as it happens. The demo plays a scripted run of the same thing.</p>
+        <div class="acts2"><a class="btn2 accent" href="?data=mock">See it in the demo</a></div></div>`;
+    return;
+  }
+  const scene = S ? S.s.scene : q.get('scene') ?? 'payment';
+  const fault = S ? S.s.fault : q.get('fault') !== 'off';
+  const speed = S?.speed ?? (Number(q.get('speed')) || 1);
+  start(scene, fault, speed, first);
+}
+
+function start(scene, fault, speed, first) {
+  if (S?.raf) cancelAnimationFrame(S.raf);
+  const s = L.scenario({ scene, fault });
+  const t0 = q.has('t') ? Math.min(s.end, Number(q.get('t')) || 0) : calm ? s.end : 0;
+  S = { s, t: t0, playing: false, speed, step: -1, raf: 0, last: 0, shown: new Set(), lanes: L.lanes(s) };
+  $('#main').innerHTML = `
+    ${head(false)}
+    <div class="grid">
+      <div class="col">
+        <div class="agents" id="agents" style="grid-template-columns:repeat(${s.agents.length}, 1fr)"></div>
+        <section class="panel">
+          <div class="panel-h"><h2>How Lumni ran it</h2><p>One clock for every AI. Drag along the lanes to scrub.</p></div>
+          <div class="now"><div class="clock" id="clock"></div><div class="caption" id="caption"></div></div>
+          <div class="lease" id="strip"></div>
+          ${lanesHtml()}
+          <div class="legend">
+            ${TONE_WORDS.map(([k, w]) => `<span><i style="background:${TONE_FILL[k]}"></i>${w}</span>`).join('')}
+            <span><i style="background:var(--accent);border-radius:50%;width:10px"></i>Lumni read the app back</span>
+          </div>
+        </section>
+      </div>
+      <section class="panel" id="sys-panel">
+        <div class="panel-h"><h2>What actually changed</h2><span class="r">Read from each system</span></div>
+        <div class="sys" id="sys"></div>
+      </section>
+    </div>
+    <div class="low">
+      <section class="panel">
+        <div class="panel-h"><h2>Every step, as it happened</h2><span class="r">Open a step to see the call and Lumni’s answer</span></div>
+        <div class="tl" id="tl"></div>
+      </section>
+      <section class="panel outcome" id="res"></section>
+    </div>`;
+  wire();
+  draw(true);
+  if (!calm && !q.has('t')) setTimeout(() => S?.s === s && play(), first ? 900 : 300);
+}
+
+function head(real) {
+  if (real) {
+    return `<section class="head"><div><div class="eyebrow">Your workspace</div><h1>Live execution</h1>
+      <p>Several AIs on shared business work, and every decision Lumni made for them.</p></div></section>`;
+  }
+  const s = S.s;
+  return `<section class="head">
+    <div><div class="eyebrow">Live execution, ${safe(s.customer)}<span class="demo-tag mock-only">Demo scenario</span></div>
+      <h1>${safe(s.title)} <span class="state ready mock-only" id="state"><i></i>Ready</span></h1>
+      <div class="meta">
+        ${s.meta.map(([b, rest], i) => `<span class="${i === s.meta.length - 1 ? 'money' : ''}"><b>${safe(b)}</b> ${safe(rest)}</span>`).join('')}
+      </div></div>
+    <div class="ctl mock-only" id="ctl">
+      <div class="scenes" id="scenes">${L.scenes().map((x) => `<button data-scene="${x.id}" aria-pressed="${x.id === s.scene}">${safe(x.label)}</button>`).join('')}</div>
+      <div class="ctl-row">
+      <button class="fault-sw k-${s.toggle.kind}" id="fault" aria-pressed="${s.fault}" title="${safe(s.toggle.title)}"><span class="knob"></span><span id="fault-l"></span></button>
+      <button class="btn" id="play"></button>
+      <button class="btn" id="restart" title="Restart">${I.restart}</button>
+      <div class="speed" id="speed">${[0.5, 1, 2].map((x) => `<button data-s="${x}" aria-pressed="${x === (S?.speed ?? 1)}">${x}x</button>`).join('')}</div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function lanesHtml() {
+  const end = S.s.end;
+  const ticks = [];
+  for (let x = 0; x <= end; x += 5) ticks.push(x);
+  const tick = `calc(100% * 5 / ${end})`;
+  const row = (a) => `<div class="track" style="--tick:${tick}">${S.lanes[a.id].map((b, i) =>
+    `<div class="bar ${b.tone}" data-a="${a.id}" data-i="${i}" title="${safe(`${b.words}: ${b.step}`)}" style="left:${pct(b.from)}"><span>${safe(b.words)}</span></div>`).join('')}</div>`;
+  return `<div class="lanes">
+    <div class="labels">
+      ${S.s.agents.map((a) => `<div class="ln"><span class="ai">${a.short}</span>${safe(a.name)}</div>`).join('')}
+      <div class="ln"><span class="lm">${I.lumni}</span><span>Lumni checks<small id="chk-l"></small></span></div>
+      <div class="axis"></div>
+    </div>
+    <div class="tracks" id="tracks">
+      ${S.s.agents.map(row).join('')}
+      <div class="track" style="--tick:${tick}">${S.lanes.lumni.map((c, i) => `<div class="chk" data-i="${i}" title="${safe(c.words)}" style="left:${pct(c.at)}">${I.check}</div>`).join('')}</div>
+      <div class="axis">${ticks.map((x) => `<span style="left:${pct(x)}">${x}s</span>`).join('')}</div>
+      ${S.lanes.marks.map((m) => `<div class="fline k-${m.kind}" style="left:${pct(m.at)}"><span>${m.kind === 'fault' ? I.bolt : I.up}${safe(m.words)}</span></div>`).join('')}
+      <div class="head-line" id="playhead"></div>
+    </div>
+  </div>`;
+}
+
+// ─── playback ───────────────────────────────────────
+
+function play() {
+  if (!S) return;
+  if (S.t >= S.s.end) seek(0);
+  S.playing = true;
+  S.last = performance.now();
+  controls();
+  S.raf = requestAnimationFrame(tick);
+}
+function pause() {
+  if (!S) return;
+  S.playing = false;
+  cancelAnimationFrame(S.raf);
+  controls();
+}
+function tick(now) {
+  if (!S?.playing) return;
+  S.t = Math.min(S.s.end, S.t + ((now - S.last) / 1000) * S.speed);
+  S.last = now;
+  draw();
+  if (S.t >= S.s.end) return pause();
+  S.raf = requestAnimationFrame(tick);
+}
+function seek(t) {
+  S.t = Math.max(0, Math.min(S.s.end, t));
+  S.step = -1;
+  S.shown = new Set(L.at(S.s, S.t).seen.map((e) => e.id));
+  draw(true);
+}
+
+function controls() {
+  const p = $('#play');
+  if (!p) return;
+  p.innerHTML = S.playing ? `${I.pause}Pause` : `${I.play}${S.t >= S.s.end ? 'Replay' : 'Play'}`;
+  $('#fault').setAttribute('aria-pressed', String(S.s.fault));
+  $('#fault-l').textContent = S.s.fault ? S.s.toggle.on : S.s.toggle.off;
+  $$('#speed button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.s) === S.speed)));
+}
+
+function wire() {
+  $('#play').onclick = () => (S.playing ? pause() : play());
+  $('#restart').onclick = () => { seek(0); play(); };
+  $('#fault').onclick = () => start(S.s.scene, !S.s.fault, S.speed, false);
+  $('#scenes').onclick = (e) => {
+    const b = e.target.closest('button');
+    if (!b || b.dataset.scene === S.s.scene) return;
+    const u = new URL(location.href);
+    u.searchParams.set('scene', b.dataset.scene);
+    history.replaceState(null, '', u);
+    start(b.dataset.scene, true, S.speed, false);
+  };
+  $('#speed').onclick = (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    S.speed = Number(b.dataset.s);
+    controls();
+  };
+  const tracks = $('#tracks');
+  const at = (e) => {
+    const r = tracks.getBoundingClientRect();
+    return ((e.clientX - r.left) / r.width) * S.s.end;
+  };
+  tracks.onpointerdown = (e) => {
+    pause();
+    tracks.setPointerCapture(e.pointerId);
+    seek(at(e));
+    tracks.onpointermove = (m) => seek(at(m));
+  };
+  tracks.onpointerup = () => { tracks.onpointermove = null; };
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!S || e.target.closest?.('input, textarea')) return;
+  const times = S.s.events.map((x) => x.t);
+  if (e.key === ' ') { e.preventDefault(); S.playing ? pause() : play(); }
+  else if (e.key === 'ArrowRight') { pause(); seek(times.find((x) => x > S.t + 0.01) ?? S.s.end); }
+  else if (e.key === 'ArrowLeft') { pause(); seek([...times].reverse().find((x) => x < S.t - 0.01) ?? 0); }
+});
+
+// ─── drawing ────────────────────────────────────────
+
+/** Every frame: the clock, the playhead and the bars. On each new event, the rest. */
+function draw(force) {
+  const v = L.at(S.s, S.t);
+  $('#clock').innerHTML = `${fmt(S.t)}<small>/${fmt(S.s.end).slice(3)}</small>`;
+  $('#playhead').style.left = pct(S.t);
+  for (const a of S.s.agents) {
+    S.lanes[a.id].forEach((b, i) => {
+      const el = $(`.bar[data-a="${a.id}"][data-i="${i}"]`);
+      const w = Math.max(0, Math.min(b.to, S.t) - b.from);
+      el.style.width = `calc(${pct(w)} - 2px)`;
+      el.style.visibility = w > 0 ? 'visible' : 'hidden';
+    });
+  }
+  // Only the latest check keeps its label, so close checks don't collide.
+  const lastChk = S.lanes.lumni.findLastIndex((c) => S.t >= c.at);
+  S.lanes.lumni.forEach((c, i) => {
+    const el = $(`.chk[data-i="${i}"]`);
+    el.classList.toggle('on', S.t >= c.at);
+    el.classList.toggle('last', i === lastChk);
+  });
+  $('#chk-l').textContent = lastChk >= 0 ? S.lanes.lumni[lastChk].words : 'Nothing checked yet';
+  $$('.fline').forEach((f, i) => f.classList.toggle('on', S.t >= S.lanes.marks[i].at));
+  if (force || v.step !== S.step) {
+    const grew = v.step > S.step && !force;
+    S.step = v.step;
+    cards(v, grew);
+    caption(v, grew);
+    (S.s.strip === 'deps' ? deps : lease)(v);
+    systems(v);
+    timeline(v);
+    result(v);
+  }
+  controls();
+}
+
+function cards(v, grew) {
+  const el = $('#agents');
+  const prev = Object.fromEntries($$('.ag', el).map((x) => [x.dataset.a, x.dataset.at]));
+  el.innerHTML = S.s.agents.map((a) => {
+    const c = v.cards[a.id];
+    const fresh = grew && String(c.at) !== prev[a.id] && c.at !== undefined;
+    return `<article class="ag t-${c.tone} ${fresh ? 'flash' : ''}" data-a="${a.id}" data-at="${c.at ?? ''}">
+      <div class="ag-h"><span class="ai">${a.short}</span><div><b>${safe(a.name)}</b><small>${safe(a.goal)}</small></div></div>
+      <div class="step">${safe(c.step)}</div>
+      <div class="says"><small>Lumni’s decision</small>
+        <span class="word"><i></i>${safe(c.words)}</span>
+        ${code(c.decision, c.tone)}
+      </div>
+    </article>`;
+  }).join('');
+}
+
+function caption(v, grew) {
+  const e = [...v.seen].reverse().find((x) => x.title);
+  const el = $('#caption');
+  el.className = `caption ${grew ? 'in' : ''}`;
+  el.innerHTML = e ? `${safe(e.title)}${e.note ? `<small>${safe(e.note)}</small>` : ''}` : '<span style="color:var(--ink3)">Press play to run it</span>';
+  const st = $('#state');
+  if (st) {
+    st.className = `state mock-only ${v.resolved ? 'done' : S.t > 0 ? 'run' : 'ready'}`;
+    st.innerHTML = `<i></i>${v.resolved ? 'Resolved' : S.t > 0 ? 'Running' : 'Ready'}`;
+  }
+}
+
+function lease(v) {
+  const who = (id, extra = '') => {
+    const a = agent(id);
+    return `<span class="who"><span class="ai">${a.short}</span>${safe(a.name)}${extra}</span>`;
+  };
+  const l = v.lease;
+  $('#strip').innerHTML = `
+    <span class="res">${I.lock}${safe(S.s.resource)}</span>
+    <span class="seg"><span class="lbl">Held by</span>${l.holder ? who(l.holder, `<em>token ${l.token}</em>`) : '<span class="free">nobody</span>'}</span>
+    <span class="seg"><span class="lbl">Waiting</span>${l.queue.length ? l.queue.map((id, i) => who(id, `<em>${i + 1}</em>`)).join('') : '<span class="free">nobody</span>'}</span>
+    ${v.hold ? '<span class="held"><i></i>Held until Stripe answers</span>' : ''}
+`;
+}
+
+/** What the action declared it was built on, and whether each is still current. */
+function deps(v) {
+  const chip = (d) => {
+    const stale = d.current !== d.observed;
+    return `<span class="dep ${stale ? 'stale' : ''}" title="${safe(d.id)}"><span class="dn">${safe(d.label)}</span>
+      <span class="dv">v${safe(d.observed)}${stale ? ` <em>now v${safe(d.current)}</em>` : ''}</span></span>`;
+  };
+  const stale = v.deps.some((d) => d.current !== d.observed);
+  $('#strip').innerHTML = `
+    <span class="res">${I.lock}${safe(S.s.resource)}</span>
+    <span class="seg"><span class="lbl">Built on</span>${v.deps.length ? v.deps.map(chip).join('') : '<span class="free">nothing yet</span>'}</span>
+    ${stale ? '<span class="held stale"><i></i>Out of date</span>' : v.deps.length ? '<span class="held fresh"><i></i>All current</span>' : ''}`;
+}
+
+function systems(v) {
+  const fresh = (k) => {
+    const c = v.changed[k];
+    return c && S.t - c.at < 1.6 && !calm ? c : null;
+  };
+  const cell = (c, f) => {
+    const ch = f?.keys.includes(c.key) ? 'ch' : '';
+    return c.pill !== undefined
+      ? `<span class="pill ${c.tone ?? ''} ${ch}">${safe(c.pill)}</span>`
+      : `<div class="kv"><small>${safe(c.label)}</small><b class="${ch}">${safe(c.value)}</b></div>`;
+  };
+  $('#sys').innerHTML = S.s.systems.map((d) => {
+    const [bg, mark] = d.logo;
+    const rows = Object.entries(v.systems[d.id]).map(([id, r]) => {
+      const key = `${d.id}/${id}`;
+      const f = fresh(key);
+      const x = d.row(id, r);
+      return `<div class="rw ${f ? 'fresh' : ''}"><div class="id">${safe(x.title)}<small>${safe(x.sub)}</small></div>
+        <div class="vals">${x.cells.map((c) => cell(c, f)).join('')}</div>
+        ${v.unseen[key] ? `<div class="unseen"><i></i>${safe(v.unseen[key])}</div>` : ''}</div>`;
+    }).join('') || `<div class="nothing">${safe(d.empty ?? 'Nothing yet')}</div>`;
+    return `<div class="sy"><div class="sy-h"><span class="lg" style="background:${bg}">${mark}</span><b>${safe(d.name)}</b><small>${safe(d.kind)}</small></div><div class="rows">${rows}</div></div>`;
+  }).join('');
+}
+
+function json(o) {
+  return safe(JSON.stringify(o, null, 2))
+    .replace(/(&quot;[\w.]+&quot;)(:)/g, '<span class="k">$1</span>$2')
+    .replace(/(: )(&quot;.*?&quot;)/g, '$1<span class="s">$2</span>')
+    .replace(/(: )(-?\d+(?:\.\d+)?|true|false)/g, '$1<span class="n">$2</span>');
+}
+
+function timeline(v) {
+  const list = v.seen.filter((e) => e.title);
+  const el = $('#tl');
+  if (!list.length) { el.innerHTML = '<div class="tl-empty">Nothing has run yet.</div>'; return; }
+  const dot = (e) => {
+    const a = agent(e.cardFor ?? e.who);
+    if (e.kind === 'fault') return `<span class="dot">${I.bolt}</span>`;
+    if (e.who === 'lumni') return `<span class="dot">${e.kind === 'resolved' ? I.check : I.lumni}</span>`;
+    const o = S.s.others[e.who];
+    if (o) return o[1] === 'person' ? `<span class="dot person">${safe(o[0])}</span>` : `<span class="dot" style="background:${o[1]};color:#fff;box-shadow:none">${safe(o[0])}</span>`;
+    return `<span class="dot ai">${a?.short ?? ''}</span>`;
+  };
+  const tone = (e) => ({ ALLOW: 'run', WAIT: e.decision?.reason_code === 'ACTION_RESULT_UNKNOWN' ? 'hold' : 'wait', REPLAN: 'replan', VERIFIED: 'done' })[e.decision?.type] ?? 'run';
+  const resp = (e) => {
+    const r = e.api.response ?? {};
+    if (r.decision) return code({ type: r.decision, reason_code: r.reason_code }, tone({ decision: { type: r.decision, reason_code: r.reason_code } }));
+    if (r.status) return `<span class="code t-${r.status === 'VERIFIED' || r.status === 'SUCCEEDED' ? 'done' : r.status === 'UNKNOWN' ? 'hold' : 'run'}"><b>${safe(r.status)}</b>${r.verifier ? ` ${safe(r.verifier)} verifier` : ''}</span>`;
+    return '';
+  };
+  el.innerHTML = list.map((e) => {
+    const isNew = !S.shown.has(e.id);
+    S.shown.add(e.id);
+    return `<div class="ev k-${e.kind} ${e.prevented ? 'prevented' : ''} ${isNew && !calm ? 'in' : ''}">
+      <time>${fmt(e.t)}</time>${dot(e)}
+      <div class="tx"><b>${safe(e.title)}</b>${e.note ? `<small>${safe(e.note)}</small>` : ''}
+        ${e.api ? `<details><summary>${I.chev}<span class="m">${safe(e.api.method)}</span>${safe(e.api.path)} ${resp(e)}</summary>
+          <pre>${json(e.api.body ? { request: e.api.body, response: e.api.response } : { response: e.api.response })}</pre></details>` : ''}
+      </div></div>`;
+  }).join('');
+}
+
+function result(v) {
+  const o = L.outcome(S.s, S.t);
+  const end = v.resolved;
+  const nm = (n) => `<div class="nm ${end ? (n.ok ? 'ok' : '') : 'pending'}"><small>${safe(n.label)}</small><b>${safe(n.value)}${n.sub ? `<em>${safe(n.sub)}</em>` : ''}</b></div>`;
+  const el = $('#res');
+  el.classList.toggle('settled', end);
+  el.innerHTML = `
+    <div class="panel-h"><h2>Where it ended up</h2><span class="r">${end ? 'Final' : 'So far'}</span></div>
+    <div class="verdict"><span class="big">${end ? I.bigcheck : I.lumni}</span>
+      <div><b>${end ? safe(o.done) : 'Not settled yet'}</b><small>${end ? safe(o.doneSub) : 'Lumni is still coordinating'}</small></div></div>
+    <div class="nums">${o.nums.map(nm).join('')}</div>
+    <div class="extra">${o.extra.map((x) => `<div class="${x.accent ? 'pv' : ''}"><span>${safe(x.label)}</span><b>${safe(x.value)}</b></div>`).join('')}</div>
+    <div class="without"><b>Without Lumni</b>, ${safe(o.without)}</div>
+    ${S.s.links.length ? `<div class="links">${S.s.links.map((l) => `<a href="${safe(l.href)}"><small>${safe(l.label)}</small><b>${safe(l.text)}</b>${I.chev}</a>`).join('')}</div>` : ''}`;
+}
+
+Story.mount('execute');
+Shell.boot({ nav: 'Live', onWorld: (w, first) => render(w, first) });
+</script>
+</body>
+</html>

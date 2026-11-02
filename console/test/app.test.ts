@@ -54,3 +54,13 @@ describe('the coding-agent guide', () => {
     expect(text).not.toContain('__LUMNI_');
   });
 });
+
+describe('framing', () => {
+  test('only the website may frame the console, plus sites you add', async () => {
+    const page = (await app('/contracts'))!;
+    expect(page.headers.get('x-frame-options')).toBeNull();
+    expect(page.headers.get('content-security-policy')).toBe("frame-ancestors 'self' https://lumniverse.com https://www.lumniverse.com");
+    const local = appHandler(`${import.meta.dir}/../app`, 'no-cache', { frameAncestors: 'http://localhost:5400, javascript:alert(1)' });
+    expect((await local('/contracts'))!.headers.get('content-security-policy')).toBe("frame-ancestors 'self' https://lumniverse.com https://www.lumniverse.com http://localhost:5400");
+  });
+});

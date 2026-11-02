@@ -1,0 +1,98 @@
+/* Shared by /compiled and /compile. */
+
+:root {
+  --code: var(--accent);
+  --llm: #c2780a;
+  --llm-bg: #fff7e8;
+  --llm-line: #fde3b0;
+  --shadowc: #1d4ed8;
+  --shadow-bg: #eef3ff;
+  --good: #059669;
+  --good-bg: #ecfdf5;
+  --lift: 0 1px 2px rgba(13, 14, 20, .04), 0 10px 28px -16px rgba(40, 30, 120, .18);
+}
+
+.wrap { padding: 34px 40px 90px; max-width: 1360px; margin: 0 auto; }
+@keyframes blurin { from { opacity: 0; filter: blur(5px); transform: translateY(6px); } }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } }
+@keyframes ring { 0% { transform: scale(.6); opacity: .6; } 70%, 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes breathe { 50% { box-shadow: 0 0 0 5px rgba(194, 120, 10, .16); } }
+.in { animation: blurin .5s var(--ease) both; }
+
+.banner { margin-bottom: 18px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--accent-line); font-size: 14px; color: var(--ink2); }
+.banner b { color: var(--ink); }
+
+.head { display: flex; align-items: flex-end; gap: 20px; }
+.head h1 { font-size: 38px; font-weight: 750; letter-spacing: -0.035em; line-height: 1.1; margin-top: 6px; }
+.head p { margin-top: 8px; font-size: 16px; color: var(--ink2); max-width: 720px; }
+
+/* Status chips. */
+.cs { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 650; white-space: nowrap; letter-spacing: 0; }
+.cs.live { background: var(--accent-soft); color: var(--accent); }
+.cs.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.cs.shadow { background: var(--shadow-bg); color: var(--shadowc); box-shadow: inset 0 0 0 1px #d6e2ff; }
+.cs.candidate { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); }
+.cs.drifted { background: var(--llm-bg); color: var(--llm); box-shadow: inset 0 0 0 1px var(--llm-line); }
+.cs.paused, .cs.retired, .cs.watching { background: var(--wash); color: var(--ink2); }
+.cs.rolled-back { background: #fef2f2; color: var(--bad); }
+
+/* Tiles. */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+.tile { padding: 18px 20px; border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); animation: blurin .5s var(--ease) both; }
+.tile .l { font-size: 13px; font-weight: 650; color: var(--ink2); }
+.tile .v { margin-top: 6px; font-size: 32px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
+.tile .v s { font-size: 17px; font-weight: 600; color: var(--ink3); text-decoration-thickness: 1.5px; }
+.tile .v small { font-size: 15px; font-weight: 600; color: var(--ink3); letter-spacing: 0; }
+.tile .s { margin-top: 4px; font-size: 13px; color: var(--ink3); }
+.tile.hl { background: linear-gradient(135deg, #f5f3ff, var(--paper) 70%); box-shadow: inset 0 0 0 1px var(--accent-line), var(--lift); }
+.tile.hl .v { color: var(--accent); }
+
+/* Controls. */
+.seg { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--wash); gap: 2px; box-shadow: inset 0 0 0 1px var(--line); }
+.seg button { height: 32px; padding: 0 14px; border-radius: 9px; font-size: 13.5px; font-weight: 650; color: var(--ink3); display: inline-flex; align-items: center; gap: 7px; transition: background .2s, color .2s, box-shadow .2s; }
+.seg button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(13,14,20,.08), 0 0 0 1px var(--line); }
+.seg button i { font-style: normal; font-size: 12px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.btn2 { height: 36px; padding: 0 14px; border-radius: 11px; box-shadow: inset 0 0 0 1px var(--line2); background: var(--paper); font-size: 13.5px; font-weight: 650; display: inline-flex; align-items: center; gap: 7px; transition: box-shadow .15s, transform .15s, background .2s; white-space: nowrap; }
+.btn2:hover { box-shadow: inset 0 0 0 1px var(--ink); }
+.btn2:active { transform: scale(.97); }
+.btn2.solid { background: var(--ink); color: #fff; box-shadow: none; }
+.btn2.accent { background: var(--accent); color: #fff; box-shadow: 0 6px 16px -6px rgba(91, 75, 245, .6); }
+.btn2.accent:hover, .btn2.solid:hover { transform: translateY(-1px); }
+.btn2.warn { color: var(--llm); box-shadow: inset 0 0 0 1px var(--llm-line); background: var(--llm-bg); }
+.btn2.quiet { box-shadow: none; color: var(--ink2); }
+.btn2.quiet:hover { color: var(--ink); background: var(--wash); }
+.btn2:disabled { opacity: .5; cursor: default; transform: none; }
+.btn2.busy svg { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Code vs LLM split bar. */
+.split { position: relative; height: 8px; border-radius: 999px; background: var(--wash); overflow: hidden; display: flex; }
+.split b { display: block; height: 100%; background: var(--code); transform-origin: left; animation: growx .8s var(--ease) both; }
+.split i { display: block; height: 100%; background: var(--llm); opacity: .75; transform-origin: left; animation: growx .5s var(--ease) both; animation-delay: .55s; margin-left: 2px; border-radius: 0 999px 999px 0; }
+.split.ghost b { background: repeating-linear-gradient(-45deg, #c7d4ff 0 4px, #e5ecff 4px 8px); }
+@keyframes growx { from { transform: scaleX(0); } }
+
+/* Flow dots. */
+.fd { position: absolute; left: 0; top: 0; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--code); box-shadow: 0 0 0 3px rgba(91, 75, 245, .14); pointer-events: none; will-change: transform; }
+.fd.llm { background: var(--llm); box-shadow: 0 0 0 3px rgba(194, 120, 10, .16); }
+.fd.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--shadowc); }
+
+/* Code. */
+.src { font: 12.5px/1.75 var(--mono); color: #3b3f4c; white-space: pre; }
+.cs-k { color: #7c3aed; font-weight: 600; }
+.cs-s { color: #0f766e; }
+.cs-n { color: #b45309; }
+.cs-c { color: var(--ink3); }
+.cs-fb { color: var(--llm); font-weight: 650; }
+.gf { border-radius: 4px; background: #f0fdfa; box-shadow: 0 0 0 1px #ccfbf1; color: #0f766e; padding: 0 2px; }
+.gf.drift { background: var(--llm-bg); color: var(--llm); box-shadow: 0 0 0 1px var(--llm-line); animation: breathe 2.2s ease-in-out infinite; }
+
+.empty { margin-top: 18px; padding: 54px 30px; border-radius: 22px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); text-align: center; animation: blurin .5s var(--ease) both; }
+.empty .ic { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.empty h2 { margin-top: 16px; font-size: 22px; font-weight: 750; letter-spacing: -0.02em; }
+.empty p { margin: 6px auto 0; color: var(--ink2); font-size: 15px; max-width: 560px; }
+.empty .acts2 { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+
+.settled .tile, .settled .split b, .settled .split i { animation: none; }
+/* ?motion keeps the motion on, for checking it on a machine that reduces motion. */
+@media (prefers-reduced-motion: reduce) { html:not(.motion) *, html:not(.motion) *::before, html:not(.motion) *::after { animation: none !important; transition: none !important; } }

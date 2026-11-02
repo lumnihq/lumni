@@ -23,9 +23,12 @@ const GROUPS = [
     ['Context', '/context', 'What each AI believes, and what’s true'],
   ]],
   ['Coordinate', [
+    ['Live', '/live', 'AIs on shared business work, decision by decision'],
     ['Tower', '/tower', 'Air traffic control for shared things'],
     ['Needs you', '/needs-you', 'Decisions, grouped by the rule that asked'],
     ['Fixes', '/fixes', 'Patterns Lumni found, and rules to fix them'],
+    ['Contracts', '/contracts', 'Write a rule in plain words, Lumni keeps it'],
+    ['Compiled', '/compiled', 'Repeated reasoning, turned into code'],
     ['Autonomy', '/autonomy', 'How much each AI has earned'],
     ['Settings', '/settings', 'Keys, limits, alerts and history'],
   ]],
@@ -39,6 +42,9 @@ const GROUPS = [
 ];
 
 const MODE_KEY = 'lumni.console.data';
+// Framed by the website as a live demo: always the demo world, with no way
+// into a real workspace from inside the frame.
+const EMBED = (() => { try { return window.self !== window.top; } catch { return true; } })();
 const VOLUME_KEY = 'lumni.console.volume';
 const VOLUMES = ['small', 'mid', 'large'];
 const FALLBACK = { mode: 'mock', realAvailable: false, workspace: null, autoSignIn: false, adminKey: false };
@@ -95,6 +101,7 @@ const api = {
   get: (p) => call('GET', p),
   post: (p, b = {}) => call('POST', p, b),
   put: (p, b = {}) => call('PUT', p, b),
+  patch: (p, b = {}) => call('PATCH', p, b),
   del: (p) => call('DELETE', p),
 };
 
@@ -154,6 +161,7 @@ const Shell = {
     if (asked === 'mock' || asked === 'real') store.set(MODE_KEY, asked);
     let mode = store.get(MODE_KEY) ?? this.config.mode;
     if (mode === 'real' && !this.config.realAvailable) mode = 'mock';
+    if (EMBED) { mode = 'mock'; document.body.classList.add('embedded'); }
     const v = params.get('volume') ?? store.get(VOLUME_KEY);
     this.volume = VOLUMES.includes(v) ? v : 'mid';
     if (VOLUMES.includes(params.get('volume'))) store.set(VOLUME_KEY, this.volume);
@@ -226,7 +234,7 @@ const Shell = {
 
   /** Switch worlds. Real data reloads the page, so nothing leaks between them. */
   setMode(m) {
-    if (m === this.mode) return;
+    if (m === this.mode || EMBED) return;
     if (m === 'real' && !this.config.realAvailable) {
       return this.toast('This console isn’t connected to a Lumni API. Set LUMNI_API_URL and an admin key, then restart it.');
     }

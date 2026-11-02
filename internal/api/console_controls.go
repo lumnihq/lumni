@@ -51,6 +51,9 @@ func (s *Server) consoleRoutes(r chi.Router) {
 }
 
 func (s *Server) principalName(r *http.Request) string {
+	if by, ok := r.Context().Value(automationByKey{}).(string); ok {
+		return by
+	}
 	p, _ := auth.PrincipalFrom(r.Context())
 	name := p.KeyID
 	_ = s.pool.QueryRow(r.Context(), `SELECT name FROM api_keys WHERE tenant_id=$1 AND id=$2`, p.TenantID, p.KeyID).Scan(&name)

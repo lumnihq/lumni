@@ -77,6 +77,11 @@ func journal(ctx context.Context, tx pgx.Tx, tenant, work, step, kind, id string
 	return err
 }
 func (s *Service) Submit(ctx context.Context, tenant string, in protocol.RunInput) (string, error) {
+	return s.SubmitWith(ctx, tenant, in, nil)
+}
+
+// SubmitWith atomically attaches backend-owned invocation state to a native run.
+func (s *Service) SubmitWith(ctx context.Context, tenant string, in protocol.RunInput, attach func(pgx.Tx) error) (string, error) {
 	if in.ID == "" || in.ActorID == "" || in.Handler == "" || in.HandlerVersion == "" {
 		return "", errors.New("id, actor_id, handler and handler_version are required")
 	}
@@ -122,6 +127,11 @@ func (s *Service) Submit(ctx context.Context, tenant string, in protocol.RunInpu
 		if !same || existingHash != digest(input) || handler != in.Handler || version != in.HandlerVersion {
 			return "", errors.New("WORK_IDENTITY_MISMATCH")
 		}
+		if attach != nil {
+			if err := attach(tx); err != nil {
+				return "", err
+			}
+		}
 		return in.ID, tx.Commit(ctx)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -137,6 +147,11 @@ func (s *Service) Submit(ctx context.Context, tenant string, in protocol.RunInpu
 	}
 	if err = journal(ctx, tx, tenant, in.ID, "", "WORK_CREATED", "created", map[string]any{"handler": in.Handler, "handler_version": in.HandlerVersion}); err != nil {
 		return "", err
+	}
+	if attach != nil {
+		if err := attach(tx); err != nil {
+			return "", err
+		}
 	}
 	return in.ID, tx.Commit(ctx)
 }

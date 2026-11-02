@@ -11,6 +11,8 @@
 // internal/api/console_*.go work them out from Postgres.
 
 import { makeZone, type Zone } from '../../src/domain/format';
+import { fakePaths } from './fake-paths';
+import { fakeContracts } from './fake-contracts';
 
 export interface FakeEval {
   stage: string;
@@ -1158,6 +1160,8 @@ export function fakeFetch(w: FakeWorld) {
   // The console's own admin key, so a key list is never empty.
   const codes = new Map<string, { scopes: string[]; actor_hint: string; expires: number; used_at: string | null; actor_id: string | null; host?: string | null; project?: string | null; key_id?: string | null }>();
   let exchanges: number[] = [];
+  const paths = fakePaths(w.actors[0]?.id ?? 'agent', w.principal);
+  const contracts = fakeContracts({ principal: w.principal, verifiers: () => w.verifiers, actions: () => w.actions });
   const keys: { id: string; name: string; prefix: string; scopes: string[]; created_at: string; expires_at: string | null; revoked_at: string | null; secret?: string }[] = [
     { id: 'key_console', name: 'Console admin key', prefix: 'lumni_adm1', scopes: ['admin'], created_at: '2026-09-01T09:00:00Z', expires_at: null, revoked_at: null },
   ];
@@ -1249,6 +1253,8 @@ export function fakeFetch(w: FakeWorld) {
       }
     }
     const listed = (r: ReturnType<typeof page>) => (r instanceof Response ? r : json(r));
+    const compiled = paths(method, p, parsed) ?? contracts(method, p + url.search, parsed);
+    if (compiled) return compiled;
 
     if (p === '/v1/auth/session' && method === 'GET') return json({ tenant_id: w.tenant, scopes: ['admin'], session: true });
     if (p === '/v1/auth/session' && method === 'DELETE') {

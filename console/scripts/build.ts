@@ -2,10 +2,12 @@
 // the lib's URLs stamped by content so browsers can cache them for an hour and
 // still never run an old shell against a new page.
 
+import { readdirSync } from 'node:fs';
 import { PAGES } from '../server/app';
 
 const root = `${import.meta.dir}/..`;
-const LIB = ['base.css', 'shell.js', 'world-mock.js'];
+// Every file in app/lib: a page that loads a lib file the build left out gets a 404 in production.
+export const LIB = readdirSync(`${root}/app/lib`).filter((f) => /\.(js|css)$/.test(f)).sort();
 
 const stamp: Record<string, string> = {};
 for (const f of LIB) {

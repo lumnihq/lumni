@@ -343,3 +343,6 @@ body.shell-loading .stage > :not(.top):not(.source) { opacity: .35; filter: satu
 .me-menu button { display: block; width: 100%; text-align: left; padding: 9px 10px; border-radius: 9px; font-size: 14px; font-weight: 600; }
 .me-menu button:hover { background: var(--wash); }
 .me-note { padding: 8px 10px; font-size: 13px; color: var(--ink2); }
+
+/* Framed by the website as a live demo: no account or workspace switch. */
+.embedded .world.which, .embedded .me-wrap { display: none; }

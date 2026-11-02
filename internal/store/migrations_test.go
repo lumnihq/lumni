@@ -51,7 +51,7 @@ func TestConcurrentServiceStartupMigrations(t *testing.T) {
 		}
 	}
 	var version int
-	if err = db.QueryRowContext(t.Context(), "SELECT max(version_id) FROM "+schema+".goose_db_version").Scan(&version); err != nil || version != 24 {
+	if err = db.QueryRowContext(t.Context(), "SELECT max(version_id) FROM "+schema+".goose_db_version").Scan(&version); err != nil || version != 26 {
 		t.Fatalf("version=%d %v", version, err)
 	}
 }

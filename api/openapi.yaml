@@ -4027,6 +4027,1432 @@ paths:
                 $ref: '#/components/schemas/BillingUsage'
         default:
           $ref: '#/components/responses/Error'
+  /v1/contracts:
+    get:
+      operationId: getContracts
+      summary: List contracts
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+    post:
+      operationId: postContracts
+      summary: Create a draft contract
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractInput'
+  /v1/contracts/{id}:
+    get:
+      operationId: getContractsId
+      summary: Read contract
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    patch:
+      operationId: patchContractsId
+      summary: Edit contract
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractPatch'
+    delete:
+      operationId: deleteContractsId
+      summary: Delete contract
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/contracts/{id}/mode:
+    put:
+      operationId: putContractsIdMode
+      summary: Change mode atomically
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  enum:
+                  - draft
+                  - watch
+                  - protect
+                  - paused
+                revision:
+                  type: integer
+              required:
+              - mode
+              - revision
+  /v1/contracts/classify:
+    post:
+      operationId: postContractsClassify
+      summary: Classify a sentence without activating it
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContractReading'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+              required:
+              - text
+  /v1/contracts/preview:
+    post:
+      operationId: postContractsPreview
+      summary: Replay draft rules without external calls
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ContractRule'
+                from:
+                  type: string
+                to:
+                  type: string
+                tz:
+                  type: string
+                action_id:
+                  type: string
+                fixture:
+                  type: object
+              required:
+              - rules
+  /v1/contracts/{id}/needs:
+    get:
+      operationId: getContractsIdNeeds
+      summary: Read contract needs
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+      - in: query
+        name: since
+        schema:
+          type: string
+      - in: query
+        name: actor_id
+        schema:
+          type: string
+  /v1/contracts/{id}/hook-status:
+    get:
+      operationId: getContractsIdHookStatus
+      summary: Read contract hook-status
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+      - in: query
+        name: since
+        schema:
+          type: string
+      - in: query
+        name: actor_id
+        schema:
+          type: string
+  /v1/contracts/{id}/week:
+    get:
+      operationId: getContractsIdWeek
+      summary: Read contract week
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+      - in: query
+        name: since
+        schema:
+          type: string
+      - in: query
+        name: actor_id
+        schema:
+          type: string
+  /v1/contracts/{id}/runs:
+    get:
+      operationId: getContractsIdRuns
+      summary: Read contract runs
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+      - in: query
+        name: since
+        schema:
+          type: string
+      - in: query
+        name: actor_id
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: string
+        description: 1-1000, default 200
+      - in: query
+        name: cursor
+        schema:
+          type: string
+        description: Tenant- and filter-scoped continuation cursor
+  /v1/contracts/{id}/tests:
+    get:
+      operationId: getContractsIdTests
+      summary: Read contract tests
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: lang
+        schema:
+          type: string
+      - in: query
+        name: action
+        schema:
+          type: string
+  /v1/compiled-paths:
+    get:
+      operationId: getCompiledPaths
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+  /v1/compiled-paths/totals:
+    get:
+      operationId: getCompiledPathsTotals
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledStatistics'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/compiled-paths/suggestions:
+    get:
+      operationId: getCompiledPathsSuggestions
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+  /v1/compiled-paths/{id}:
+    get:
+      operationId: getCompiledPathsId
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/compiled-paths/{id}/fallbacks:
+    get:
+      operationId: getCompiledPathsIdFallbacks
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: day
+        schema:
+          type: string
+        description: YYYY-MM-DD in tz
+      - in: query
+        name: tz
+        schema:
+          type: string
+        description: IANA timezone
+  /v1/compiled-paths/{id}/race:
+    get:
+      operationId: getCompiledPathsIdRace
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/compiled-paths/{id}/versions/{v}/replay:
+    get:
+      operationId: getCompiledPathsIdVersionsVReplay
+      summary: Read compiled paths and recorded evidence
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: v
+        required: true
+        schema:
+          type: integer
+  /v1/compiled-paths/{id}/compile:
+    post:
+      operationId: postCompiledPathsIdCompile
+      summary: Compile a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationJob'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/shadow:
+    post:
+      operationId: postCompiledPathsIdShadow
+      summary: Shadow a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/promote:
+    post:
+      operationId: postCompiledPathsIdPromote
+      summary: Promote a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/rollback:
+    post:
+      operationId: postCompiledPathsIdRollback
+      summary: Rollback a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/pause:
+    post:
+      operationId: postCompiledPathsIdPause
+      summary: Pause a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/resume:
+    post:
+      operationId: postCompiledPathsIdResume
+      summary: Resume a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledPath'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/recompile:
+    post:
+      operationId: postCompiledPathsIdRecompile
+      summary: Recompile a compiled path
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationJob'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                why:
+                  type: string
+              required:
+              - revision
+  /v1/compiled-paths/{id}/disagreements/{case_id}/label:
+    put:
+      operationId: putCompiledPathsIdDisagreementsCase_IdLabel
+      summary: Review a stable replay case
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: case_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                right:
+                  enum:
+                  - llm
+                  - code
+              required:
+              - right
+  /v1/compiled-paths/discover:
+    post:
+      operationId: postCompiledPathsDiscover
+      summary: Discover repeated trace signatures
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationJob'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /v1/compiled-paths/route:
+    post:
+      operationId: postCompiledPathsRoute
+      summary: Find an eligible server-side program
+      description: runtime scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actor_id:
+                  type: string
+                operation:
+                  type: string
+              required:
+              - actor_id
+              - operation
+  /v1/compiled-paths/{id}/execute:
+    post:
+      operationId: postCompiledPathsIdExecute
+      summary: Execute through the durable runtime
+      description: runtime scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompiledInvocation'
+  /v1/compiled-runs/{id}:
+    get:
+      operationId: getCompiledRunsId
+      summary: Read a compiled invocation
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledRun'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: include
+        schema:
+          type: string
+        description: Return output only with payload scope.
+  /v1/compiled-paths/{id}/runs:
+    post:
+      operationId: postCompiledPathsIdRuns
+      summary: Record caller-reported telemetry without verification authority
+      description: runtime scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                version:
+                  type: integer
+                served_by:
+                  enum:
+                  - llm
+                  - fallback
+                reason:
+                  type: string
+                duration_ms:
+                  type: integer
+                cost_micros_usd:
+                  type: integer
+                actor_id:
+                  type: string
+              required:
+              - id
+              - actor_id
+              - served_by
+  /v1/traces:
+    post:
+      operationId: postTraces
+      summary: Ingest a complete normalized trace
+      description: ingest scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PathTrace'
+    get:
+      operationId: getTraces
+      summary: List trace metadata
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+  /v1/traces/{id}/payload:
+    get:
+      operationId: getTracesIdPayload
+      summary: Read an encrypted retained trace
+      description: payload scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PathTrace'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/jobs/{id}:
+    get:
+      operationId: getJobsId
+      summary: Read a durable automation job
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationJob'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/config/compiler:
+    get:
+      operationId: getConfigCompiler
+      summary: Read or set compiler consent
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      operationId: putConfigCompiler
+      summary: Read or set compiler consent
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                cloud_processing_consent:
+                  type: boolean
+              required:
+              - enabled
+              - cloud_processing_consent
+  /v1/tool-bindings:
+    get:
+      operationId: getToolBindings
+      summary: List registered tool bindings
+      description: query scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+      - in: query
+        name: to
+        schema:
+          type: string
+      - in: query
+        name: mode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: q
+        schema:
+          type: string
+      - in: query
+        name: tz
+        schema:
+          type: string
+  /v1/tool-bindings/{id}:
+    put:
+      operationId: putToolBindingsId
+      summary: Register a versioned tool binding
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolBinding'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolBinding'
+    delete:
+      operationId: deleteToolBindingsId
+      summary: Disable a registered binding
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/integrations/{app}/grants:
+    get:
+      operationId: getIntegrationsAppGrants
+      summary: Read or register scoped read capabilities
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: postIntegrationsAppGrants
+      summary: Read or register scoped read capabilities
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                binding_id:
+                  type: string
+                objects:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+              required:
+              - binding_id
+              - objects
+  /v1/integrations/{app}/grants/{id}:
+    delete:
+      operationId: deleteIntegrationsAppGrantsId
+      summary: Revoke an operator-configured read capability
+      description: admin scope. Session writes require X-CSRF-Token. Tenant-scoped; no console integration.
+      responses:
+        '204':
+          description: Success
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: path
+        name: app
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+  /v1/contracts/{id}/runs/{action_id}/evidence:
+    post:
+      operationId: recordContractWatchEvidence
+      summary: Record independent Watch assertion evidence
+      description: verification scope. Session writes require X-CSRF-Token. Does not change canonical action outcomes.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: action_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - rule_id
+              - evidence
+              properties:
+                rule_id:
+                  type: string
+                evidence:
+                  $ref: '#/components/schemas/VerificationEvidence'
+      responses:
+        '202':
+          description: Evidence recorded
+        default:
+          $ref: '#/components/responses/Error'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -6352,3 +7778,646 @@ components:
         cost_micros_usd: *id046
         open:
           type: boolean
+    ContractBinding:
+      type: object
+      properties:
+        operation:
+          type: string
+        actor_id:
+          type: string
+        key_pointer:
+          type: string
+        amount_pointer:
+          type: string
+        currency_pointer:
+          type: string
+        currency:
+          type: string
+        read_binding_id:
+          type: string
+        value_pointer:
+          type: string
+        last_editor_pointer:
+          type: string
+        last_edited_at_pointer:
+          type: string
+        verifier_id:
+          type: string
+        predecessor_operation:
+          type: string
+        read_arguments:
+          type: object
+          additionalProperties:
+            type: string
+        expected:
+          type: object
+        within_seconds:
+          type: integer
+          minimum: 1
+        max_age_seconds:
+          type: integer
+          minimum: 1
+      required:
+      - operation
+    ContractRule:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - once-per-key
+          - approval-over
+          - end-state
+          - amount-cap
+          - order-before
+          - rate-limit
+          - human-wins
+        slots:
+          type: object
+        binding:
+          $ref: '#/components/schemas/ContractBinding'
+      required:
+      - id
+      - type
+      - slots
+      - binding
+    ContractInput:
+      type: object
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractRule'
+          minItems: 1
+          maxItems: 50
+        revision:
+          type: integer
+      required:
+      - title
+      - text
+      - rules
+    Contract:
+      type: object
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractRule'
+          minItems: 1
+          maxItems: 50
+        revision:
+          type: integer
+        id:
+          type: string
+        mode:
+          type: string
+          enum:
+          - draft
+          - watch
+          - protect
+          - paused
+        was:
+          type: string
+        effective_mode:
+          type: string
+          description: SHADOW, WARN, ENFORCE, or MIXED when operations have different effective modes.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - revision
+      - rules
+      - mode
+    AutomationJob:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        subject_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        result: {}
+        error:
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - status
+    CompiledProgram:
+      type: object
+      properties:
+        interpreter:
+          const: path-v1
+        input_schema:
+          type: object
+        output_schema:
+          type: object
+        nodes:
+          type: array
+          maxItems: 256
+          items:
+            $ref: '#/components/schemas/CompiledProgramNode'
+      required:
+      - interpreter
+      - input_schema
+      - output_schema
+      - nodes
+    CompiledProgramNode:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          enum:
+          - let
+          - read
+          - call
+          - guard
+          - return
+          - fallback
+        binding_id:
+          type: string
+        binding_version:
+          type: integer
+        value:
+          $ref: '#/components/schemas/CompiledExpression'
+        next:
+          type: string
+        otherwise:
+          type: string
+        reason:
+          type: string
+      required:
+      - id
+      - kind
+      - value
+    CompiledExpression:
+      type: object
+      properties:
+        literal: {}
+        ref:
+          type: string
+        op:
+          type: string
+        args:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompiledExpression'
+        object:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/CompiledExpression'
+    CompiledInvocation:
+      type: object
+      properties:
+        invocation_id:
+          type: string
+        actor_id:
+          type: string
+        parent_work_id:
+          type: string
+        input: {}
+      required:
+      - invocation_id
+      - actor_id
+      - input
+    ToolBinding:
+      type: object
+      properties:
+        id:
+          type: string
+        app:
+          type: string
+        operation:
+          type: string
+        method:
+          type: string
+        url:
+          type: string
+        verifier_id:
+          type: string
+        secret:
+          type: string
+        idempotency_header:
+          type: string
+        policy_fingerprint:
+          type: string
+        version:
+          type: integer
+        read_only:
+          type: boolean
+        enabled:
+          type: boolean
+        input_schema:
+          type: object
+        output_schema:
+          type: object
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceMapping'
+        effect_key_fields:
+          type: array
+          items:
+            type: string
+        expected:
+          type: object
+        objects:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+      - id
+      - app
+      - operation
+      - method
+      - url
+      - input_schema
+      - output_schema
+    PathTrace:
+      type: object
+      properties:
+        id:
+          type: string
+        work_id:
+          type: string
+        actor_id:
+          type: string
+        handler_version:
+          type: string
+        operation:
+          type: string
+        input: {}
+        output: {}
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/PathTraceStep'
+        cost_micros_usd:
+          type: integer
+        duration_ms:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - work_id
+      - actor_id
+      - handler_version
+      - operation
+      - input
+      - output
+      - steps
+      - completed_at
+    PathTraceStep:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        binding_id:
+          type: string
+        action_id:
+          type: string
+        model_call_id:
+          type: string
+        step_id:
+          type: string
+        binding_version:
+          type: integer
+        input: {}
+        output: {}
+        duration_ms:
+          type: integer
+      required:
+      - id
+      - kind
+      - input
+      - output
+    ContractPatch:
+      type: object
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractRule'
+          minItems: 1
+          maxItems: 50
+        revision:
+          type: integer
+      required:
+      - revision
+    ContractReading:
+      type: object
+      properties:
+        text:
+          type: string
+        ranked:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              p:
+                type: number
+                minimum: 0
+                maximum: 1
+            required:
+            - type
+            - p
+        state:
+          enum:
+          - sure
+          - ask
+          - pick
+        type:
+          type:
+          - string
+          - 'null'
+        slots:
+          type: object
+        guessed:
+          type: array
+          items:
+            type: string
+        cues:
+          type: array
+          items:
+            type: object
+            properties:
+              start:
+                type: integer
+                minimum: 0
+              end:
+                type: integer
+                minimum: 0
+              type:
+                type: string
+        source:
+          enum:
+          - deterministic
+          - jev
+      required:
+      - text
+      - ranked
+      - state
+      - slots
+      - guessed
+      - cues
+      - source
+    CompiledStatistics:
+      type: object
+      properties:
+        runs:
+          type: integer
+          minimum: 0
+        served:
+          type: integer
+          minimum: 0
+        llm:
+          type: integer
+          minimum: 0
+        fallback:
+          type: integer
+          minimum: 0
+        reported_runs:
+          type: integer
+          minimum: 0
+        duration_ms:
+          type:
+          - number
+          - 'null'
+        cost_micros_usd:
+          type:
+          - integer
+          - 'null'
+        estimated_savings_micros_usd:
+          type:
+          - integer
+          - 'null'
+        calls_saved:
+          type:
+          - integer
+          - 'null'
+        time_saved_ms:
+          type:
+          - integer
+          - 'null'
+    CompiledVersion:
+      type: object
+      properties:
+        v:
+          type: integer
+          minimum: 0
+        status:
+          enum:
+          - candidate
+          - shadow
+          - live
+          - retired
+          - rolled-back
+        program:
+          $ref: '#/components/schemas/CompiledProgram'
+        program_hash:
+          type: string
+        bindings:
+          type: object
+          additionalProperties:
+            type: string
+        synthesis_ids:
+          type: array
+          items:
+            type: string
+        replay_ids:
+          type: array
+          items:
+            type: string
+        replay_complete:
+          type: boolean
+        promoted_by:
+          type:
+          - string
+          - 'null'
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - v
+      - status
+      - program
+      - program_hash
+      - synthesis_ids
+      - replay_ids
+      - replay_complete
+    CompiledPath:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        actor_id:
+          type: string
+        operation:
+          type: string
+        signature:
+          type: string
+        revision:
+          type: integer
+          minimum: 0
+        paused:
+          type: boolean
+        pause_reason:
+          type:
+          - string
+          - 'null'
+        status:
+          enum:
+          - watching
+          - candidate
+          - shadow
+          - live
+          - drifted
+          - paused
+        can:
+          type: array
+          items:
+            enum:
+            - compile
+            - shadow
+            - promote
+            - rollback
+            - pause
+            - resume
+            - recompile
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompiledVersion'
+        drift:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              kind:
+                type: string
+              detail:
+                type: string
+              binding_id:
+                type: string
+              open:
+                type: boolean
+              fixed_by:
+                type:
+                - integer
+                - 'null'
+        stats:
+          $ref: '#/components/schemas/CompiledStatistics'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - revision
+      - status
+    CompiledRun:
+      type: object
+      properties:
+        id:
+          type: string
+        path_id:
+          type: string
+        version:
+          type:
+          - integer
+          - 'null'
+        actor_id:
+          type: string
+        work_id:
+          type:
+          - string
+          - 'null'
+        status:
+          enum:
+          - PENDING
+          - RUNNING
+          - WAITING
+          - COMPLETED
+          - FALLBACK
+          - FAILED
+          - UNKNOWN
+        served_by:
+          enum:
+          - code
+          - llm
+          - fallback
+        reason:
+          type:
+          - string
+          - 'null'
+        duration_ms:
+          type:
+          - integer
+          - 'null'
+        cost_micros_usd:
+          type:
+          - integer
+          - 'null'
+        reported:
+          type: boolean
+        output_available:
+          type: boolean
+        output: {}
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - id
+      - path_id
+      - status
+      - served_by
+      - reported

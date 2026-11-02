@@ -65,7 +65,8 @@ func (s *Service) PutVerifierAs(ctx context.Context, tenant string, in protocol.
 	tag, err := tx.Exec(ctx, `INSERT INTO verifiers(tenant_id,id,name,kind,version,config,secret_ciphertext,enabled)VALUES($1,$2,$3,$4,$5,$6,$7,$8)
 	 ON CONFLICT(tenant_id,id)DO UPDATE SET name=EXCLUDED.name,kind=EXCLUDED.kind,version=EXCLUDED.version,config=EXCLUDED.config,secret_ciphertext=COALESCE(EXCLUDED.secret_ciphertext,verifiers.secret_ciphertext),enabled=EXCLUDED.enabled
 	 WHERE (NOT EXISTS(SELECT 1 FROM outcomes o WHERE o.tenant_id=verifiers.tenant_id AND o.verifier_id=verifiers.id)
-	 AND NOT EXISTS(SELECT 1 FROM verifiers composite WHERE composite.tenant_id=verifiers.tenant_id AND composite.kind='COMPOSITE' AND composite.config->'verifiers' @> jsonb_build_array(verifiers.id)))
+	 AND NOT EXISTS(SELECT 1 FROM contract_assertions ca WHERE ca.tenant_id=verifiers.tenant_id AND ca.verifier_id=verifiers.id)
+ AND NOT EXISTS(SELECT 1 FROM verifiers composite WHERE composite.tenant_id=verifiers.tenant_id AND composite.kind='COMPOSITE' AND composite.config->'verifiers' @> jsonb_build_array(verifiers.id)))
 	 OR (verifiers.kind=EXCLUDED.kind AND verifiers.version=EXCLUDED.version AND verifiers.config=EXCLUDED.config AND EXCLUDED.secret_ciphertext IS NULL)`, tenant, in.ID, in.Name, in.Kind, in.Version, in.Config, cipher, in.Enabled)
 	if err == nil && tag.RowsAffected() == 0 {
 		return errors.New("verifier configuration is referenced by immutable outcomes; register a new verifier id")
@@ -126,6 +127,31 @@ func (s *Service) evidence(ctx context.Context, tenant, outcome string, in proto
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return err
+	}
+	// Preserve per-assertion success observed within its own deadline, including
+	// children of nested composite verifiers.
+	verifiedChildren := map[string]bool{}
+	var observed any
+	_ = json.Unmarshal(in.Observed, &observed)
+	collectVerifiedChildren(observed, verifiedChildren)
+	for id := range verifiedChildren {
+		if _, err = tx.Exec(ctx, `UPDATE contract_verification_deadlines d SET verified_at=now() FROM action_results ar WHERE d.tenant_id=$1 AND d.action_id=$2 AND d.verifier_id=$3 AND ar.tenant_id=d.tenant_id AND ar.action_id=d.action_id AND d.verified_at IS NULL AND ar.recorded_at+make_interval(secs=>d.within_seconds)>=now()`, tenant, action, id); err != nil {
+			return err
+		}
+	}
+	if in.Status == "VERIFIED" {
+		if _, err = tx.Exec(ctx, `UPDATE contract_verification_deadlines d SET verified_at=now() FROM action_results ar WHERE d.tenant_id=$1 AND d.action_id=$2 AND ar.tenant_id=d.tenant_id AND ar.action_id=d.action_id AND d.verified_at IS NULL AND ar.recorded_at+make_interval(secs=>d.within_seconds)>=now()`, tenant, action); err != nil {
+			return err
+		}
+	}
+	// Contract deadlines apply equally to worker and authenticated custom evidence.
+	var expired bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM contract_verification_deadlines d JOIN action_results ar ON ar.tenant_id=d.tenant_id AND ar.action_id=d.action_id WHERE d.tenant_id=$1 AND d.action_id=$2 AND d.verified_at IS NULL AND ar.recorded_at+make_interval(secs=>d.within_seconds)<now())`, tenant, action).Scan(&expired); err != nil {
+		return err
+	}
+	if expired && current != "VERIFIED" {
+		in.Status = "FAILED"
+		in.Reason = "CONTRACT_VERIFICATION_DEADLINE"
 	}
 	if current == "VERIFIED" && in.Status != "VERIFIED" {
 		return errors.New("verified history cannot be downgraded")
@@ -571,4 +597,41 @@ func (s *Service) readJSON(ctx context.Context, method, endpoint string, secret,
 		return nil, err
 	}
 	return out, nil
+}
+
+// VerifyAssertion reuses registered read-only verifier transports for an independent
+// Watch observation. It never writes to the canonical action outcome.
+func (s *Service) VerifyAssertion(ctx context.Context, tenant, id string, expected json.RawMessage) (protocol.VerificationEvidence, error) {
+	var j verifyJob
+	j.Tenant = tenant
+	j.Expected = expected
+	e := s.pool.QueryRow(ctx, `SELECT kind,version,config,secret_ciphertext FROM verifiers WHERE tenant_id=$1 AND id=$2 AND enabled`, tenant, id).Scan(&j.Kind, &j.Version, &j.Config, &j.Secret)
+	if e != nil {
+		return protocol.VerificationEvidence{}, e
+	}
+	if len(j.Secret) > 0 {
+		j.Secret, e = s.cipher.Decrypt(j.Secret)
+		if e != nil {
+			return protocol.VerificationEvidence{}, e
+		}
+	}
+	return s.verify(ctx, j, 0)
+}
+
+func collectVerifiedChildren(value any, out map[string]bool) {
+	switch x := value.(type) {
+	case map[string]any:
+		if id, ok := x["verifier_id"].(string); ok {
+			if evidence, ok := x["evidence"].(map[string]any); ok && evidence["status"] == "VERIFIED" {
+				out[id] = true
+			}
+		}
+		for _, v := range x {
+			collectVerifiedChildren(v, out)
+		}
+	case []any:
+		for _, v := range x {
+			collectVerifiedChildren(v, out)
+		}
+	}
 }

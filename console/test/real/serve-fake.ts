@@ -15,7 +15,7 @@ import { fakeFetch } from './fake-go';
 const file = Bun.file(`${import.meta.dir}/../../.env`);
 const dotenv = (await file.exists()) ? parseDotEnv(await file.text()) : {};
 const key = (Bun.env.LUMNI_CONSOLE_ADMIN_KEY ?? dotenv.LUMNI_CONSOLE_ADMIN_KEY ?? Bun.env.LUMNI_FRONTFACE_TEST_ADMIN_KEY ?? dotenv.LUMNI_FRONTFACE_TEST_ADMIN_KEY ?? 'test_admin_key').trim();
-const port = Number(Bun.env.FAKE_API_PORT ?? 8080);
+const port = Number(Bun.env.FAKE_API_PORT ?? Bun.env.PORT ?? 8080);
 
 const w = richDay(Number(Bun.env.FAKE_API_ACTIONS ?? 900), { key, perSnapshot: 400 }, localZoneName());
 const answer = fakeFetch(w);

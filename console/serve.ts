@@ -22,7 +22,7 @@ const prod = Bun.argv.includes('--prod');
 const root = `${import.meta.dir}/${prod ? 'dist' : 'app'}`;
 const bff = createBff({ ...env, hosts: [...new Set([`localhost:${port}`, `127.0.0.1:${port}`, ...env.hosts])] });
 
-const app = appHandler(root, prod ? 'long' : 'no-cache', { publicApi: env.publicApi, publicConsole: Bun.env.LUMNI_CONSOLE_PUBLIC_URL ?? dotenv.LUMNI_CONSOLE_PUBLIC_URL });
+const app = appHandler(root, prod ? 'long' : 'no-cache', { publicApi: env.publicApi, publicConsole: Bun.env.LUMNI_CONSOLE_PUBLIC_URL ?? dotenv.LUMNI_CONSOLE_PUBLIC_URL, frameAncestors: Bun.env.LUMNI_CONSOLE_FRAME_ANCESTORS ?? dotenv.LUMNI_CONSOLE_FRAME_ANCESTORS });
 
 const server = Bun.serve({
   port,

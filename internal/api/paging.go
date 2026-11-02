@@ -90,7 +90,7 @@ func csv(v string) []string {
 	return out
 }
 
-type listSpec struct{ From, JSON, Tenant, Key, Time, ID, Work, Status, Actor, Operation, Action, Kind, Scope, Type string }
+type listSpec struct{ From, JSON, Tenant, Key, Time, ID, Work, Status, Actor, Operation, Action, Kind, Scope, Type, Mode, Search, Condition string }
 
 func durableSpec(kind string) listSpec {
 	s := listSpec{Tenant: "t.tenant_id", JSON: "to_jsonb(t)", Key: "t.id::text", ID: "t.id::text", Time: "t.created_at"}
@@ -193,7 +193,13 @@ func (s *Server) pagedList(w http.ResponseWriter, r *http.Request, spec listSpec
 	}
 	args := []any{tenant(r)}
 	where := []string{spec.Tenant + "=$1"}
+	if spec.Condition != "" {
+		where = append(where, spec.Condition)
+	}
 	bind := func(v any) string { args = append(args, v); return fmt.Sprintf("$%d", len(args)) }
+	if v := r.URL.Query().Get("q"); v != "" && spec.Search != "" {
+		where = append(where, "strpos(lower("+spec.Search+"),lower("+bind(v)+"))>0")
+	}
 	if id != "" {
 		where = append(where, spec.ID+"="+bind(id))
 	}
@@ -209,7 +215,7 @@ func (s *Server) pagedList(w http.ResponseWriter, r *http.Request, spec listSpec
 	for _, f := range []struct {
 		Param, Column string
 		CSV           bool
-	}{{"work_id", spec.Work, false}, {"actor_id", spec.Actor, false}, {"operation", spec.Operation, false}, {"status", spec.Status, true}, {"action_id", spec.Action, true}, {"kind", spec.Kind, true}, {"type", spec.Type, false}} {
+	}{{"mode", spec.Mode, false}, {"work_id", spec.Work, false}, {"actor_id", spec.Actor, false}, {"operation", spec.Operation, false}, {"status", spec.Status, true}, {"action_id", spec.Action, true}, {"kind", spec.Kind, true}, {"type", spec.Type, false}} {
 		if v := r.URL.Query().Get(f.Param); v != "" && f.Column != "" {
 			if f.CSV {
 				vs := csv(v)

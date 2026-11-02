@@ -1,5 +1,5 @@
 // Lumni Cloud's billing. Every workspace made by sign-up gets a 14-day trial,
-// then the Team plan through Stripe ($49 a month with 50,000 checked actions,
+// then the Team plan through Stripe ($99 a month with 50,000 checked actions,
 // then metered), or becomes watch-only if it doesn't subscribe. Stripe holds
 // the products and prices (ops/stripe-setup.mjs makes them); this keeps each
 // workspace's state, puts the plan into effect on Lumni's API
@@ -28,7 +28,7 @@ export const PLANS = {
 type Plan = keyof typeof PLANS;
 
 /** What the console shows; Stripe's prices are the source of truth for charges. */
-export const TEAM = { name: 'Team', price: '$49 a month', included: 50_000, overage: '$3 per 1,000 more checks' };
+export const TEAM = { name: 'Team', price: '$99 a month', included: 50_000, overage: '$3 per 1,000 more checks' };
 
 /** Usage is reported for windows ending this long ago, so the last checks have landed. */
 const SETTLE = 2 * 60_000;

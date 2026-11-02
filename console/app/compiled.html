@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lumni, Compiled paths</title>
+<link rel="stylesheet" href="/lib/base.css" />
+<link rel="stylesheet" href="/lib/compiled.css" />
+<style>
+  /* How it works, on one real path: before, what Lumni did, now. */
+  .ex { margin-top: 26px; padding: 24px 26px 26px; border-radius: 22px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); }
+  .ex-h { display: flex; align-items: flex-end; gap: 24px; }
+  .ex-h h2 { font-size: 19px; font-weight: 750; letter-spacing: -0.02em; }
+  .ex-h p { margin-top: 3px; font-size: 14px; color: var(--ink2); }
+  .pick { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pick button { height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 650; color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line2); transition: background .2s, color .2s, box-shadow .2s; }
+  .pick button:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink3); }
+  .pick button[aria-pressed="true"] { background: var(--ink); color: #fff; box-shadow: none; }
+  .ex-grid { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr) 250px minmax(0, 1fr); grid-template-rows: auto 1fr auto; column-gap: 18px; }
+  .side { display: grid; grid-row: 1 / 4; grid-template-rows: subgrid; padding: 18px 20px 20px; border-radius: 18px; }
+  .side.before { background: linear-gradient(180deg, #fffaf1, #fffdf8); box-shadow: inset 0 0 0 1px var(--llm-line); }
+  .side.after { background: linear-gradient(180deg, #f7f5ff, #fcfbff); box-shadow: inset 0 0 0 1px var(--accent-line); }
+  .side .lab { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  .side.before .lab { color: #8a5207; } .side.after .lab { color: var(--accent); }
+  .side .lab span { margin-left: auto; font-weight: 550; color: var(--ink3); font-size: 12.5px; }
+  .side ol { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .side li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; font-size: 13.5px; }
+  .side li i { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 700; background: var(--llm-bg); color: var(--llm); box-shadow: inset 0 0 0 1px var(--llm-line); }
+  .side li small { font-size: 12px; color: var(--ink3); white-space: nowrap; }
+  .side li { margin: 0 -8px; padding: 3px 8px; border-radius: 8px; transition: background .25s, color .25s; }
+  .side.before li.on { background: rgba(242, 163, 58, .16); }
+  .side.after li.on { background: rgba(91, 75, 245, .09); }
+  .side.before li.done i { background: var(--llm); color: #fff; box-shadow: none; }
+  .side.after li.done i { background: var(--accent); color: #fff; }
+  .req { margin-top: 12px; display: inline-flex; justify-self: start; align-self: start; padding: 6px 11px; border-radius: 11px 11px 11px 3px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 550; }
+  .ansr { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--good-bg); color: var(--good); font-size: 12.5px; font-weight: 650; }
+  .did div i, .did div b { transition: background .3s, color .3s, box-shadow .3s; }
+  .did.play div:not(.on) i { background: var(--paper); color: var(--ink3); box-shadow: inset 0 0 0 1.5px var(--line2); }
+  .did.play div:not(.on) b { color: var(--ink3); }
+  .did.play div:not(.on) small { opacity: .5; }
+  .side.after li i { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+  .side.after li small { color: var(--accent); font-weight: 600; }
+  .fn-chip { margin-top: 14px; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 10px; background: var(--ink); color: #fff; font: 600 12.5px var(--mono); justify-self: start; }
+  .fn-chip svg { color: var(--accent-2); }
+  /* Time, on the same scale on both sides. */
+  .time { align-self: end; margin-top: 18px; }
+  .time .tb { display: flex; gap: 2px; height: 10px; border-radius: 6px; overflow: hidden; }
+  .time .tb b { height: 100%; background: var(--llm); opacity: .8; transform-origin: left; }
+  .side.after .time .tb b { background: var(--accent); opacity: 1; }
+  .time .tt { margin-top: 10px; display: flex; align-items: baseline; gap: 10px; }
+  .time .tt b { font-size: 30px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .side.before .time .tt b { color: #8a5207; } .side.after .time .tt b { color: var(--accent); }
+  .time .tt span { font-size: 13px; color: var(--ink2); }
+  .split-l { margin-top: 14px; }
+  .split-l small { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--ink2); }
+  .split-l small em { font-style: normal; font-weight: 650; color: var(--accent); }
+  .split-l small em.l { color: var(--llm); }
+  /* The middle: what Lumni did, in order. */
+  .did { grid-row: 1 / 4; position: relative; display: flex; flex-direction: column; justify-content: center; gap: 18px; padding: 0 4px; }
+  .did::before { content: ''; position: absolute; left: 13px; top: 18%; bottom: 18%; width: 2px; background: linear-gradient(180deg, var(--llm-line), var(--accent-line)); }
+  .did div { position: relative; display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+  .did i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--accent-line); color: var(--accent); font-style: normal; z-index: 1; }
+  .did div:last-child i { background: var(--accent); color: #fff; box-shadow: none; }
+  .did b { display: block; font-size: 13.5px; font-weight: 700; }
+  .did small { display: block; margin-top: 1px; font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+
+  /* Today, added up across every compiled path. */
+  .day { margin-top: 14px; padding: 24px 26px; border-radius: 22px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); }
+  .day-h { display: flex; align-items: baseline; gap: 12px; }
+  .day-h h2 { font-size: 19px; font-weight: 750; letter-spacing: -0.02em; }
+  .day-h p { font-size: 14px; color: var(--ink2); }
+  .stack { margin-top: 18px; display: flex; gap: 3px; height: 34px; }
+  .stack span { position: relative; height: 100%; border-radius: 8px; transform-origin: left; }
+  .stack .c { background: var(--accent); }
+  .stack .c:nth-child(2n) { background: #7a6cf7; }
+  .stack .l { background: var(--llm-fill, #f6c177); }
+  .stack .o { background: repeating-linear-gradient(-45deg, #e3e4ea 0 5px, #eef0f4 5px 10px); }
+  .stack-l { position: relative; height: 34px; margin-top: 6px; }
+  .stack-l span { position: absolute; top: 0; padding-right: 8px; font-size: 12px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stack-l span b { display: block; font-size: 13px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stack-l span.c b { color: var(--accent); } .stack-l span.l b { color: var(--llm); }
+  .groups { margin-top: 14px; display: flex; gap: 22px; font-size: 13px; color: var(--ink2); }
+  .groups span { display: inline-flex; align-items: center; gap: 7px; }
+  .groups i { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
+  .groups i.l { background: #f6c177; } .groups i.o { background: #e3e4ea; }
+  .groups b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .results { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .results b { display: block; font-size: 30px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .results b small { font-size: 15px; font-weight: 600; color: var(--ink3); margin-left: 4px; letter-spacing: 0; }
+  .results span { display: block; margin-top: 2px; font-size: 13.5px; font-weight: 650; }
+  .results em { display: block; margin-top: 2px; font-style: normal; font-size: 12.5px; color: var(--ink3); }
+
+  /* The list. */
+  .bar { display: flex; align-items: center; gap: 12px; margin-top: 30px; }
+  .search { margin-left: auto; position: relative; }
+  .search input { width: 260px; height: 38px; padding: 0 14px 0 36px; border: 0; border-radius: 12px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font: 14px var(--sans); color: var(--ink); outline: 0; }
+  .search input:focus { box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .search svg { position: absolute; left: 12px; top: 11px; color: var(--ink3); }
+  .cols { display: grid; grid-template-columns: minmax(0, 1.5fr) 250px 140px 110px 120px 20px; gap: 24px; padding: 14px 20px 0; font-size: 12px; font-weight: 650; color: var(--ink3); }
+  .list { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1.5fr) 250px 140px 110px 120px 20px; gap: 24px; align-items: center; padding: 16px 20px; border-radius: 20px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); animation: blurin .5s var(--ease) both; transition: box-shadow .25s, transform .25s; color: inherit; }
+  .row:hover { box-shadow: inset 0 0 0 1px var(--line2), 0 14px 32px -16px rgba(40, 30, 120, .28); transform: translateY(-1px); }
+  .row:hover .go { color: var(--ink); transform: translateX(3px); }
+  .row.paused { background: #fbfbfc; }
+  .row.fresh { animation: blurin .5s var(--ease) both, fresh 2.4s var(--ease) .3s; }
+  @keyframes fresh { 0%, 40% { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 6px var(--accent-soft); } }
+  .who { min-width: 0; }
+  .who b { display: flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .who small { display: block; margin-top: 4px; font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who small.amber { color: var(--llm); }
+  .who small .ic { display: inline-flex; vertical-align: -2px; margin-right: 4px; }
+  .hit .lbl { display: flex; justify-content: space-between; margin-bottom: 7px; font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .hit .lbl span:first-child { color: var(--accent); }
+  .hit .lbl span:last-child { color: var(--llm); }
+  .hit .lbl.off span { color: var(--ink3); }
+  .t b, .sv b { display: block; font-size: 18px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .t b s { font-size: 13px; font-weight: 600; color: var(--ink3); margin-right: 6px; }
+  .t small, .sv small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink3); white-space: nowrap; }
+  .sv b { color: var(--accent); }
+  .row.off .sv b { color: var(--ink3); }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 30px; }
+  .spark i { flex: 1; border-radius: 2px; background: var(--accent-2); transform-origin: bottom; animation: grow .6s var(--ease) both; min-height: 2px; }
+  .spark i.z { background: var(--line); }
+  .go { color: var(--ink3); transition: transform .25s var(--ease), color .2s; }
+  .none { padding: 30px; text-align: center; color: var(--ink2); font-size: 14px; }
+
+  /* Lumni noticed. */
+  .noticed { margin-top: 38px; }
+  .noticed h2 { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+  .noticed h2 svg { color: var(--accent); }
+  .noticed > p { margin-top: 4px; font-size: 14px; color: var(--ink2); }
+  .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .nc { position: relative; padding: 18px; border-radius: 20px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line), var(--lift); display: flex; flex-direction: column; gap: 12px; overflow: hidden; animation: blurin .5s var(--ease) both; transition: opacity .4s var(--ease), transform .4s var(--ease), box-shadow .3s; }
+  .nc:hover { box-shadow: inset 0 0 0 1px var(--line2), var(--shadow); }
+  .nc .top2 { display: flex; align-items: flex-start; gap: 10px; }
+  .nc .top2 b { display: block; font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .nc .top2 small { display: block; margin-top: 3px; font-size: 13px; color: var(--ink2); }
+  .nc .top2 .cs { margin-left: auto; }
+  .nc .chain { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; min-height: 30px; }
+  .nc .chain span { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 8px; background: var(--llm-bg); color: #7a4a06; box-shadow: inset 0 0 0 1px var(--llm-line); font-size: 11.5px; font-weight: 600; white-space: nowrap; transition: transform .45s var(--ease), opacity .35s var(--ease), filter .35s; transition-delay: calc(var(--i) * .07s); }
+  .nc .chain em { color: var(--ink3); font-style: normal; font-size: 11px; transition: opacity .2s; }
+  .nc .chain .prog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.4); opacity: 0; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 10px; background: var(--ink); color: #fff; font: 600 12px var(--mono); transition: transform .45s var(--spring) .42s, opacity .3s .42s; }
+  .nc .chain .prog svg { color: var(--accent-2); }
+  .nc.compiling .chain span { transform: translateX(var(--to)) scale(.5); opacity: 0; filter: blur(2px); }
+  .nc.compiling .chain em { opacity: 0; }
+  .nc.compiling .chain .prog { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .nc .proj { display: flex; gap: 16px; font-size: 13px; color: var(--ink2); }
+  .nc .proj b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .nc .foot2 { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+  .nc .foot2 .hint { font-size: 12.5px; color: var(--ink3); }
+  .nc .prog-bar { height: 4px; border-radius: 4px; background: var(--wash); overflow: hidden; flex: 1; display: none; }
+  .nc .prog-bar i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform .7s var(--ease) .6s; }
+  .nc.compiling .prog-bar { display: block; }
+  .nc.compiling .prog-bar i { transform: scaleX(1); }
+  .nc.compiling .foot2 .hint, .nc.compiling .foot2 button { display: none; }
+  .nc.gone { opacity: 0; transform: translateY(-8px) scale(.98); }
+  .nc .checking { display: none; font-size: 12.5px; color: var(--ink2); }
+  .nc.compiling .checking { display: block; }
+  .reset { margin-top: 40px; text-align: center; }
+
+  .settled .row:not(.fresh), .settled .spark i, .settled .nc, .settled .stack span, .settled .time .tb b { animation: none; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header id="top"></header>
+  <main class="wrap" id="main"></main>
+</div>
+
+<script src="/lib/world-mock.js"></script>
+<script src="/lib/shell.js"></script>
+<script src="/lib/compiler.js"></script>
+<script src="/lib/compiled-ui.js"></script>
+<script src="/lib/paths-real.js"></script>
+<script>
+// Compiled paths: the steps your agents reason through again and again, now a
+// program they call. The LLM still takes anything off the path. Demo only:
+// real workspaces need the traces API.
+
+const C = window.Compiler;
+const U = window.CompiledUI;
+const { I, chip, ms, num, usd, pct } = U;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const safe = (s) => Shell.esc(s);
+// Needs-you first: drift and new programs wait on a person.
+const ORDER = { drifted: 0, candidate: 1, shadow: 2, live: 3, paused: 4 };
+const FILTERS = [['all', 'All'], ['live', 'Live'], ['shadow', 'In shadow'], ['candidate', 'To review'], ['drifted', 'Drifted'], ['paused', 'Paused']];
+
+let W = null;
+let S = { st: null, filter: 'all', q: '', fresh: null, ex: null };
+
+function render(w, first) {
+  W = w;
+  S.st = U.load();
+  if (Shell.isReal) {
+    PathsReal.list($('#main'));
+    return;
+  }
+  $('#main').innerHTML = `${head(first)}<section class="ex" id="ex"></section><div id="body"></div>`;
+  example();
+  paint(first);
+}
+
+function head(first) {
+  return `<section class="head ${first ? 'in' : ''}">
+    <div><div class="eyebrow">${safe(W.scale?.org ?? 'Your workspace')}, ${safe(W.dayLabel ?? 'today')}</div>
+    <h1>Compiled paths</h1>
+    <p>The steps your agents reason through again and again, turned into code they call instead. Faster, the same answer every time, and the LLM still takes anything off the path.</p></div>
+  </section>`;
+}
+
+// ─── how it works, on one real path ─────────────────
+
+/** Paths that are answering with code, to show as the example. */
+const examples = () => C.paths(W, S.st).filter((x) => x.live && x.status !== 'paused');
+
+function example() {
+  const list = examples();
+  if (!list.length) { $('#ex').remove(); return; }
+  const p = C.path(W, S.st, list.find((x) => x.id === S.ex)?.id ?? (list.find((x) => x.id === 'cancellation') ?? list[0]).id);
+  S.ex = p.id;
+  const fn = p.code[0]?.lines[0].match(/function (\w+)/)?.[1] ?? p.id;
+  const first = p.state.versions.find((v) => v.v === 1) ?? p.live;
+  const r = C.race(C.def(p.id));
+  const when = (v) => (v.at === 0 ? 'just now' : v.at === 1 ? 'yesterday' : `${v.at} days ago`);
+  // One scale for both sides, so the bars compare directly.
+  const w = (t) => `${(t / p.ms) * 100}%`;
+  $('#ex').innerHTML = `
+    <div class="ex-h"><div><h2>How a compiled path works</h2><p>One of your paths, before and after. Pick another to compare.</p></div>
+      <div class="pick">${list.map((x) => `<button data-ex="${safe(x.id)}" aria-pressed="${x.id === p.id}">${safe(x.name)}</button>`).join('')}</div></div>
+    <div class="ex-grid">
+      <div class="side before">
+        <div><div class="lab">${I.spark}Before: your agent works it out<span>every run</span></div>
+          <span class="req">“${safe(r.ask)}”</span>
+          <ol>${p.steps.map((s, i) => `<li><i>${i + 1}</i><span>${safe(s.t)}</span><small>${s.calls} LLM ${s.calls === 1 ? 'call' : 'calls'}</small></li>`).join('')}</ol></div>
+        <div class="split-l"><div class="split"><i style="flex:1;margin:0;border-radius:999px"></i></div><small><em class="l">100% worked out with the LLM</em></small></div>
+        <div class="time"><div class="tb">${p.steps.map((s, i) => `<b style="flex:${s.ms}"></b>`).join('')}</div>
+          <div class="tt"><b data-clock="${p.ms}">${ms(p.ms)}</b><span>${p.calls} LLM calls, and ${pct(p.variance, 1)} of the same requests got different answers</span></div>
+          <span class="ansr">${I.tick}${safe(r.answer)}</span></div>
+      </div>
+      <div class="did" id="did">
+        <div><i>${I.spark}</i><span><b>Lumni spotted the repeat</b><small>The same ${p.steps.length} steps, ${num(p.runs)} times a day</small></span></div>
+        <div><i>${I.code}</i><span><b>Wrote code and tested it</b><small>Same answer on ${pct(p.live.agree, 1)} of ${p.live.cases} past runs</small></span></div>
+        <div><i>${I.tick}</i><span><b>${p.live.by ? `${safe(p.live.by)} promoted it` : 'A person promoted it'}</b><small>v${p.live.v}, ${when(p.live)}${first !== p.live ? `; first written ${when(first)}` : ''}</small></span></div>
+      </div>
+      <div class="side after">
+        <div><div class="lab">${I.code}Now: the code answers<span>${pct(p.hit)} of runs</span></div>
+          <span class="req">“${safe(r.ask)}”</span>
+          <ol>${p.steps.map((s, i) => `<li><i>${i + 1}</i><span>${safe(s.t)}</span><small>in code</small></li>`).join('')}</ol></div>
+        <div class="split-l"><div class="split"><b style="width:${p.hit * 100}%"></b><i style="flex:1"></i></div><small><em>${pct(p.hit)} answered by code</em><em class="l">${pct(p.fallback)} unusual, to the LLM</em></small></div>
+        <div class="time"><div class="tb" style="width:${w(p.codeMs)}"><b style="flex:1"></b></div>
+          <div class="tt"><b data-clock="${p.codeMs}">${ms(p.codeMs)}</b><span>no LLM calls, in ${safe(fn)} v${p.live.v}</span></div>
+          <span class="ansr">${I.tick}${safe(r.answer)}, the same answer</span></div>
+      </div>
+    </div>`;
+  tell(p);
+}
+
+// ─── the example, told ──────────────────────────────
+//
+// A request arrives; the agent works through each step with the LLM while the
+// clock runs; Lumni's three moves light up; the same request goes through
+// the code, in its real share of the time. Only fills, highlights, fades and
+// counters, so it still plays with reduced motion on. Screenshots get the end.
+
+const STILL = new URLSearchParams(location.search).has('shot');
+const STORY = 3600; // the before side takes this long; the after side its share
+let telling = 0;
+
+function tell(p) {
+  const id = ++telling;
+  const box = $('#ex');
+  if (STILL || !box) return;
+  const live = () => id === telling && box.isConnected;
+  const wait = (t) => new Promise((r) => setTimeout(r, t));
+  let inView = false;
+  const io = new IntersectionObserver((es) => { inView = es.some((e) => e.isIntersecting); }, { threshold: 0.35 });
+  io.observe(box);
+  const B = $('.side.before', box), A = $('.side.after', box), did = $('#did');
+  const parts = (side) => ({ lis: $$('li', side), bars: $$('.tb b', side), clock: $('[data-clock]', side), req: $('.req', side), ans: $('.ansr', side), split: $('.split', side) });
+  const b = parts(B), a = parts(A), steps = $$('div', did);
+  // End states go straight on the element; the animation only eases into them,
+  // so the story stays right even when a frame is skipped.
+  const fade = (el, on) => { if (!el) return; el.style.opacity = on ? 1 : 0; if (on) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350 }); };
+  const fill = (el, t) => { el.style.transform = ''; el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: t, easing: 'linear' }); };
+  const count = (el, to, t) => new Promise((done) => {
+    const t0 = Date.now();
+    const h = setInterval(() => {
+      const k = Math.min(1, (Date.now() - t0) / t);
+      el.textContent = ms(to * k);
+      if (k >= 1 || !live()) { clearInterval(h); el.textContent = ms(to); done(); }
+    }, 40);
+  });
+  const reset = () => {
+    for (const x of [b, a]) {
+      for (const li of x.lis) li.classList.remove('on', 'done');
+      for (const bar of x.bars) { bar.getAnimations().forEach((k) => k.cancel()); bar.style.transform = 'scaleX(0)'; }
+      x.clock.textContent = ms(0);
+      fade(x.req, false);
+      fade(x.ans, false);
+      if (x.split) x.split.style.opacity = 0.25;
+    }
+    did.classList.add('play');
+    steps.forEach((d) => d.classList.remove('on'));
+  };
+  const lightSplit = (x) => { if (!x.split) return; x.split.style.opacity = 1; x.split.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 400 }); };
+  (async () => {
+    while (live()) {
+      while (live() && (!inView || document.hidden)) await wait(400);
+      if (!live()) break;
+      reset();
+      await wait(600);
+      // 1. Before: a request, then each step with the LLM, one after another.
+      fade(b.req, true);
+      await wait(500);
+      const clock = count(b.clock, p.ms, STORY);
+      for (let i = 0; i < p.steps.length && live(); i++) {
+        const t = (p.steps[i].ms / p.ms) * STORY;
+        b.lis[i].classList.add('on');
+        fill(b.bars[i], t);
+        await wait(t);
+        b.lis[i].classList.replace('on', 'done');
+      }
+      await clock;
+      lightSplit(b);
+      fade(b.ans, true);
+      await wait(900);
+      // 2. What Lumni did, in order.
+      for (const d of steps) { if (!live()) break; d.classList.add('on'); await wait(520); }
+      await wait(300);
+      // 3. Now: the same request, every step at once, in the code's share of the time.
+      fade(a.req, true);
+      await wait(500);
+      const t = (p.codeMs / p.ms) * STORY;
+      a.lis.forEach((li) => li.classList.add('on'));
+      fill(a.bars[0], t);
+      await count(a.clock, p.codeMs, t);
+      a.lis.forEach((li) => li.classList.replace('on', 'done'));
+      lightSplit(a);
+      fade(a.ans, true);
+      // Hold the finished picture, then tell it again.
+      await wait(4200);
+    }
+    io.disconnect();
+  })();
+}
+
+// ─── the list ───────────────────────────────────────
+
+function paint(first) {
+  const list = C.paths(W, S.st).sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.saved - a.saved);
+  const t = C.totals(list);
+  const counts = { all: list.length };
+  for (const x of list) counts[x.status] = (counts[x.status] ?? 0) + 1;
+  $('#main').classList.toggle('settled', first === false);
+  const q = S.q.trim().toLowerCase();
+  const shown = list.filter((x) => (S.filter === 'all' || x.status === S.filter) && (!q || `${x.name} ${x.agent}`.toLowerCase().includes(q)));
+  const sug = C.suggest(W, S.st);
+  $('#body').innerHTML = `
+    ${day(list, t)}
+    <div class="bar">
+      <div class="seg" role="tablist">${FILTERS.map(([k, l]) => `<button role="tab" data-filter="${k}" aria-selected="${S.filter === k}">${l} <i>${counts[k] ?? 0}</i></button>`).join('')}</div>
+      <label class="search">${I.search}<input id="q" placeholder="Search paths and agents" value="${safe(S.q)}" /></label>
+    </div>
+    <div class="cols"><span>Path</span><span>Who answers</span><span>Typical time</span><span>Saved today</span><span>Code, 7 days</span><span></span></div>
+    <div class="list" id="list">${shown.length ? shown.map(row).join('') : '<div class="none">Nothing matches. Try another filter.</div>'}</div>
+    ${sug.length ? `<section class="noticed" id="noticed"><h2>${I.spark}Lumni noticed</h2><p>Seen many times today, the same steps every time. Compile one to check it on past runs; nothing changes until a person promotes it.</p>
+      <div class="cards">${sug.map(card).join('')}</div></section>` : ''}
+    <div class="reset"><button class="btn2 quiet" data-reset>${I.undo}Start the demo over</button></div>`;
+  if (first !== false) dayIn();
+  for (const el of $$('[data-tdown]')) { const [a, b] = el.dataset.tdown.split(':').map(Number); if (first !== false || el.closest('.fresh')) U.countTo(el, a, b, ms, 1000); }
+  $('#q').addEventListener('input', (e) => { S.q = e.target.value; paint(false); $('#q').focus(); $('#q').setSelectionRange(S.q.length, S.q.length); });
+  S.fresh = null;
+}
+
+/** The day arrives: each segment fills in turn, the totals count up. Fills and numbers only. */
+function dayIn() {
+  if (STILL) return;
+  const box = $('.day');
+  const go = () => {
+    $$('.stack span', box).forEach((el, i) => el.animate([{ transform: 'scaleX(0)', opacity: 0.3 }, { transform: 'scaleX(1)', opacity: 1 }], { duration: 650, delay: 150 + i * 160, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'backwards' }));
+    $$('.stack-l span', box).forEach((el, i) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 450 + i * 160, fill: 'backwards' }));
+    const up = (el, show) => { const to = +el.dataset.count || +el.dataset.money; const t0 = performance.now(); const f = (now) => { const k = Math.min(1, (now - t0) / 1300); el.textContent = show(to * (1 - (1 - k) ** 3)); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); };
+    for (const el of $$('[data-count]', box)) up(el, num);
+    for (const el of $$('[data-money]', box)) up(el, usd);
+  };
+  const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); go(); } }, { threshold: 0.3 });
+  io.observe(box);
+}
+
+/** Every run on a compiled path today, in one bar: by code (per path), to the LLM, not live yet. */
+function day(list, t) {
+  const live = list.filter((x) => x.status === 'live' || x.status === 'drifted').sort((a, b) => b.served - a.served);
+  const toLLM = live.reduce((n, x) => n + x.llm, 0);
+  const waiting = list.filter((x) => !(x.status === 'live' || x.status === 'drifted')).reduce((n, x) => n + x.runs, 0);
+  const total = Math.max(1, t.served + toLLM + waiting);
+  const segs = [...live.map((x) => ({ k: 'c', n: x.served, label: x.name })), { k: 'l', n: toLLM, label: 'To the LLM' }, { k: 'o', n: waiting, label: 'Not live yet' }].filter((x) => x.n > 0);
+  let at = 0;
+  const labels = segs.map((x) => { const left = (at / total) * 100; at += x.n; return `<span class="${x.k}" style="left:${left}%;width:${(x.n / total) * 100}%" title="${safe(x.label)}: ${num(x.n)}"><b>${num(x.n)}</b>${safe(x.label)}</span>`; }).join('');
+  const hours = t.timeSaved / 3600e3;
+  return `<section class="day">
+    <div class="day-h"><h2>Today, added up</h2><p>${num(total)} runs on the ${list.length} paths Lumni has compiled</p></div>
+    <div class="stack">${segs.map((x, i) => `<span class="${x.k}" style="flex:${x.n};animation-delay:${0.1 + i * 0.08}s"></span>`).join('')}</div>
+    <div class="stack-l">${labels}</div>
+    <div class="groups"><span><i></i><b data-count="${t.served}">${num(t.served)}</b> answered by code (${pct(t.served / total)})</span><span><i class="l"></i><b>${num(toLLM)}</b> unusual, sent to the LLM</span><span><i class="o"></i><b>${num(waiting)}</b> on paths not live yet</span></div>
+    <div class="results">
+      <div><b data-count="${t.callsSaved}">${num(t.callsSaved)}</b><span>LLM calls not made</span><em>each compiled run skips every call its steps needed</em></div>
+      <div><b>${hours >= 10 ? num(hours) : hours.toFixed(1)}<small>hours</small></b><span>of agent time saved</span><em>${ms(t.msAfter)} a run instead of ${ms(t.msBefore)}</em></div>
+      <div><b data-money="${t.saved}">${usd(t.saved)}</b><span>saved today</span><em>about ${usd(t.saved * 30)} a month at this pace</em></div>
+    </div>
+  </section>`;
+}
+
+function row(x, i) {
+  const answering = x.status === 'live' || x.status === 'drifted';
+  const max = Math.max(1, ...x.week);
+  let meta = `${safe(x.agent)}, ${safe(W.app?.(x.app)?.name ?? x.app)}`;
+  let cls = '';
+  if (x.status === 'drifted') { const d = x.drifts.find((d) => !d.fixedBy); meta = `<span class="ic">${I.warn}</span>${safe(d.t)}`; cls = 'amber'; }
+  else if (x.status === 'candidate') meta += `, v${x.candidate.v} ready to review`;
+  else if (x.status === 'shadow') meta += `, v${x.shadow.v} running beside the LLM, agrees ${pct(x.shadow.agree, 1)}`;
+  else if (x.status === 'paused') meta = `Paused by ${safe(x.state.paused.by)}. ${safe(x.state.paused.why)}`;
+  else if (x.shadow) meta += `, v${x.live.v} live, v${x.shadow.v} in shadow`;
+  else meta += `, v${x.live.v}`;
+  const hit = answering
+    ? `<div class="lbl"><span>${pct(x.hit)} code</span><span>${pct(x.fallback)} LLM</span></div><div class="split"><b style="width:${x.hit * 100}%;animation-delay:${0.15 + i * 0.05}s"></b><i style="flex:1;animation-delay:${0.7 + i * 0.05}s"></i></div>`
+    : x.status === 'shadow'
+      ? `<div class="lbl off"><span>Comparing, not answering</span><span>100% LLM</span></div><div class="split ghost"><b style="width:${x.main * 100}%"></b></div>`
+      : `<div class="lbl off"><span>${x.status === 'paused' ? 'Paused' : 'Not running yet'}</span><span>100% LLM</span></div><div class="split"></div>`;
+  return `<a class="row ${answering ? '' : 'off'} ${x.status === 'paused' ? 'paused' : ''} ${S.fresh === x.id ? 'fresh' : ''}" href="/compile?path=${encodeURIComponent(x.id)}" style="animation-delay:${0.08 + i * 0.05}s">
+    <div class="who"><b>${safe(x.name)}${chip(x.status)}</b><small class="${cls}">${meta}</small></div>
+    <div class="hit">${hit}</div>
+    <div class="t">${answering ? `<b><s>${ms(x.ms)}</s><span data-tdown="${x.ms}:${x.msAfter}">${ms(x.msAfter)}</span></b><small>${x.calls} LLM calls → ${x.callsAfter.toFixed(1)}</small>` : `<b>${ms(x.ms)}</b><small>${x.calls} LLM calls, as today</small>`}</div>
+    <div class="sv"><b>${answering ? usd(x.saved) : '—'}</b><small>${answering ? `${num(x.served)} runs as code` : x.status === 'shadow' ? 'once promoted' : 'not yet'}</small></div>
+    <div class="spark">${x.week.map((d, j) => `<i class="${d ? '' : 'z'}" style="height:${Math.max(2, (d / max) * 30)}px;animation-delay:${0.1 + i * 0.04 + j * 0.03}s"></i>`).join('')}</div>
+    <span class="go">${I.arrow}</span>
+  </a>`;
+}
+
+function card(s, i) {
+  const n = s.steps.length;
+  return `<article class="nc" data-id="${safe(s.id)}" style="animation-delay:${0.1 + i * 0.06}s">
+    <div class="top2"><div><b>${safe(s.name)}</b><small>${safe(s.agent)}, ${num(s.runs)} times today</small></div>${chip('watching')}</div>
+    <div class="chain">${s.steps.map((x, j) => `${j ? '<em>→</em>' : ''}<span style="--i:${j};--to:${(n / 2 - j - 0.5) * 60}px">${safe(x.t)}</span>`).join('')}
+      <span class="prog" aria-hidden="true">${I.code}v1</span></div>
+    <div class="proj"><span><b>${pct(s.main)}</b> follow these steps</span><span><b>${ms(s.msBefore)} → ${ms(s.msAfter)}</b></span><span>about <b>${usd(s.saved)}</b> a day</span></div>
+    <div class="foot2"><button class="btn2 accent" data-compile>${I.code}Compile</button><span class="hint">Checked on 500 past runs first</span>
+      <span class="checking">Checking on 500 past runs…</span><span class="prog-bar"><i></i></span></div>
+  </article>`;
+}
+
+// ─── actions ────────────────────────────────────────
+
+function compile(id) {
+  const next = C.compile(S.st, id);
+  if (!next) return;
+  const el = $(`.nc[data-id="${CSS.escape(id)}"]`);
+  const done = () => {
+    S.st = next;
+    U.save(S.st);
+    S.fresh = id;
+    S.filter = 'all';
+    paint(false);
+    example();
+    Shell.toast(`${C.def(id).name} is compiled. Review it before it runs.`);
+    setTimeout(() => $('.row.fresh')?.scrollIntoView({ behavior: U.calm ? 'auto' : 'smooth', block: 'center' }), 60);
+  };
+  if (U.calm || !el) return done();
+  el.classList.add('compiling');
+  setTimeout(() => el.classList.add('gone'), 1350);
+  setTimeout(done, 1700);
+}
+
+document.addEventListener('click', (e) => {
+  if (Shell.isReal) return;
+  const t = e.target;
+  let x;
+  if ((x = t.closest('[data-ex]'))) { S.ex = x.dataset.ex; for (const el of $$('.ex .stack span, .ex .time .tb b')) el.style.animation = ''; return example(); }
+  if ((x = t.closest('[data-filter]'))) { S.filter = x.dataset.filter; return paint(false); }
+  if ((x = t.closest('[data-compile]'))) return compile(x.closest('.nc').dataset.id);
+  if (t.closest('[data-reset]')) { U.reset(); S.st = U.load(); S.filter = 'all'; example(); paint(true); return Shell.toast('The demo is back where it started.'); }
+});
+
+// ?shot=compile
+Shell.boot({ nav: 'Compiled', onWorld: (w, first) => {
+  render(w, first);
+  const s = new URLSearchParams(location.search).get('shot');
+  if (first && s === 'compile' && !Shell.isReal) { const id = C.suggest(W, S.st)[0]?.id; if (id) compile(id); }
+} });
+</script>
+</body>
+</html>

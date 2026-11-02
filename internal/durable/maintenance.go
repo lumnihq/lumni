@@ -12,6 +12,10 @@ import (
 )
 
 func (s *Service) Tick(ctx context.Context) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE outcomes o SET status='FAILED',reason='CONTRACT_VERIFICATION_DEADLINE',updated_at=now(),claim_until=NULL FROM contract_verification_deadlines d,action_results ar WHERE o.tenant_id=d.tenant_id AND o.action_id=d.action_id AND ar.tenant_id=o.tenant_id AND ar.action_id=o.action_id AND o.status='PENDING' AND d.verified_at IS NULL AND ar.recorded_at+make_interval(secs=>d.within_seconds)<now()`); err != nil {
+		return err
+	}
+
 	// A gateway process can disappear without leaving a renewable lease.
 	if _, err := s.pool.Exec(ctx, `WITH lost AS(UPDATE actions a SET status='UNKNOWN' WHERE a.status='ACTIVE' AND a.started_at<now()-interval '30 seconds' AND NOT EXISTS(SELECT 1 FROM leases l WHERE l.tenant_id=a.tenant_id AND l.action_id=a.id AND l.expires_at>now()) RETURNING a.tenant_id,a.id)INSERT INTO effect_holds(tenant_id,action_id,reason)SELECT tenant_id,id,'GATEWAY_LOST' FROM lost ON CONFLICT DO NOTHING`); err != nil {
 		return err

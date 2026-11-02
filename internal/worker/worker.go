@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/lumnihq/lumni/internal/analytics"
+	"github.com/lumnihq/lumni/internal/compiled"
 	"github.com/lumnihq/lumni/internal/composio"
 	"github.com/lumnihq/lumni/internal/coordination"
 	"github.com/lumnihq/lumni/internal/durable"
@@ -26,6 +27,7 @@ import (
 )
 
 type Worker struct {
+	compiled      *compiled.Service
 	durable       *durable.Service
 	pool          *pgxpool.Pool
 	kernel        *coordination.Kernel
@@ -65,6 +67,7 @@ func New(pool *pgxpool.Pool, kernel *coordination.Kernel, timeout time.Duration,
 	client := &http.Client{Timeout: timeout}
 	worker := &Worker{pool: pool, kernel: kernel, client: client, logger: logger, secrets: manager, github: githubingest.NewBackfiller(pool, client, logger, githubToken, githubAPIURL)}
 	worker.durable = durable.New(pool, kernel, manager)
+	worker.compiled = compiled.New(pool, manager, kernel, worker.durable)
 	worker.notifications = notifications.New(pool, nil).WithCipher(manager)
 
 	for _, option := range options {
@@ -74,6 +77,7 @@ func New(pool *pgxpool.Pool, kernel *coordination.Kernel, timeout time.Duration,
 }
 
 func (w *Worker) Run(ctx context.Context, interval time.Duration) error {
+	go w.compiled.Run(ctx, interval)
 	if w.semantic != nil {
 		go w.semantic.Run(ctx, interval)
 	}
@@ -273,4 +277,7 @@ func signature(secret, payload []byte) string {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
-func (s *Worker) SetPayloadRetention(retention time.Duration) { s.durable.SetRetention(retention) }
+func (s *Worker) SetPayloadRetention(retention time.Duration) {
+	s.durable.SetRetention(retention)
+	s.compiled.Retention = retention
+}

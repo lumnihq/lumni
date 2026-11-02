@@ -264,6 +264,11 @@ func (s *Service) Signal(ctx context.Context, tenant, work string, in protocol.S
 }
 
 func (s *Service) Finish(ctx context.Context, tenant, work string, in protocol.StepResult) error {
+	return s.FinishWith(ctx, tenant, work, in, nil)
+}
+
+// FinishWith commits backend-owned run projections with the native completion receipt.
+func (s *Service) FinishWith(ctx context.Context, tenant, work string, in protocol.StepResult, attach func(pgx.Tx) error) error {
 	if in.Status != "COMPLETED" && in.Status != "FAILED" {
 		return errors.New("invalid work result status")
 	}
@@ -284,6 +289,11 @@ func (s *Service) Finish(ctx context.Context, tenant, work string, in protocol.S
 	if found, e := s.receipt(ctx, tx, tenant, work, "finished", in.Token, in, &cached); e != nil {
 		return e
 	} else if found {
+		if attach != nil {
+			if err := attach(tx); err != nil {
+				return err
+			}
+		}
 		return tx.Commit(ctx)
 	}
 	if err = authorize(ctx, tx, tenant, work, in.RuntimeAuth); err != nil {
@@ -298,7 +308,7 @@ func (s *Service) Finish(ctx context.Context, tenant, work string, in protocol.S
 			return errors.New("CHILD_WORK_FAILED")
 		}
 		var incomplete bool
-		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM steps WHERE tenant_id=$1 AND work_id=$2 AND status<>'COMPLETED') OR EXISTS(SELECT 1 FROM work WHERE tenant_id=$1 AND parent_work_id=$2 AND status NOT IN('COMPLETED','FAILED','CANCELLED')) OR EXISTS(SELECT 1 FROM work w,LATERAL jsonb_object_keys(w.expected_effects) k WHERE w.tenant_id=$1 AND w.id=$2 AND NOT EXISTS(SELECT 1 FROM steps st JOIN outcomes o ON o.tenant_id=st.tenant_id AND o.action_id=st.action_id WHERE st.tenant_id=w.tenant_id AND st.work_id=w.id AND st.step_key=k AND o.status='VERIFIED' AND o.verifier_id=w.expected_effects->k->>'verifier_id' AND o.expected=w.expected_effects->k->'expected'))`, tenant, work).Scan(&incomplete); err != nil {
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM steps WHERE tenant_id=$1 AND work_id=$2 AND status<>'COMPLETED') OR EXISTS(SELECT 1 FROM work WHERE tenant_id=$1 AND parent_work_id=$2 AND status NOT IN('COMPLETED','FAILED','CANCELLED')) OR EXISTS(SELECT 1 FROM work w,LATERAL jsonb_object_keys(w.expected_effects) k WHERE w.tenant_id=$1 AND w.id=$2 AND NOT EXISTS(SELECT 1 FROM steps st JOIN outcomes o ON o.tenant_id=st.tenant_id AND o.action_id=st.action_id WHERE st.tenant_id=w.tenant_id AND st.work_id=w.id AND st.step_key=k AND o.status='VERIFIED' AND ((o.verifier_id=w.expected_effects->k->>'verifier_id' AND o.expected=w.expected_effects->k->'expected') OR EXISTS(SELECT 1 FROM actions base WHERE base.tenant_id=st.tenant_id AND base.id=st.action_id AND base.base_verification->>'verifier_id'=w.expected_effects->k->>'verifier_id' AND base.base_verification->'expected'=w.expected_effects->k->'expected'))))`, tenant, work).Scan(&incomplete); err != nil {
 			return err
 		}
 		if incomplete {
@@ -313,6 +323,11 @@ func (s *Service) Finish(ctx context.Context, tenant, work string, in protocol.S
 	}
 	if err = s.saveReceipt(ctx, tx, tenant, work, "finished", in.Token, in, true); err != nil {
 		return err
+	}
+	if attach != nil {
+		if err := attach(tx); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }
